@@ -20,7 +20,7 @@ export interface KeywordSuggestion {
   reason: string;
 }
 
-export type ViewState = 'dashboard' | 'studio' | 'playground';
+export type ViewState = 'dashboard' | 'studio';
 
 export type StudioStep = 'keyword' | 'script' | 'images' | 'thumbnail' | 'result';
 

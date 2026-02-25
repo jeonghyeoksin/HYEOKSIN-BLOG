@@ -13,19 +13,14 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
   const [manualKey, setManualKey] = useState('');
 
   useEffect(() => {
-    const checkKey = async () => {
+    const checkKey = () => {
       // 로컬 저장소 확인
       const savedKey = localStorage.getItem('gemini_api_key');
       if (savedKey) {
         setManualKey(savedKey);
         setHasKey(true);
-        return;
-      }
-
-      // 플랫폼 키 확인
-      if ((window as any).aistudio) {
-        const selected = await (window as any).aistudio.hasSelectedApiKey();
-        setHasKey(selected);
+      } else {
+        setHasKey(false);
       }
     };
     if (isOpen) {
@@ -43,16 +38,6 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
       localStorage.removeItem('gemini_api_key');
       setHasKey(false);
       alert('API 키를 입력해 주세요.');
-    }
-  };
-
-  const handleOpenSelectKey = async () => {
-    if ((window as any).aistudio) {
-      localStorage.removeItem('gemini_api_key'); // 수동 키 제거
-      setManualKey('');
-      await (window as any).aistudio.openSelectKey();
-      setHasKey(true);
-      setTestResult(null);
     }
   };
 
@@ -114,18 +99,6 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
                 키 저장 및 변경
               </button>
             </div>
-
-            <div className="relative py-4">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-900 px-2 text-slate-500">OR</span></div>
-            </div>
-
-            <button
-              onClick={handleOpenSelectKey}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold transition-all border border-slate-700"
-            >
-              AI Studio 키 선택기 사용
-            </button>
             
             <p className="mt-3 text-[10px] text-slate-500 text-center">
               Gemini API 키는 브라우저의 로컬 저장소에 안전하게 저장됩니다.
