@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>혁신 블로그 AI</title>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Noto Sans KR', sans-serif;
+      }
+      /* Custom Scrollbar for sleek look */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569; 
+      }
+      
+      /* Markdown Styles - Document Mode */
+      .markdown-body { color: #000000; }
+      
+      /* 1. Headers -> Bold, Deep Blue */
+      .markdown-body h1, 
+      .markdown-body h2, 
+      .markdown-body h3 { 
+        color: #1e3a8a !important; /* Blue-900 */
+        font-weight: 800; /* Bold Processing */
+        margin-top: 1.5em; 
+        margin-bottom: 0.8em; 
+        letter-spacing: -0.02em;
+      }
+      
+      .markdown-body h2 {
+         border-bottom: 3px solid #e2e8f0; 
+         padding-bottom: 0.3em;
+         font-size: 1.8em;
+      }
+      
+      .markdown-body h3 {
+         font-size: 1.4em;
+      }
+
+      /* BLOCKQUOTE is now used for Subheadings/Titles */
+      .markdown-body blockquote { 
+        border-left: 8px solid #2563eb; /* Blue-600 */
+        background-color: #eff6ff; /* Blue-50 */
+        padding: 1.2em 1.5em; 
+        margin: 2.5em 0 1.5em 0; 
+        border-radius: 0 12px 12px 0;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.05);
+      }
+      .markdown-body blockquote p {
+        color: #1e40af !important; /* Blue-800 */
+        font-weight: 800; 
+        font-size: 1.25em; /* Larger font for heading look */
+        margin-bottom: 0 !important; /* Remove bottom margin for p inside quote */
+        line-height: 1.4;
+      }
+      
+      .markdown-body a { color: #2563eb !important; text-decoration: underline; text-underline-offset: 4px; font-weight: 600; }
+
+      /* General Text */
+      .markdown-body p, 
+      .markdown-body li, 
+      .markdown-body td { 
+        color: #1f2937 !important; /* Gray-800 */
+        font-size: 1.05em;
+      }
+      .markdown-body p { margin-bottom: 1.8em; line-height: 1.8; } /* Good spacing */
+      
+      .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em; color: #1f2937; }
+      .markdown-body ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1.5em; color: #1f2937; }
+      .markdown-body li { margin-bottom: 0.8em; line-height: 1.7; }
+
+      /* --- REQUESTED TEXT STYLES --- */
+
+      /* 1. Important Keyword -> Red (**text** or __text__) */
+      .markdown-body strong { 
+        color: #dc2626 !important; /* Red-600 */
+        font-weight: 800; 
+      }
+      
+      /* 2. Emphasized Keyword -> Blue (*text* or _text_) */
+      .markdown-body em {
+        font-style: normal;
+        color: #2563eb !important; /* Blue-600 */
+        font-weight: 700;
+        background: none;
+      }
+
+      /* 3. Important Sentence -> Yellow BG + Red Text (***text*** or ___text___) */
+      .markdown-body strong em, .markdown-body em strong {
+        background-color: #fef08a !important; /* Yellow-200 */
+        color: #dc2626 !important; /* Red-600 */
+        padding: 2px 4px; 
+        border-radius: 4px; 
+        font-style: normal;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+      }
+
+      /* 4. Emphasized Sentence -> Yellow BG + Blue Text (`text`) */
+      .markdown-body code { 
+        background-color: #fef08a !important; /* Yellow-200 */
+        color: #2563eb !important; /* Blue-600 */
+        padding: 2px 4px; 
+        border-radius: 4px; 
+        font-family: inherit; /* Use normal font, not monospace */
+        font-weight: 700;
+        border: 1px solid #fde047; /* Yellow-300 */
+        box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+        font-size: 0.95em;
+      }
+
+      /* Exception: Actual Code Blocks should look like code */
+      .markdown-body pre { 
+        background-color: #1e293b !important; 
+        padding: 1.5em; 
+        border-radius: 12px; 
+        overflow-x: auto; 
+        margin: 2em 0; 
+        border: 1px solid #334155; 
+      }
+      .markdown-body pre code { 
+        background-color: transparent !important; 
+        color: #f8fafc !important; 
+        font-family: monospace !important; 
+        font-weight: normal; 
+        border: none; 
+        padding: 0; 
+        box-shadow: none;
+      }
+      
+      /* Table Styles */
+      .markdown-body table { 
+        width: 100%; 
+        border-collapse: separate; 
+        border-spacing: 0;
+        margin: 2.5em 0; 
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #cbd5e1; 
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+      }
+      .markdown-body th, .markdown-body td { 
+        border-bottom: 1px solid #cbd5e1;
+        border-right: 1px solid #cbd5e1;
+        padding: 16px 20px; 
+        text-align: left; 
+      }
+      .markdown-body th:last-child, .markdown-body td:last-child {
+        border-right: none;
+      }
+      .markdown-body tr:last-child td {
+        border-bottom: none;
+      }
+      
+      .markdown-body th { 
+        background-color: #f1f5f9; 
+        color: #0f172a !important;
+        font-weight: 800; 
+        text-transform: uppercase; 
+        font-size: 0.85em; 
+        letter-spacing: 0.05em; 
+      }
+      .markdown-body tr:nth-child(even) { background-color: #f8fafc; }
+      .markdown-body tr:hover { background-color: #f1f5f9; transition: background-color 0.2s; }
+
+      /* HR Style */
+      .markdown-body hr {
+        height: 4px;
+        border: 0;
+        background-color: #f1f5f9;
+        margin: 4em 0;
+        border-radius: 2px;
+      }
+
+      /* Markdown Image Styles */
+      .markdown-body img {
+        width: 100%;
+        border-radius: 1rem;
+        margin: 2rem 0;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        border: 1px solid #f1f5f9;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
+    "react-markdown": "https://esm.sh/react-markdown@9?bundle",
+    "remark-gfm": "https://esm.sh/remark-gfm@4?bundle",
+    "marked": "https://esm.sh/marked@12.0.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-slate-950 text-slate-50 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
