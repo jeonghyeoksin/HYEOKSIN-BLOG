@@ -10,9 +10,19 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [hasKey, setHasKey] = useState(false);
+  const [manualKey, setManualKey] = useState('');
 
   useEffect(() => {
     const checkKey = async () => {
+      // 로컬 저장소 확인
+      const savedKey = localStorage.getItem('gemini_api_key');
+      if (savedKey) {
+        setManualKey(savedKey);
+        setHasKey(true);
+        return;
+      }
+
+      // 플랫폼 키 확인
       if ((window as any).aistudio) {
         const selected = await (window as any).aistudio.hasSelectedApiKey();
         setHasKey(selected);
@@ -24,10 +34,23 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
+  const handleSaveManualKey = () => {
+    if (manualKey.trim()) {
+      localStorage.setItem('gemini_api_key', manualKey.trim());
+      setHasKey(true);
+      setTestResult({ success: true, message: "API 키가 브라우저에 성공적으로 저장되었습니다!" });
+    } else {
+      localStorage.removeItem('gemini_api_key');
+      setHasKey(false);
+      alert('API 키를 입력해 주세요.');
+    }
+  };
+
   const handleOpenSelectKey = async () => {
     if ((window as any).aistudio) {
+      localStorage.removeItem('gemini_api_key'); // 수동 키 제거
+      setManualKey('');
       await (window as any).aistudio.openSelectKey();
-      // After selecting, we assume success as per guidelines
       setHasKey(true);
       setTestResult(null);
     }
@@ -67,30 +90,45 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         <div className="p-8 space-y-6">
-          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-slate-400">현재 상태</span>
+          <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50 space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-slate-400">API 키 수동 입력</span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold ${hasKey ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                {hasKey ? '연결됨' : '연결 안 됨'}
+                {hasKey ? '설정됨' : '미설정'}
               </span>
             </div>
             
-            <p className="text-sm text-slate-300 leading-relaxed mb-6">
-              Gemini API를 사용하기 위해 유료 Google Cloud 프로젝트의 API 키가 필요합니다. 
-              보안을 위해 키는 플랫폼에서 안전하게 관리됩니다.
-            </p>
+            <div className="space-y-3">
+              <input 
+                type="password"
+                id="apiKeyInput"
+                value={manualKey}
+                onChange={(e) => setManualKey(e.target.value)}
+                placeholder="AIzaSy... (API 키 입력)"
+                className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white placeholder-slate-600 transition-all"
+              />
+              <button
+                onClick={handleSaveManualKey}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
+              >
+                키 저장 및 변경
+              </button>
+            </div>
+
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-900 px-2 text-slate-500">OR</span></div>
+            </div>
 
             <button
               onClick={handleOpenSelectKey}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold transition-all border border-slate-700"
             >
-              {hasKey ? 'API Key 변경하기' : 'API Key 설정하기'}
+              AI Studio 키 선택기 사용
             </button>
             
             <p className="mt-3 text-[10px] text-slate-500 text-center">
-              <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="underline hover:text-slate-400">
-                결제 및 요금 안내 확인하기
-              </a>
+              Gemini API 키는 브라우저의 로컬 저장소에 안전하게 저장됩니다.
             </p>
           </div>
 

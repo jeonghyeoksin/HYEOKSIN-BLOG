@@ -2,7 +2,12 @@ import { GoogleGenAI, GenerateContentResponse, Type, Part } from "@google/genai"
 import { KeywordSuggestion } from "../types";
 
 const getClient = () => {
-  const apiKey = process.env.API_KEY;
+  // 1. 로컬 저장소에서 사용자가 직접 입력한 키가 있는지 먼저 확인합니다.
+  const localKey = typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') : null;
+  
+  // 2. 로컬 키가 없으면 플랫폼에서 주입한 API_KEY를 사용합니다.
+  const apiKey = localKey || process.env.API_KEY;
+
   if (!apiKey) {
     throw new Error("API 키가 설정되지 않았습니다. API Key 설정을 완료해주세요.");
   }
