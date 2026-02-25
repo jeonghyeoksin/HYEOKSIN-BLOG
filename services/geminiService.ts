@@ -4,9 +4,31 @@ import { KeywordSuggestion } from "../types";
 const getClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
-    throw new Error("API Key is missing. Please set process.env.API_KEY");
+    throw new Error("API 키가 설정되지 않았습니다. API Key 설정을 완료해주세요.");
   }
   return new GoogleGenAI({ apiKey });
+};
+
+export const testConnection = async (): Promise<{ success: boolean; message: string }> => {
+  try {
+    const ai = getClient();
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL,
+      contents: "Connection test. Reply with 'OK'.",
+    });
+    if (response.text) {
+      return { success: true, message: "연결 성공! API 키가 정상적으로 작동합니다." };
+    }
+    return { success: false, message: "연결 실패: 응답을 받을 수 없습니다." };
+  } catch (error: any) {
+    console.error("Connection test error:", error);
+    return { 
+      success: false, 
+      message: error.message?.includes("entity was not found") 
+        ? "API 키가 올바르지 않거나 권한이 없습니다. 다시 설정해주세요." 
+        : `연결 실패: ${error.message || "알 수 없는 오류"}` 
+    };
+  }
 };
 
 // Gemini 3 Pro Preview for High-Quality Reasoning & Text

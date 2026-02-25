@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import { ContentWriter } from './components/ContentWriter';
+import ApiKeyModal from './components/ApiKeyModal';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [accessKeyInput, setAccessKeyInput] = useState('');
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,14 +16,6 @@ const App: React.FC = () => {
       setIsAuthenticated(true);
     } else {
       alert('접근 키가 올바르지 않습니다.');
-    }
-  };
-
-  const handleApiKeySelect = () => {
-    if ((window as any).aistudio) {
-      (window as any).aistudio.openSelectKey();
-    } else {
-      alert("AI Studio 환경에서만 사용할 수 있습니다.");
     }
   };
 
@@ -101,7 +95,7 @@ const App: React.FC = () => {
                 블로그 올인원
               </button>
               <button 
-                onClick={handleApiKeySelect}
+                onClick={() => setIsApiKeyModalOpen(true)}
                 className="text-sm font-medium transition-colors px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2 border border-slate-700/50"
               >
                 <span>🔑</span> API Key 설정
@@ -121,6 +115,11 @@ const App: React.FC = () => {
              </div>
          )}
       </main>
+
+      <ApiKeyModal 
+        isOpen={isApiKeyModalOpen} 
+        onClose={() => setIsApiKeyModalOpen(false)} 
+      />
     </div>
   );
 };
