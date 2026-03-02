@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentResponse, Type, Part } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type, Part, ThinkingLevel } from "@google/genai";
 import { KeywordSuggestion } from "../types";
 
 const getClient = () => {
@@ -46,33 +46,49 @@ export const testConnection = async (): Promise<{ success: boolean; message: str
   }
 };
 
-// Gemini 3 Pro Preview for High-Quality Reasoning & Text
-const TEXT_MODEL = 'gemini-3-pro-preview';
-// Gemini 3 Pro Image Preview (Nano Banana 3) for High-Quality Text Rendering
-const IMAGE_MODEL = 'gemini-3-pro-image-preview';
+// Gemini 3 Flash Preview for High Availability & Speed (Reduces 503 errors)
+const TEXT_MODEL = 'gemini-3-flash-preview';
+// Gemini 3.1 Flash Image Preview for High-Quality Image Generation
+const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
+
+const handleApiError = (error: any, fallbackMessage: string): string => {
+  console.error("Gemini API Error:", error);
+  if (error.message?.includes("503") || error.message?.includes("overloaded") || error.message?.includes("수요가 급증")) {
+    return "현재 Google 서버의 일시적인 과부하로 인해 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+  }
+  if (error.message?.includes("entity was not found") || error.message?.includes("API_KEY_INVALID")) {
+    return "API 키가 올바르지 않거나 권한이 없습니다. 상단 'API Key 설정'에서 키를 다시 확인해주세요.";
+  }
+  return `${fallbackMessage}: ${error.message || "알 수 없는 오류"}`;
+};
 
 export const generateBlogIdeas = async (niche: string): Promise<string> => {
-  const ai = getClient();
-  
-  const prompt = `
-    You are a professional blog strategist.
-    Generate 5 innovative and viral blog post ideas for the niche: "${niche}".
-    The ideas should reflect current trends, technologies, and lifestyle changes.
-    For each idea, provide a catchy title and a brief 1-sentence synopsis.
-    Format the output as a clean numbered list.
-    Korean language only.
-  `;
+  try {
+    const ai = getClient();
+    
+    const prompt = `
+      You are a professional blog strategist.
+      Generate 5 innovative and viral blog post ideas for the niche: "${niche}".
+      The ideas should reflect current trends, technologies, and lifestyle changes.
+      For each idea, provide a catchy title and a brief 1-sentence synopsis.
+      Format the output as a clean numbered list.
+      Korean language only.
+    `;
 
-  const response = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: prompt,
-    config: {
-      temperature: 0.8,
-      thinkingConfig: { thinkingBudget: 1024 }
-    }
-  });
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.8,
+        // thinkingLevel is the correct parameter for Gemini 3 series
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
+    });
 
-  return response.text || "아이디어를 생성할 수 없습니다.";
+    return response.text || "아이디어를 생성할 수 없습니다.";
+  } catch (error: any) {
+    throw new Error(handleApiError(error, "블로그 아이디어 생성 실패"));
+  }
 };
 
 export const generateUSP = async (
@@ -80,39 +96,43 @@ export const generateUSP = async (
   storeName: string,
   salesService: string
 ): Promise<string> => {
-  const ai = getClient();
+  try {
+    const ai = getClient();
 
-  const prompt = `
-    You are a top-tier Marketing Strategist and Copywriter.
-    
-    Analyze the following information:
-    - Blog Topic: "${topic}"
-    - Brand/Store Name: "${storeName}"
-    - Sales Service/Product: "${salesService}"
+    const prompt = `
+      You are a top-tier Marketing Strategist and Copywriter.
+      
+      Analyze the following information:
+      - Blog Topic: "${topic}"
+      - Brand/Store Name: "${storeName}"
+      - Sales Service/Product: "${salesService}"
 
-    **Task**:
-    Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that maximizes the probability of:
-    1. **Customer Inquiries** (Lead Generation)
-    2. **Sales Conversion** (Purchase)
+      **Task**:
+      Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that maximizes the probability of:
+      1. **Customer Inquiries** (Lead Generation)
+      2. **Sales Conversion** (Purchase)
 
-    **Output Requirements**:
-    - Identify the core pain point of the target audience related to the topic.
-    - Explain how this specific brand/service solves it better than others.
-    - Formulate a specific "Goal of the Post" that acts as a strategic guideline for the writer.
-    - **Format**: Just return the strategic paragraph (approx 3-4 lines) that describes the selling point and the goal. Do not use bullet points.
-    - **Language**: Korean.
-  `;
+      **Output Requirements**:
+      - Identify the core pain point of the target audience related to the topic.
+      - Explain how this specific brand/service solves it better than others.
+      - Formulate a specific "Goal of the Post" that acts as a strategic guideline for the writer.
+      - **Format**: Just return the strategic paragraph (approx 3-4 lines) that describes the selling point and the goal. Do not use bullet points.
+      - **Language**: Korean.
+    `;
 
-  const response = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: prompt,
-    config: {
-      temperature: 0.7,
-      thinkingConfig: { thinkingBudget: 1024 }
-    }
-  });
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.7,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
+    });
 
-  return response.text || "전략을 도출할 수 없습니다.";
+    return response.text || "전략을 도출할 수 없습니다.";
+  } catch (error: any) {
+    throw new Error(handleApiError(error, "전략 도출 실패"));
+  }
 };
 
 export const suggestRelatedKeywords = async (
@@ -123,61 +143,65 @@ export const suggestRelatedKeywords = async (
   filePart?: { data: string, mimeType: string },
   referenceNote?: string
 ): Promise<KeywordSuggestion[]> => {
-  const ai = getClient();
-  
-  const promptText = `
-    Topic: "${baseTopic}"
-    ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
-    ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
-    ${postGoal ? `**Goal of the Post**: "${postGoal}"` : ""}
-    ${referenceNote ? `**Reference Note**: "${referenceNote}"` : ""}
-
-    Based on the topic ${filePart ? "and the provided reference file content" : ""}, 
-    suggest 5 high-traffic, low-competition SEO keywords relevant to current trends.
+  try {
+    const ai = getClient();
     
-    ${storeName || salesService ? `Consider the Store Name and Sales Service provided.` : ""}
-    ${postGoal ? `Prioritize keywords that help achieve the goal: "${postGoal}".` : ""}
+    const promptText = `
+      Topic: "${baseTopic}"
+      ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
+      ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
+      ${postGoal ? `**Goal of the Post**: "${postGoal}"` : ""}
+      ${referenceNote ? `**Reference Note**: "${referenceNote}"` : ""}
 
-    For each keyword:
-    1. Assign a "Recommendation Rank" (1 to 5).
-    2. Calculate an "Algorithm Suitability Score" (0-100) based on current search trends and content potential.
-    3. Provide a brief "Reason" why this keyword is good.
+      Based on the topic ${filePart ? "and the provided reference file content" : ""}, 
+      suggest 5 high-traffic, low-competition SEO keywords relevant to current trends.
+      
+      ${storeName || salesService ? `Consider the Store Name and Sales Service provided.` : ""}
+      ${postGoal ? `Prioritize keywords that help achieve the goal: "${postGoal}".` : ""}
 
-    Return ONLY a JSON array of objects.
-    Korean language.
-  `;
+      For each keyword:
+      1. Assign a "Recommendation Rank" (1 to 5).
+      2. Calculate an "Algorithm Suitability Score" (0-100) based on current search trends and content potential.
+      3. Provide a brief "Reason" why this keyword is good.
 
-  const parts: Part[] = [{ text: promptText }];
-  if (filePart) {
-      parts.unshift({ inlineData: filePart });
-  }
+      Return ONLY a JSON array of objects.
+      Korean language.
+    `;
 
-  const response = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: { parts },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-            type: Type.OBJECT,
-            properties: {
-                rank: { type: Type.INTEGER },
-                keyword: { type: Type.STRING },
-                suitabilityScore: { type: Type.INTEGER },
-                reason: { type: Type.STRING }
-            }
+    const parts: Part[] = [{ text: promptText }];
+    if (filePart) {
+        parts.unshift({ inlineData: filePart });
+    }
+
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL,
+      contents: { parts },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+              type: Type.OBJECT,
+              properties: {
+                  rank: { type: Type.INTEGER },
+                  keyword: { type: Type.STRING },
+                  suitabilityScore: { type: Type.INTEGER },
+                  reason: { type: Type.STRING }
+              }
+          }
         }
       }
-    }
-  });
+    });
 
-  try {
     const text = response.text;
     if (!text) return [];
     return JSON.parse(text);
-  } catch (e) {
-    console.error("Failed to parse keywords", e);
+  } catch (error: any) {
+    console.error("Failed to suggest keywords", error);
+    // 503 에러 등 심각한 오류는 상위로 던집니다.
+    if (error.message?.includes("503") || error.message?.includes("overloaded")) {
+      throw new Error(handleApiError(error, "키워드 추천 실패"));
+    }
     return [];
   }
 };
@@ -188,35 +212,39 @@ export const generateTitle = async (
   postGoal?: string,
   referenceNote?: string
 ): Promise<string> => {
-  const ai = getClient();
-  const prompt = `
-    Create ONE high-performing, **GEO (Generative Engine Optimization)** and **SEO (Search Engine Optimization)** ready blog post title.
-    
-    Context:
-    Topic: ${topic}
-    ${postGoal ? `Goal: ${postGoal}` : ""}
-    ${referenceNote ? `Reference Note: ${referenceNote}` : ""}
-    
-    **GEO & SEO GUIDELINES**:
-    1. **Keyword Placement**: The keyword "${keyword}" MUST be at the very beginning of the title to maximize search visibility. (e.g., "${keyword}: ...")
-    2. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
-    3. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
-    4. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
-    5. **Length**: Concise but descriptive (under 40 characters if possible).
-    
-    Output: Return ONLY the title string. No quotes, no explanations.
-    Language: Korean.
-  `;
+  try {
+    const ai = getClient();
+    const prompt = `
+      Create ONE high-performing, **GEO (Generative Engine Optimization)** and **SEO (Search Engine Optimization)** ready blog post title.
+      
+      Context:
+      Topic: ${topic}
+      ${postGoal ? `Goal: ${postGoal}` : ""}
+      ${referenceNote ? `Reference Note: ${referenceNote}` : ""}
+      
+      **GEO & SEO GUIDELINES**:
+      1. **Keyword Placement**: The keyword "${keyword}" MUST be at the very beginning of the title to maximize search visibility. (e.g., "${keyword}: ...")
+      2. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
+      3. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
+      4. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
+      5. **Length**: Concise but descriptive (under 40 characters if possible).
+      
+      Output: Return ONLY the title string. No quotes, no explanations.
+      Language: Korean.
+    `;
 
-  const response = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: prompt,
-    config: {
-      temperature: 0.8,
-    }
-  });
-  
-  return response.text?.trim() || `${keyword} 관련 추천 포스팅`;
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.8,
+      }
+    });
+    
+    return response.text?.trim() || `${keyword} 관련 추천 포스팅`;
+  } catch (error: any) {
+    throw new Error(handleApiError(error, "제목 생성 실패"));
+  }
 };
 
 export const generateOutline = async (
@@ -230,76 +258,80 @@ export const generateOutline = async (
   referenceNote?: string,
   scriptImageParts?: { data: string, mimeType: string }[]
 ): Promise<string> => {
-  const ai = getClient();
-  
-  const promptText = `
-    Create a detailed SEO-optimized blog post outline for the topic: "${topic}".
-    ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
-    ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
-    ${postGoal ? `**Primary Goal**: "${postGoal}"` : ""}
-    ${referenceNote ? `**User Reference Note**: "${referenceNote}". Incorporate these specific instructions or details into the outline.` : ""}
-    ${filePart ? "Analyze the attached reference file and incorporate its key points into the structure." : ""}
-    ${scriptImageParts && scriptImageParts.length > 0 ? "**VISUAL ANALYSIS**: I have attached 'Script Reference Images'. Analyze these images to understand the atmosphere and context, but do not explicitly describe them in the outline." : ""}
-    ${excludedFilePart ? "**CRITICAL CONSTRAINT**: The attached 'EXCLUDED FILE' contains information that MUST NOT appear in the outline. Do not mention or reference its specific contents." : ""}
+  try {
+    const ai = getClient();
     
-    ${benchmarkingText ? `
-    **BENCHMARKING MASTER INSTRUCTION**: 
-    I have provided "BENCHMARKING TEXT" below. It is a high-performing content model. 
-    1. **Analyze Structure**: Identify its logical flow (e.g., Problem -> Agitation -> Solution).
-    2. **Mimic Logic**: Create an outline for the NEW TOPIC that follows the *exact same persuasive steps* as the benchmark.
-    3. **Adapt Entities**: Where the benchmark promotes its subject, you must structure the outline to promote "${storeName || 'our brand'}" and "${salesService || 'our service'}" instead.
-    ` : ""}
+    const promptText = `
+      Create a detailed SEO-optimized blog post outline for the topic: "${topic}".
+      ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
+      ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
+      ${postGoal ? `**Primary Goal**: "${postGoal}"` : ""}
+      ${referenceNote ? `**User Reference Note**: "${referenceNote}". Incorporate these specific instructions or details into the outline.` : ""}
+      ${filePart ? "Analyze the attached reference file and incorporate its key points into the structure." : ""}
+      ${scriptImageParts && scriptImageParts.length > 0 ? "**VISUAL ANALYSIS**: I have attached 'Script Reference Images'. Analyze these images to understand the atmosphere and context, but do not explicitly describe them in the outline." : ""}
+      ${excludedFilePart ? "**CRITICAL CONSTRAINT**: The attached 'EXCLUDED FILE' contains information that MUST NOT appear in the outline. Do not mention or reference its specific contents." : ""}
+      
+      ${benchmarkingText ? `
+      **BENCHMARKING MASTER INSTRUCTION**: 
+      I have provided "BENCHMARKING TEXT" below. It is a high-performing content model. 
+      1. **Analyze Structure**: Identify its logical flow (e.g., Problem -> Agitation -> Solution).
+      2. **Mimic Logic**: Create an outline for the NEW TOPIC that follows the *exact same persuasive steps* as the benchmark.
+      3. **Adapt Entities**: Where the benchmark promotes its subject, you must structure the outline to promote "${storeName || 'our brand'}" and "${salesService || 'our service'}" instead.
+      ` : ""}
+      
+      Structure Guidelines:
+      1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}".
+      2. **Body (H2/H3)**: Structured logic to persuade or inform the reader. 
+         - **IMPORTANT**: Designate one section to be presented as a **Table/Chart** (e.g., Feature comparison, Price list, Pros/Cons, Specs).
+      3. **Conclusion**: MUST be conversion-focused. Summarize and lead the reader to the specific goal ("${postGoal || 'Action'}").
+      
+      Output Format:
+      1. Introduction (Hook, Problem, Solution)
+      2. Key Headings (Format as Blockquote: > Heading)
+      3. Sub-points (Format as Blockquote: > Sub-point)
+      4. Conclusion (Summary, Persuasive Call to Action)
+      
+      Add notes on which keywords to target in each section.
+      Korean language only.
+    `;
+
+    const parts: Part[] = [{ text: promptText }];
     
-    Structure Guidelines:
-    1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}".
-    2. **Body (H2/H3)**: Structured logic to persuade or inform the reader. 
-       - **IMPORTANT**: Designate one section to be presented as a **Table/Chart** (e.g., Feature comparison, Price list, Pros/Cons, Specs).
-    3. **Conclusion**: MUST be conversion-focused. Summarize and lead the reader to the specific goal ("${postGoal || 'Action'}").
-    
-    Output Format:
-    1. Introduction (Hook, Problem, Solution)
-    2. Key Headings (Format as Blockquote: > Heading)
-    3. Sub-points (Format as Blockquote: > Sub-point)
-    4. Conclusion (Summary, Persuasive Call to Action)
-    
-    Add notes on which keywords to target in each section.
-    Korean language only.
-  `;
-
-  const parts: Part[] = [{ text: promptText }];
-  
-  // Add Script Reference Images
-  if (scriptImageParts && scriptImageParts.length > 0) {
-      scriptImageParts.forEach(img => {
-          parts.push({ inlineData: img });
-      });
-      parts.push({ text: "These are the Script Reference Images. Analyze them for context." });
-  }
-
-  if (filePart) {
-      parts.unshift({ inlineData: filePart });
-  }
-  
-  if (benchmarkingText) {
-      // Pass benchmarking content as text part
-      parts.push({ text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]\n\nUse the structure of the text above as a template.` });
-  }
-
-  if (excludedFilePart) {
-      parts.push({ inlineData: excludedFilePart });
-      parts.push({ text: "This previous file is the EXCLUDED FILE. Its contents are forbidden." });
-  }
-
-  const response = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: { parts },
-    config: {
-      temperature: 0.7,
-      thinkingConfig: { thinkingBudget: 2048 }
+    // Add Script Reference Images
+    if (scriptImageParts && scriptImageParts.length > 0) {
+        scriptImageParts.forEach(img => {
+            parts.push({ inlineData: img });
+        });
+        parts.push({ text: "These are the Script Reference Images. Analyze them for context." });
     }
-  });
 
-  return response.text || "개요를 생성할 수 없습니다.";
+    if (filePart) {
+        parts.unshift({ inlineData: filePart });
+    }
+    
+    if (benchmarkingText) {
+        // Pass benchmarking content as text part
+        parts.push({ text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]\n\nUse the structure of the text above as a template.` });
+    }
+
+    if (excludedFilePart) {
+        parts.push({ inlineData: excludedFilePart });
+        parts.push({ text: "This previous file is the EXCLUDED FILE. Its contents are forbidden." });
+    }
+
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL,
+      contents: { parts },
+      config: {
+        temperature: 0.7,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
+    });
+
+    return response.text || "개요를 생성할 수 없습니다.";
+  } catch (error: any) {
+    throw new Error(handleApiError(error, "개요 생성 실패"));
+  }
 };
 
 export const generateFullPostStream = async (
@@ -314,95 +346,99 @@ export const generateFullPostStream = async (
   referenceNote?: string,
   scriptImageParts?: { data: string, mimeType: string }[]
 ): Promise<void> => {
-  const ai = getClient();
+  try {
+    const ai = getClient();
 
-  const prompt = `
-    Write a comprehensive, engaging, and **GEO (Generative Engine Optimization)** and **SEO (Search Engine Optimization)** ready blog post based on the following topic and outline.
-    
-    Topic: ${topic}
-    ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
-    ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
-    ${postGoal ? `**ULTIMATE GOAL**: The content must achieve this goal: "${postGoal}"` : ""}
-    ${referenceNote ? `**USER REFERENCE NOTE**: "${referenceNote}". This is a specific instruction from the user. You MUST reflect this note in the content.` : ""}
-    
-    ${benchmarkingText ? `
-    **BENCHMARKING & MIMICRY MODE ACTIVATED**:
-    I have provided "BENCHMARKING TEXT". You MUST treat this text as a "Golden Template".
-    
-    **YOUR MISSION**:
-    1. **Analyze the DNA**: Absorb the benchmark's **tone** (e.g., emotional, cynical, excited), **sentence length rhythm**, and **narrative structure**.
-    2. **Clone the Logic, Change the Content**: 
-       - If the benchmark tells a story about a "Coffee Shop failure", you must tell a similar story about a "${topic} failure".
-       - If the benchmark lists "3 reasons to buy X", you must list "3 reasons to buy ${salesService || 'this service'}" using the same persuasive logic.
-    3. **Brand Adaptation**: Replace the benchmark's brand/service with "${storeName || 'our brand'}" and "${salesService || 'our service'}". The hero of this story is now "${storeName}".
-    4. **Simulated Document Avoidance**: You must write a completely new article to avoid "Similar Document" penalties by search engines. 
-       - **Structure Mimicry**: Copy the *flow* and *logic*, but NOT the *phrasing*.
-       - **Sentence Transformation**: Invert sentence structures, use different vocabulary, and change the tone slightly if needed.
-       - **Entity Swapping**: Ensure the old brand/service is completely removed and replaced with the new one.
-    ` : ""}
+    const prompt = `
+      Write a comprehensive, engaging, and **GEO (Generative Engine Optimization)** and **SEO (Search Engine Optimization)** ready blog post based on the following topic and outline.
+      
+      Topic: ${topic}
+      ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
+      ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
+      ${postGoal ? `**ULTIMATE GOAL**: The content must achieve this goal: "${postGoal}"` : ""}
+      ${referenceNote ? `**USER REFERENCE NOTE**: "${referenceNote}". This is a specific instruction from the user. You MUST reflect this note in the content.` : ""}
+      
+      ${benchmarkingText ? `
+      **BENCHMARKING & MIMICRY MODE ACTIVATED**:
+      I have provided "BENCHMARKING TEXT". You MUST treat this text as a "Golden Template".
+      
+      **YOUR MISSION**:
+      1. **Analyze the DNA**: Absorb the benchmark's **tone** (e.g., emotional, cynical, excited), **sentence length rhythm**, and **narrative structure**.
+      2. **Clone the Logic, Change the Content**: 
+         - If the benchmark tells a story about a "Coffee Shop failure", you must tell a similar story about a "${topic} failure".
+         - If the benchmark lists "3 reasons to buy X", you must list "3 reasons to buy ${salesService || 'this service'}" using the same persuasive logic.
+      3. **Brand Adaptation**: Replace the benchmark's brand/service with "${storeName || 'our brand'}" and "${salesService || 'our service'}". The hero of this story is now "${storeName}".
+      4. **Simulated Document Avoidance**: You must write a completely new article to avoid "Similar Document" penalties by search engines. 
+         - **Structure Mimicry**: Copy the *flow* and *logic*, but NOT the *phrasing*.
+         - **Sentence Transformation**: Invert sentence structures, use different vocabulary, and change the tone slightly if needed.
+         - **Entity Swapping**: Ensure the old brand/service is completely removed and replaced with the new one.
+      ` : ""}
 
-    Outline:
-    ${outline}
-    
-    **GEO (GENERATIVE ENGINE OPTIMIZATION) GUIDELINES**:
-    1. **Authority & Depth**: Write with high authority. Use specific numbers, statistics, and professional terminology.
-    2. **Direct Answers**: Start sections with direct answers to the user's potential questions to capture snippets (Featured Snippets).
-    3. **Structured Data**: Use lists, bullet points, and tables frequently.
-    4. **Entity Richness**: Mention specific brands, locations, tools, or concepts related to the topic to help AI understand the context.
+      Outline:
+      ${outline}
+      
+      **GEO (GENERATIVE ENGINE OPTIMIZATION) GUIDELINES**:
+      1. **Authority & Depth**: Write with high authority. Use specific numbers, statistics, and professional terminology.
+      2. **Direct Answers**: Start sections with direct answers to the user's potential questions to capture snippets (Featured Snippets).
+      3. **Structured Data**: Use lists, bullet points, and tables frequently.
+      4. **Entity Richness**: Mention specific brands, locations, tools, or concepts related to the topic to help AI understand the context.
 
-    **VISUAL & FORMATTING RULES (CRITICAL - FOLLOW EXACTLY)**:
-    Use the following Markdown syntax to apply specific colors and styles requested by the user:
-    
-    1. **Important Keyword (RED Text)**: Wrap the keyword in **double asterisks** like this: **ImportantKeyword**.
-    2. **Important Sentence (RED Text on YELLOW Background)**: Wrap the sentence in **triple asterisks** like this: ***This is a critical sentence.***
-    3. **Emphasized Keyword (BLUE Text)**: Wrap the keyword in **single asterisks** like this: *EmphasizedKeyword*.
-    4. **Emphasized Sentence (BLUE Text on YELLOW Background)**: Wrap the sentence in **backticks** like this: \`This is an emphasized sentence.\`
-    5. **Subheadings (Citation Style)**: Do NOT use H1 (#), H2 (##), or H3 (###). ALL subheadings must be formatted as Blockquotes using "> ". Example: > Section Title
+      **VISUAL & FORMATTING RULES (CRITICAL - FOLLOW EXACTLY)**:
+      Use the following Markdown syntax to apply specific colors and styles requested by the user:
+      
+      1. **Important Keyword (RED Text)**: Wrap the keyword in **double asterisks** like this: **ImportantKeyword**.
+      2. **Important Sentence (RED Text on YELLOW Background)**: Wrap the sentence in **triple asterisks** like this: ***This is a critical sentence.***
+      3. **Emphasized Keyword (BLUE Text)**: Wrap the keyword in **single asterisks** like this: *EmphasizedKeyword*.
+      4. **Emphasized Sentence (BLUE Text on YELLOW Background)**: Wrap the sentence in **backticks** like this: \`This is an emphasized sentence.\`
+      5. **Subheadings (Citation Style)**: Do NOT use H1 (#), H2 (##), or H3 (###). ALL subheadings must be formatted as Blockquotes using "> ". Example: > Section Title
 
-    **READABILITY (Spacing - CRITICAL)**: 
-    - **Paragraph Structure**: **STRICTLY** end a paragraph after **every 2 sentences**.
-    - **Spacing**: Insert a double line break (\\n\\n) after every 2 sentences to create whitespace. Do NOT use single line spacing for the body text.
-    - **NO STANDARD HEADERS**: **Strictly Forbidden** to use #, ##, or ### tags in the body. Only use the "> " syntax for section titles.
-    - **NO IMAGE DESCRIPTIONS**: Do NOT write text describing the reference images (e.g. "Image 1 shows..."). The text should focus solely on the topic information.
-    - **NO KEYWORD LISTS**: Do NOT output a list of "Target Keywords" or "Keywords". The keywords must be naturally integrated into the flow of the text. Do NOT print the outline notes about keywords.
-    
-    - **DO NOT** write the Main Title (H1) at the start.
-    - Korean language only.
-    - **Terminology**: Use '여러분' (Everyone) instead of '당신' (You).
-  `;
+      **READABILITY (Spacing - CRITICAL)**: 
+      - **Paragraph Structure**: **STRICTLY** end a paragraph after **every 2 sentences**.
+      - **Spacing**: Insert a double line break (\\n\\n) after every 2 sentences to create whitespace. Do NOT use single line spacing for the body text.
+      - **NO STANDARD HEADERS**: **Strictly Forbidden** to use #, ##, or ### tags in the body. Only use the "> " syntax for section titles.
+      - **NO IMAGE DESCRIPTIONS**: Do NOT write text describing the reference images (e.g. "Image 1 shows..."). The text should focus solely on the topic information.
+      - **NO KEYWORD LISTS**: Do NOT output a list of "Target Keywords" or "Keywords". The keywords must be naturally integrated into the flow of the text. Do NOT print the outline notes about keywords.
+      
+      - **DO NOT** write the Main Title (H1) at the start.
+      - Korean language only.
+      - **Terminology**: Use '여러분' (Everyone) instead of '당신' (You).
+    `;
 
-  const parts: Part[] = [{ text: prompt }];
+    const parts: Part[] = [{ text: prompt }];
 
-  // Add Script Reference Images
-  if (scriptImageParts && scriptImageParts.length > 0) {
-      scriptImageParts.forEach(img => {
-          parts.push({ inlineData: img });
-      });
-      parts.push({ text: "These are the Script Reference Images. Use them for context/atmosphere ONLY. Do NOT describe them in the text." });
-  }
-
-  if (benchmarkingText) {
-      parts.push({ text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]` });
-  }
-
-  if (excludedFilePart) {
-      parts.push({ inlineData: excludedFilePart });
-      parts.push({ text: "This file content above is FORBIDDEN. Do not use it." });
-  }
-
-  const streamResult = await ai.models.generateContentStream({
-    model: TEXT_MODEL,
-    contents: { parts },
-    config: {
-      temperature: 0.7,
-      thinkingConfig: { thinkingBudget: 4096 },
+    // Add Script Reference Images
+    if (scriptImageParts && scriptImageParts.length > 0) {
+        scriptImageParts.forEach(img => {
+            parts.push({ inlineData: img });
+        });
+        parts.push({ text: "These are the Script Reference Images. Use them for context/atmosphere ONLY. Do NOT describe them in the text." });
     }
-  });
 
-  for await (const chunk of streamResult) {
-    if (chunk.text) {
-      onChunk(chunk.text);
+    if (benchmarkingText) {
+        parts.push({ text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]` });
     }
+
+    if (excludedFilePart) {
+        parts.push({ inlineData: excludedFilePart });
+        parts.push({ text: "This file content above is FORBIDDEN. Do not use it." });
+    }
+
+    const streamResult = await ai.models.generateContentStream({
+      model: TEXT_MODEL,
+      contents: { parts },
+      config: {
+        temperature: 0.7,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      }
+    });
+
+    for await (const chunk of streamResult) {
+      if (chunk.text) {
+        onChunk(chunk.text);
+      }
+    }
+  } catch (error: any) {
+    throw new Error(handleApiError(error, "본문 생성 실패"));
   }
 };
 
@@ -455,6 +491,8 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
     model: TEXT_MODEL,
     contents: prompt,
     config: {
+      temperature: 0.7,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
