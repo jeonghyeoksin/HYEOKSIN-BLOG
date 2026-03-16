@@ -30,6 +30,7 @@ export const ContentWriter: React.FC = () => {
   const [salesService, setSalesService] = useState('');
   const [postGoal, setPostGoal] = useState(''); // USP / Goal
   const [referenceNote, setReferenceNote] = useState('');
+  const [mustIncludeContent, setMustIncludeContent] = useState('');
   const [benchmarkingText, setBenchmarkingText] = useState('');
   
   // --- State: Files ---
@@ -142,7 +143,7 @@ export const ContentWriter: React.FC = () => {
         }
 
         const outlineRes = await generateOutline(
-            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts, copyImageFiles.length
+            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts, copyImageFiles.length, mustIncludeContent
         );
         setOutline(outlineRes);
 
@@ -155,7 +156,7 @@ export const ContentWriter: React.FC = () => {
                 accumulatedContent += chunk;
                 setContent(prev => prev + chunk);
             }, 
-            undefined, benchmarkingText, referenceNote, scriptImageParts, copyImageFiles.length
+            undefined, benchmarkingText, referenceNote, scriptImageParts, copyImageFiles.length, mustIncludeContent
         );
 
         // --- Step 2: Images ---
@@ -535,6 +536,17 @@ export const ContentWriter: React.FC = () => {
                                 value={referenceNote}
                                 onChange={(e) => setReferenceNote(e.target.value)}
                                 placeholder="추가적인 요청사항이나 참고할 내용을 입력하세요."
+                                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
+                            />
+                        </div>
+
+                        {/* Must Include Content */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-300 ml-1">꼭 들어가야 할 내용 (선택)</label>
+                            <textarea 
+                                value={mustIncludeContent}
+                                onChange={(e) => setMustIncludeContent(e.target.value)}
+                                placeholder="블로그 본문에 반드시 포함되어야 하는 특정 문구, 정보, 이벤트 내용 등을 입력하세요."
                                 className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
                             />
                         </div>

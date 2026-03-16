@@ -257,7 +257,8 @@ export const generateOutline = async (
   benchmarkingText?: string,
   referenceNote?: string,
   scriptImageParts?: { data: string, mimeType: string }[],
-  copyImageCount?: number
+  copyImageCount?: number,
+  mustIncludeContent?: string
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -268,6 +269,7 @@ export const generateOutline = async (
       ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
       ${postGoal ? `**Primary Goal**: "${postGoal}"` : ""}
       ${referenceNote ? `**User Reference Note**: "${referenceNote}". Incorporate these specific instructions or details into the outline.` : ""}
+      ${mustIncludeContent ? `**MUST INCLUDE CONTENT**: "${mustIncludeContent}". You MUST explicitly include this content or information in the outline.` : ""}
       ${filePart ? "Analyze the attached reference file and incorporate its key points into the structure." : ""}
       ${scriptImageParts && scriptImageParts.length > 0 ? "**VISUAL ANALYSIS**: I have attached 'Script Reference Images'. Analyze these images to understand the atmosphere and context, but do not explicitly describe them in the outline." : ""}
       ${excludedFilePart ? "**CRITICAL CONSTRAINT**: The attached 'EXCLUDED FILE' contains information that MUST NOT appear in the outline. Do not mention or reference its specific contents." : ""}
@@ -348,7 +350,8 @@ export const generateFullPostStream = async (
   benchmarkingText?: string,
   referenceNote?: string,
   scriptImageParts?: { data: string, mimeType: string }[],
-  copyImageCount?: number
+  copyImageCount?: number,
+  mustIncludeContent?: string
 ): Promise<void> => {
   try {
     const ai = getClient();
@@ -361,6 +364,7 @@ export const generateFullPostStream = async (
       ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
       ${postGoal ? `**ULTIMATE GOAL**: The content must achieve this goal: "${postGoal}"` : ""}
       ${referenceNote ? `**USER REFERENCE NOTE**: "${referenceNote}". This is a specific instruction from the user. You MUST reflect this note in the content.` : ""}
+      ${mustIncludeContent ? `**MUST INCLUDE CONTENT**: "${mustIncludeContent}". You MUST explicitly include this exact content or information naturally within the blog post.` : ""}
       
       ${copyImageCount && copyImageCount > 0 ? `**COPY IMAGES (CRITICAL)**: The user has provided ${copyImageCount} specific images. You MUST insert placeholders like "[이미지 1 삽입]", "[이미지 2 삽입]", ..., "[이미지 ${copyImageCount} 삽입]" in the body text where they fit best. Ensure all ${copyImageCount} placeholders are used and distributed logically.` : ""}
 
