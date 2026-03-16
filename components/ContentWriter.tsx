@@ -575,7 +575,7 @@ export const ContentWriter: React.FC = () => {
                              </div>
                              {/* Person */}
                              <div className="space-y-2">
-                                 <label className="text-xs font-bold text-purple-400 block">👤 페르소나 (얼굴)</label>
+                                 <label className="text-xs font-bold text-purple-400 block">👤 인물 이미지</label>
                                  <input 
                                     type="file" 
                                     accept="image/*"

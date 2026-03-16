@@ -461,7 +461,7 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
     Analyze the blog post content to ${isAuto ? "extract a variable number of (between 4 and 8)" : `extract ${numberOfImages}`} key visual concepts.
     Create ${isAuto ? "a set of" : numberOfImages} high-quality image generation prompts according to the following structure.
     
-    ${hasFaceReference ? "**IMPORTANT**: The user has provided a specific FACE REFERENCE photo. Therefore, EVERY image prompt (or at least the majority) MUST explicitly describe a 'main character' or 'person' (who matches the reference) acting as the presenter or experiencing the scenario. This allows the face reference to be applied effectively." : ""}
+    ${hasFaceReference ? "**IMPORTANT**: The user has provided a specific PERSON REFERENCE photo. Therefore, EVERY image prompt (or at least the majority) MUST explicitly describe a 'main character' or 'person' (who matches the reference) acting as the presenter or experiencing the scenario. The person MUST be included without any distortion or modification." : ""}
     ${hasReferenceImages ? "**INFOGRAPHIC MODE (MANDATORY)**: The user has provided reference images. You MUST use these images 100% as they are, without any distortion or caricature. Your prompts MUST focus on creating 'Attractive Data-Driven Infographics' where these reference images are the central, non-distorted visual elements. Design layouts like comparison tables, step-by-step guides, or feature highlights that showcase the reference images perfectly." : ""}
 
     **CONTENT STRUCTURE**:
@@ -564,10 +564,10 @@ export const generateBlogImage = async (
   try {
     const parts: Part[] = [];
 
-    // 1. Handle Face Consistency FIRST (Critical Priority)
+    // 1. Handle Person Consistency FIRST (Critical Priority)
     if (faceImagePart) {
       parts.push({ inlineData: faceImagePart });
-      parts.push({ text: "REFERENCE ID: CHARACTER_FACE. The image above is the Reference Face. You must generate an image where the main character possesses this EXACT face. \n\n**CRITICAL REQUIREMENT**:\n1. **Face Consistency**: The face must be 100% consistent with the reference. Do not deform, caricature, or alter the facial structure/identity. \n2. **Expression/Pose**: You may change the facial expression (smile, serious) and head angle/pose as needed by the prompt, but the *identity* must remain locked. \n3. **Integration**: Blend the face naturally into the requested artistic style (Flat Design or 3D Isometric) while keeping the identity recognizable." });
+      parts.push({ text: "REFERENCE ID: PERSON_IMAGE. The image above is the Reference Person. You must generate an image where this exact person is included without any distortion or modification. \n\n**CRITICAL REQUIREMENT**:\n1. **Zero Distortion**: The person must be 100% identical to the reference. Do not deform, caricature, or alter the person in any way. \n2. **Integration**: Incorporate the person naturally into the scene while keeping their appearance completely unmodified." });
     }
     
     // 2. Handle other reference images (Logo, Context)
