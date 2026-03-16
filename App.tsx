@@ -5,19 +5,8 @@ import ApiKeyModal from './components/ApiKeyModal';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [accessKeyInput, setAccessKeyInput] = useState('');
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (accessKeyInput === '0705') {
-      setIsAuthenticated(true);
-    } else {
-      alert('접근 키가 올바르지 않습니다.');
-    }
-  };
 
   const renderView = () => {
     switch (currentView) {
@@ -29,40 +18,6 @@ const App: React.FC = () => {
         return <Dashboard onChangeView={setCurrentView} />;
     }
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center font-sans text-slate-50 p-4">
-        <div className="w-full max-w-md p-8 bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 text-center animate-fade-in">
-           <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center text-4xl shadow-lg shadow-indigo-500/30 transform -rotate-6">
-              🤖
-           </div>
-           <h1 className="text-3xl font-bold mb-3 text-white">혁신 블로그 AI</h1>
-           <p className="text-slate-400 mb-8">접근 권한 확인이 필요합니다.</p>
-           
-           <form onSubmit={handleLogin} className="space-y-4">
-              <input 
-                type="password"
-                value={accessKeyInput}
-                onChange={(e) => setAccessKeyInput(e.target.value)}
-                placeholder="ACCESS KEY"
-                className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-center text-lg shadow-inner text-white placeholder-slate-600 tracking-[0.5em] font-mono transition-all focus:border-indigo-500"
-                autoFocus
-              />
-              <button 
-                type="submit"
-                className="w-full bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-500 transition-all shadow-lg hover:shadow-indigo-500/25 active:scale-95"
-              >
-                시스템 접속
-              </button>
-           </form>
-           <p className="mt-6 text-xs text-slate-600">
-             Authorized Personnel Only
-           </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col font-sans text-slate-50 selection:bg-indigo-500 selection:text-white animate-fade-in">

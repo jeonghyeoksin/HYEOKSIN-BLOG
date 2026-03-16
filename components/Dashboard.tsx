@@ -8,31 +8,43 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ onChangeView }) => {
   return (
     <div className="animate-fade-in space-y-12 py-10">
-      {/* Hero Section */}
-      <div className="relative rounded-3xl overflow-hidden bg-slate-900 text-white shadow-2xl border border-slate-800">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/50 to-purple-900/50 opacity-90"></div>
-        {/* Abstract Shapes */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-indigo-500 opacity-10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-purple-500 opacity-10 rounded-full blur-3xl"></div>
+      {/* Top 16:9 Banner Image */}
+      <div className="w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 relative group bg-emerald-950">
+        <img 
+          src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1920&q=80" 
+          alt="혁신 블로그 AI" 
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-80 mix-blend-overlay"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-900/40 to-transparent"></div>
         
-        <div className="relative z-10 px-10 py-24 text-center max-w-4xl mx-auto">
-          <span className="inline-block py-1 px-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-indigo-300 text-xs font-bold uppercase tracking-widest mb-6">
-            2026 Future Edition
-          </span>
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight text-white">
-            혁신 블로그 AI
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed font-light">
-            혁신 블로그 AI와 혁신적인 포스팅을 실행하세요!
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button 
-              onClick={() => onChangeView('studio')}
-              className="px-10 py-5 bg-indigo-600 text-white rounded-2xl font-bold text-xl hover:bg-indigo-500 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 flex items-center justify-center gap-2"
-            >
-              새 포스팅 작성하기 ⚡️
-            </button>
-          </div>
+        {/* Massive BLOG Text Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+           <span className="text-[12rem] md:text-[20rem] font-black text-emerald-500/10 tracking-tighter select-none transform -rotate-2">
+             BLOG
+           </span>
+        </div>
+
+        <div className="absolute bottom-0 left-0 p-10 md:p-16 w-full flex flex-col md:flex-row md:items-end justify-between gap-8 z-10">
+           <div>
+             <span className="inline-block py-1 px-3 rounded-full bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-md text-emerald-300 text-xs font-bold uppercase tracking-widest mb-4">
+               2026 Future Edition
+             </span>
+             <h2 className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-2xl mb-4 tracking-tight">
+               혁신 블로그 AI
+             </h2>
+             <p className="text-emerald-50 text-lg md:text-2xl font-light max-w-2xl drop-shadow-lg">
+               인공지능의 힘으로 당신만의 독창적이고 전문적인 블로그 포스팅을 완성하세요.
+             </p>
+           </div>
+           <div className="flex-shrink-0">
+             <button 
+               onClick={() => onChangeView('studio')}
+               className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg hover:bg-emerald-500 transition-all shadow-xl hover:shadow-emerald-900/50 hover:-translate-y-1 flex items-center justify-center gap-2 backdrop-blur-md border border-emerald-500/50"
+             >
+               새 포스팅 작성하기 ⚡️
+             </button>
+           </div>
         </div>
       </div>
 

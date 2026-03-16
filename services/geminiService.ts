@@ -47,9 +47,9 @@ export const testConnection = async (): Promise<{ success: boolean; message: str
 };
 
 // Gemini 3 Flash Preview for High Availability & Speed (Reduces 503 errors)
-const TEXT_MODEL = 'gemini-3-flash-preview';
-// Gemini 3.1 Flash Image Preview for High-Quality Image Generation
-const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
+const TEXT_MODEL = 'gemini-3.1-pro-preview';
+// Gemini 3 Pro Image Preview for High-Quality Image Generation
+const IMAGE_MODEL = 'gemini-3-pro-image-preview';
 
 const handleApiError = (error: any, fallbackMessage: string): string => {
   console.error("Gemini API Error:", error);
@@ -256,7 +256,8 @@ export const generateOutline = async (
   excludedFilePart?: { data: string, mimeType: string },
   benchmarkingText?: string,
   referenceNote?: string,
-  scriptImageParts?: { data: string, mimeType: string }[]
+  scriptImageParts?: { data: string, mimeType: string }[],
+  copyImageCount?: number
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -271,6 +272,8 @@ export const generateOutline = async (
       ${scriptImageParts && scriptImageParts.length > 0 ? "**VISUAL ANALYSIS**: I have attached 'Script Reference Images'. Analyze these images to understand the atmosphere and context, but do not explicitly describe them in the outline." : ""}
       ${excludedFilePart ? "**CRITICAL CONSTRAINT**: The attached 'EXCLUDED FILE' contains information that MUST NOT appear in the outline. Do not mention or reference its specific contents." : ""}
       
+      ${copyImageCount && copyImageCount > 0 ? `**COPY IMAGES**: The user has provided ${copyImageCount} images. You MUST plan where to insert these images in the outline using placeholders like "[이미지 1 삽입]", "[이미지 2 삽입]", etc. up to [이미지 ${copyImageCount} 삽입]. Distribute them naturally throughout the post.` : ""}
+
       ${benchmarkingText ? `
       **BENCHMARKING MASTER INSTRUCTION**: 
       I have provided "BENCHMARKING TEXT" below. It is a high-performing content model. 
@@ -344,7 +347,8 @@ export const generateFullPostStream = async (
   excludedFilePart?: { data: string, mimeType: string },
   benchmarkingText?: string,
   referenceNote?: string,
-  scriptImageParts?: { data: string, mimeType: string }[]
+  scriptImageParts?: { data: string, mimeType: string }[],
+  copyImageCount?: number
 ): Promise<void> => {
   try {
     const ai = getClient();
@@ -358,6 +362,8 @@ export const generateFullPostStream = async (
       ${postGoal ? `**ULTIMATE GOAL**: The content must achieve this goal: "${postGoal}"` : ""}
       ${referenceNote ? `**USER REFERENCE NOTE**: "${referenceNote}". This is a specific instruction from the user. You MUST reflect this note in the content.` : ""}
       
+      ${copyImageCount && copyImageCount > 0 ? `**COPY IMAGES (CRITICAL)**: The user has provided ${copyImageCount} specific images. You MUST insert placeholders like "[이미지 1 삽입]", "[이미지 2 삽입]", ..., "[이미지 ${copyImageCount} 삽입]" in the body text where they fit best. Ensure all ${copyImageCount} placeholders are used and distributed logically.` : ""}
+
       ${benchmarkingText ? `
       **BENCHMARKING & MIMICRY MODE ACTIVATED**:
       I have provided "BENCHMARKING TEXT". You MUST treat this text as a "Golden Template".
@@ -447,7 +453,7 @@ export interface ImagePromptRequest {
   prompt: string;
 }
 
-export const generateImagePromptsForPost = async (content: string, hasFaceReference: boolean = false, numberOfImages: number = 4): Promise<ImagePromptRequest[]> => {
+export const generateImagePromptsForPost = async (content: string, hasFaceReference: boolean = false, numberOfImages: number = 4, hasReferenceImages: boolean = false): Promise<ImagePromptRequest[]> => {
   const ai = getClient();
   const isAuto = numberOfImages === 0;
 
@@ -456,6 +462,7 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
     Create ${isAuto ? "a set of" : numberOfImages} high-quality image generation prompts according to the following structure.
     
     ${hasFaceReference ? "**IMPORTANT**: The user has provided a specific FACE REFERENCE photo. Therefore, EVERY image prompt (or at least the majority) MUST explicitly describe a 'main character' or 'person' (who matches the reference) acting as the presenter or experiencing the scenario. This allows the face reference to be applied effectively." : ""}
+    ${hasReferenceImages ? "**INFOGRAPHIC MODE (MANDATORY)**: The user has provided reference images. You MUST use these images 100% as they are, without any distortion or caricature. Your prompts MUST focus on creating 'Attractive Data-Driven Infographics' where these reference images are the central, non-distorted visual elements. Design layouts like comparison tables, step-by-step guides, or feature highlights that showcase the reference images perfectly." : ""}
 
     **CONTENT STRUCTURE**:
     - **Image 1 (Hook)**: Visualizes the problem or a shocking fact to grab attention.
@@ -463,18 +470,21 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
     - **Last Image (Action/Conclusion)**: Summarizes and encourages action.
 
     **VISUAL DESIGN STYLE**:
-    - Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".
+    - **Style**: "Modern Professional Infographic" with a clean, high-end aesthetic.
+    - **Theme**: Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".
     - **Quality**: 8K resolution, clean, no AI distortion, no excessive glaze.
-    - **Layout**: Mobile-optimized, central or Z-pattern.
+    - **Layout**: Mobile-optimized, central or Z-pattern. Use clear visual hierarchy.
     - **Constraint**: DO NOT put image numbers on the image.
 
-    **STRICT TEXT RULES (KOREAN ONLY)**:
-    1. **Line Count**: **MUST include AT LEAST 2 LINES of text**.
+    **STRICT TEXT RULES (KOREAN ONLY - CRITICAL)**:
+    1. **Line Count**: **MUST include AT LEAST 2 LINES of attractive Korean text**.
     2. **Structure**:
        - **Line 1 (Headline)**: Impactful, Bold Sans-serif font.
        - **Line 2 (Subtitle)**: Descriptive, smaller.
-    3. **Legibility**: Text must be perfectly legible.
-    4. **Privacy**: Do not include contact info unless explicitly present in content.
+    3. **Legibility & Accuracy**: Text must be perfectly legible and aesthetically pleasing. **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. If the text is too long or complex and might cause corruption, **SUMMARIZE and SHORTEN** it to ensure perfect rendering.
+    4. **NO ENGLISH**: **DO NOT include any English text** in the image. This is a strict requirement.
+    5. **Privacy**: Do not include contact info unless explicitly present in content.
+    6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", "[IMAGE]", or any file names in the image. Only include the specified Korean headline and subtitle.
 
     **Prompt Format (English)**:
     - Detailed visual description.
@@ -524,10 +534,12 @@ export const generateThumbnailPrompt = async (keyword: string, content: string):
     - **Composition**: Central focus, dynamic background, depth of field.
     
     **TEXT REQUIREMENTS**:
-    - **Language**: Korean Only.
+    - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**. This includes small labels or decorative text.
     - **Content**: The keyword "${keyword}" MUST be the main focus.
     - **Subtitle**: Add a short, intriguing subtitle below the keyword (e.g., "Must Read", "2026 Trend"). **Total text must be at least 2 lines.**
+    - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. If the text is too long or complex, **SUMMARIZE/SHORTEN** it to ensure perfect rendering.
     - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
+    - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
     
     The output prompt must be in English.
     Example: "A cinematic 3D render of [Subject]. Center stage: The text '${keyword}' in massive, glowing gold Korean characters. Below it, a smaller white text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles. 8k resolution."
@@ -565,12 +577,12 @@ export const generateBlogImage = async (
       });
       // Append instruction to use the images without distortion
       parts.push({ 
-        text: "Instructions: Incorporate the provided reference image(s) or logo into the generated image. Ensure the logo/image remains recognizable and is not distorted. If the image is a logo, place it tastefully." 
+        text: "REFERENCE ID: SOURCE_IMAGES. The images above are the Reference Images. You MUST use them 100% as provided. \n\n**STRICT REQUIREMENTS**:\n1. **Zero Distortion**: Do not deform, caricature, or alter the reference images in any way. They must be 100% identical to the source.\n2. **Integration**: Incorporate them into a professional, attractive infographic. Use them as core visual elements (e.g., in a comparison, a step-by-step guide, or a feature highlight).\n3. **Composition**: The overall composition should be a high-quality, data-driven infographic with clean typography and balanced layout." 
       });
     }
 
     // 3. Add the main prompt and safety instructions
-    const safePrompt = prompt + " Ensure the image is a professional flat design or 3D isometric style as requested. High-resolution, no distortion. All Korean text must be perfectly spelled, bold sans-serif, and arranged in at least two lines. Do not use pseudo-text.";
+    const safePrompt = prompt + " Ensure the image is a professional flat design or 3D isometric style as requested. High-resolution, no distortion. All Korean text must be perfectly spelled, bold sans-serif, and arranged in at least two lines. The text must be visually attractive and integrated into the design. ABSOLUTELY NO KOREAN TEXT CORRUPTION. If text is complex, simplify it. NO ENGLISH TEXT AT ALL. ABSOLUTELY NO placeholder text like '<IMAGE>', 'IMAGE 1', or file names should appear in the image.";
     parts.push({ text: safePrompt });
 
     const response = await ai.models.generateContent({

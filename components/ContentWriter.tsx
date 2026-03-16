@@ -37,6 +37,7 @@ export const ContentWriter: React.FC = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [faceImageFile, setFaceImageFile] = useState<File | null>(null);
   const [contextImageFiles, setContextImageFiles] = useState<File[]>([]); // General references
+  const [copyImageFiles, setCopyImageFiles] = useState<File[]>([]); // Images to be placed in the post
 
   // --- State: Process ---
   const [currentStep, setCurrentStep] = useState<StudioStep>('keyword');
@@ -52,6 +53,9 @@ export const ContentWriter: React.FC = () => {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [thumbnailPrompt, setThumbnailPrompt] = useState('');
   const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null); // null for none, -1 for thumbnail, 0+ for generatedImages
+  const [editPrompt, setEditPrompt] = useState('');
+  const [isRegenerating, setIsRegenerating] = useState(false);
   
   // --- State: UI Flags ---
   const [isGenerating, setIsGenerating] = useState(false);
@@ -138,7 +142,7 @@ export const ContentWriter: React.FC = () => {
         }
 
         const outlineRes = await generateOutline(
-            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts
+            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts, copyImageFiles.length
         );
         setOutline(outlineRes);
 
@@ -151,10 +155,20 @@ export const ContentWriter: React.FC = () => {
                 accumulatedContent += chunk;
                 setContent(prev => prev + chunk);
             }, 
-            undefined, benchmarkingText, referenceNote, scriptImageParts
+            undefined, benchmarkingText, referenceNote, scriptImageParts, copyImageFiles.length
         );
 
         // --- Step 2: Images ---
+        if (copyImageFiles.length > 0) {
+            // Skip AI image generation if copy images are provided
+            setGeneratedImages([]);
+            setThumbnail(null);
+            setThumbnailPrompt('');
+            setCurrentStep('result');
+            setIsAutoRunning(false);
+            return;
+        }
+
         setCurrentStep('images');
         
         const hasKey = await checkAndRequireApiKey();
@@ -168,7 +182,7 @@ export const ContentWriter: React.FC = () => {
         const refParts = await getImageRefs();
 
         const finalImageCount = isAutoImageCount ? 0 : imageCount;
-        const prompts = await generateImagePromptsForPost(accumulatedContent, !!facePart, finalImageCount);
+        const prompts = await generateImagePromptsForPost(accumulatedContent, !!facePart, finalImageCount, refParts.length > 0);
         
         const placeholders: GeneratedImage[] = prompts.map(p => ({
             prompt: p.prompt,
@@ -263,10 +277,46 @@ export const ContentWriter: React.FC = () => {
       if (currentIdx > 0) setCurrentStep(stepOrder[currentIdx - 1]);
   };
 
+  const handleRegenerateImage = async () => {
+    if (editingImageIndex === null) return;
+    setIsRegenerating(true);
+    try {
+        const facePart = await getFaceRef();
+        const refParts = await getImageRefs();
+        const ratio = editingImageIndex === -1 ? "1:1" : "16:9";
+        
+        const newUrl = await generateBlogImage(editPrompt, ratio, refParts, facePart);
+        
+        if (editingImageIndex === -1) {
+            setThumbnail(newUrl);
+            setThumbnailPrompt(editPrompt);
+        } else {
+            setGeneratedImages(prev => {
+                const newArr = [...prev];
+                newArr[editingImageIndex] = { ...newArr[editingImageIndex], url: newUrl, prompt: editPrompt };
+                return newArr;
+            });
+        }
+        setEditingImageIndex(null);
+    } catch (e) {
+        console.error("Regeneration failed", e);
+        alert("이미지 수정 중 오류가 발생했습니다.");
+    } finally {
+        setIsRegenerating(false);
+    }
+  };
+
   const handleContextImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
         const filesArray = Array.from(e.target.files);
         setContextImageFiles(prev => [...prev, ...filesArray].slice(0, 50));
+    }
+  };
+
+  const handleCopyImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+        const filesArray = Array.from(e.target.files);
+        setCopyImageFiles(prev => [...prev, ...filesArray].slice(0, 50));
     }
   };
 
@@ -323,10 +373,16 @@ export const ContentWriter: React.FC = () => {
       const imagesToDownload: { url: string, name: string }[] = [];
       
       // Collect all images
-      if (thumbnail) imagesToDownload.push({ url: thumbnail, name: 'thumbnail.png' });
-      generatedImages.forEach((img, idx) => {
-          if (img.url) imagesToDownload.push({ url: img.url, name: `image_${idx + 1}.png` });
-      });
+      if (copyImageFiles.length > 0) {
+          copyImageFiles.forEach((file, idx) => {
+              imagesToDownload.push({ url: URL.createObjectURL(file), name: file.name });
+          });
+      } else {
+          if (thumbnail) imagesToDownload.push({ url: thumbnail, name: 'thumbnail.png' });
+          generatedImages.forEach((img, idx) => {
+              if (img.url) imagesToDownload.push({ url: img.url, name: `image_${idx + 1}.png` });
+          });
+      }
 
       if (imagesToDownload.length === 0) {
           alert("다운로드할 이미지가 없습니다.");
@@ -540,6 +596,19 @@ export const ContentWriter: React.FC = () => {
                                  />
                                  {contextImageFiles.length > 0 && <p className="text-[10px] text-slate-300">{contextImageFiles.length}장 선택됨</p>}
                              </div>
+                             {/* Copy Images */}
+                             <div className="space-y-2">
+                                 <label className="text-xs font-bold text-orange-400 block">📸 카피 이미지 (최대 50장)</label>
+                                 <input 
+                                    type="file" 
+                                    multiple
+                                    accept="image/*"
+                                    onChange={handleCopyImagesChange}
+                                    className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-orange-900/30 file:text-orange-300 hover:file:bg-orange-900"
+                                 />
+                                 {copyImageFiles.length > 0 && <p className="text-[10px] text-orange-300">{copyImageFiles.length}장 선택됨</p>}
+                                 <p className="text-[9px] text-slate-500 leading-tight">첨부 시 AI 이미지 생성을 하지 않고, 본문에 삽입 위치를 표시합니다.</p>
+                             </div>
                         </div>
                     </div>
 
@@ -730,8 +799,17 @@ export const ContentWriter: React.FC = () => {
                                     {thumbnail ? (
                                         <>
                                             <img src={thumbnail} className="w-full h-full object-cover" alt="Thumbnail" />
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <a href={thumbnail} download="thumbnail.png" className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors">다운로드</a>
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                                <a href={thumbnail} download="thumbnail.png" className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors w-32 text-center">다운로드</a>
+                                                <button 
+                                                    onClick={() => {
+                                                        setEditingImageIndex(-1);
+                                                        setEditPrompt(thumbnailPrompt);
+                                                    }}
+                                                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-500 transition-colors w-32"
+                                                >
+                                                    수정하기
+                                                </button>
                                             </div>
                                         </>
                                     ) : (
@@ -743,32 +821,111 @@ export const ContentWriter: React.FC = () => {
                             {/* Blog Images */}
                             <div className="lg:col-span-2 space-y-3">
                                 <h3 className="text-white font-bold text-lg flex items-center gap-2">
-                                    <span>🖼️</span> 본문 삽입 이미지 ({generatedImages.filter(i => i.url).length}장)
+                                    <span>🖼️</span> {copyImageFiles.length > 0 ? `첨부된 카피 이미지 (${copyImageFiles.length}장)` : `본문 삽입 이미지 (${generatedImages.filter(i => i.url).length}장)`}
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {generatedImages.map((img, idx) => (
-                                        <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group">
-                                            {img.url ? (
-                                                <>
-                                                    <img src={img.url} className="w-full h-full object-cover" alt={`Blog Image ${idx}`} />
-                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <a href={img.url} download={`image_${idx+1}.png`} className="bg-white text-black px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors">다운로드</a>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">대기 중</div>
-                                            )}
-                                        </div>
-                                    ))}
+                                    {copyImageFiles.length > 0 ? (
+                                        copyImageFiles.map((file, idx) => (
+                                            <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group">
+                                                <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt={`Copy Image ${idx}`} />
+                                                <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded">이미지 {idx + 1}</div>
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <a href={URL.createObjectURL(file)} download={file.name} className="bg-white text-black px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors">다운로드</a>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        generatedImages.map((img, idx) => (
+                                            <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group">
+                                                {img.url ? (
+                                                    <>
+                                                        <img src={img.url} className="w-full h-full object-cover" alt={`Blog Image ${idx}`} />
+                                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                                            <a href={img.url} download={`image_${idx+1}.png`} className="bg-white text-black px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors w-24 text-center">다운로드</a>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setEditingImageIndex(idx);
+                                                                    setEditPrompt(img.prompt);
+                                                                }}
+                                                                className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-indigo-500 transition-colors w-24"
+                                                            >
+                                                                수정하기
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">대기 중</div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         {/* Main Content */}
                         <div className="bg-white text-black p-12 rounded-2xl shadow-2xl border-t-8 border-indigo-600">
-                             <div className="prose prose-lg max-w-none" ref={resultContentRef}>
+                             <style>{`
+                                .colored-content p:nth-of-type(4n+1) { color: #D32F2F !important; }
+                                .colored-content p:nth-of-type(4n+2) { color: #1A237E !important; }
+                                .colored-content p:nth-of-type(4n+3) { color: #1B5E20 !important; }
+                                .colored-content p:nth-of-type(4n+4) { color: #3E2723 !important; }
+                                
+                                .colored-content li:nth-of-type(4n+1) { color: #D32F2F !important; }
+                                .colored-content li:nth-of-type(4n+2) { color: #1A237E !important; }
+                                .colored-content li:nth-of-type(4n+3) { color: #1B5E20 !important; }
+                                .colored-content li:nth-of-type(4n+4) { color: #3E2723 !important; }
+
+                                .colored-content h1, .colored-content h2, .colored-content h3 { color: #0f172a !important; }
+                             `}</style>
+                             <div className="prose prose-lg max-w-none colored-content" ref={resultContentRef}>
                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
                              </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Edit Modal */}
+                {editingImageIndex !== null && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-2xl w-full space-y-6 shadow-2xl">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-white">이미지 수정 및 재생성</h3>
+                                <button onClick={() => setEditingImageIndex(null)} className="text-slate-400 hover:text-white">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-400">이미지 생성 프롬프트</label>
+                                <textarea 
+                                    value={editPrompt}
+                                    onChange={(e) => setEditPrompt(e.target.value)}
+                                    className="w-full h-32 p-4 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                    placeholder="이미지 묘사를 입력하세요..."
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button 
+                                    onClick={() => setEditingImageIndex(null)}
+                                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all"
+                                >
+                                    취소
+                                </button>
+                                <button 
+                                    onClick={handleRegenerateImage}
+                                    disabled={isRegenerating || !editPrompt.trim()}
+                                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {isRegenerating ? (
+                                        <>
+                                            <span className="animate-spin">🌀</span>
+                                            생성 중...
+                                        </>
+                                    ) : '이미지 재생성'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
