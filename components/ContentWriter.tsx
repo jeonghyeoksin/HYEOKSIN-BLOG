@@ -26,19 +26,23 @@ const steps: { id: StudioStep; label: string; icon: string }[] = [
 export const ContentWriter: React.FC = () => {
   // --- State: Inputs ---
   const [topic, setTopic] = useState('');
+  const [blogCategory, setBlogCategory] = useState('');
+  const [blogPlatform, setBlogPlatform] = useState('');
   const [storeName, setStoreName] = useState('');
   const [salesService, setSalesService] = useState('');
   const [postGoal, setPostGoal] = useState(''); // USP / Goal
   const [referenceNote, setReferenceNote] = useState('');
   const [mustIncludeContent, setMustIncludeContent] = useState('');
   const [benchmarkingText, setBenchmarkingText] = useState('');
+  const [servicePriceText, setServicePriceText] = useState('');
   
   // --- State: Files ---
   const [referenceFile, setReferenceFile] = useState<File | null>(null); // Text context file
+  const [servicePriceFiles, setServicePriceFiles] = useState<File[]>([]);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [faceImageFile, setFaceImageFile] = useState<File | null>(null);
   const [contextImageFiles, setContextImageFiles] = useState<File[]>([]); // General references
-  const [copyImageFiles, setCopyImageFiles] = useState<File[]>([]); // Images to be placed in the post
+  const [skipImageGeneration, setSkipImageGeneration] = useState<boolean>(false); // Skip image generation
 
   // --- State: Process ---
   const [currentStep, setCurrentStep] = useState<StudioStep>('keyword');
@@ -49,6 +53,7 @@ export const ContentWriter: React.FC = () => {
   
   // --- State: Generation Results ---
   const [title, setTitle] = useState('');
+  const [titleOptions, setTitleOptions] = useState<string[]>([]);
   const [outline, setOutline] = useState('');
   const [content, setContent] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
@@ -123,6 +128,10 @@ export const ContentWriter: React.FC = () => {
   // --- Automatic Workflow ---
   const runAutomationSequence = async (keyword: string) => {
     if (!keyword) return;
+    if (!blogPlatform || !blogCategory) {
+        alert('블로그 플랫폼과 블로그 분류를 선택해주세요.');
+        return;
+    }
     setIsAutoRunning(true);
     setSelectedKeyword(keyword);
 
@@ -132,9 +141,15 @@ export const ContentWriter: React.FC = () => {
         
         let filePart = referenceFile ? await convertFileToBase64(referenceFile) : undefined;
         
+        const servicePriceImageParts = [];
+        for (const file of servicePriceFiles) {
+             servicePriceImageParts.push(await convertFileToBase64(file));
+        }
+        
         // Generate Title
-        const generatedTitle = await generateTitle(keyword, topic || keyword, postGoal, referenceNote);
-        setTitle(generatedTitle);
+        const generatedTitles = await generateTitle(keyword, topic || keyword, postGoal, referenceNote, blogCategory, blogPlatform, storeName);
+        setTitleOptions(generatedTitles);
+        setTitle(generatedTitles[0] || '');
 
         // Generate Outline
         const scriptImageParts = [];
@@ -143,7 +158,7 @@ export const ContentWriter: React.FC = () => {
         }
 
         const outlineRes = await generateOutline(
-            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts, copyImageFiles.length, mustIncludeContent
+            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts
         );
         setOutline(outlineRes);
 
@@ -156,12 +171,12 @@ export const ContentWriter: React.FC = () => {
                 accumulatedContent += chunk;
                 setContent(prev => prev + chunk);
             }, 
-            undefined, benchmarkingText, referenceNote, scriptImageParts, copyImageFiles.length, mustIncludeContent
+            undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts
         );
 
         // --- Step 2: Images ---
-        if (copyImageFiles.length > 0) {
-            // Skip AI image generation if copy images are provided
+        if (skipImageGeneration) {
+            // Skip AI image generation
             setGeneratedImages([]);
             setThumbnail(null);
             setThumbnailPrompt('');
@@ -233,13 +248,17 @@ export const ContentWriter: React.FC = () => {
 
   // --- Handlers ---
   const handleGenerateUSP = async () => {
+      if (!blogPlatform || !blogCategory) {
+          alert('블로그 플랫폼과 블로그 분류를 먼저 선택해주세요.');
+          return;
+      }
       if (!topic || !storeName || !salesService) {
           alert('주제, 상호명, 판매 서비스를 모두 입력해주세요.');
           return;
       }
       setIsGeneratingUSP(true);
       try {
-          const usp = await generateUSP(topic, storeName, salesService);
+          const usp = await generateUSP(topic, storeName, salesService, blogCategory, blogPlatform);
           setPostGoal(usp);
       } catch (e) {
           console.error(e);
@@ -254,7 +273,7 @@ export const ContentWriter: React.FC = () => {
     setIsGenerating(true);
     try {
       let filePart = referenceFile ? await convertFileToBase64(referenceFile) : undefined;
-      const results = await suggestRelatedKeywords(topic, storeName, salesService, postGoal, filePart, referenceNote);
+      const results = await suggestRelatedKeywords(topic, storeName, salesService, postGoal, filePart, referenceNote, blogCategory, blogPlatform);
       setKeywords(results);
     } catch (error) {
       console.error(error);
@@ -314,13 +333,6 @@ export const ContentWriter: React.FC = () => {
     }
   };
 
-  const handleCopyImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-        const filesArray = Array.from(e.target.files);
-        setCopyImageFiles(prev => [...prev, ...filesArray].slice(0, 50));
-    }
-  };
-
   const copyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text);
       alert('클립보드에 복사되었습니다.');
@@ -342,7 +354,7 @@ export const ContentWriter: React.FC = () => {
     const htmlContent = marked.parse(processed) as string;
 
     // Apply inline styles to Tables and Blockquotes (Citations) for clipboard compatibility
-    const styledHtml = htmlContent
+    let styledHtml = htmlContent
         // Table Styles
         .replace(/<table>/g, '<table style="border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin: 20px 0;">')
         .replace(/<th>/g, '<th style="border: 1px solid #cbd5e1; padding: 12px; background-color: #f1f5f9; font-weight: bold; text-align: left; color: #0f172a;">')
@@ -350,7 +362,11 @@ export const ContentWriter: React.FC = () => {
         // Blockquote (Citation) Styles - Blue bar on left, light blue background
         .replace(/<blockquote>/g, '<blockquote style="border-left: 8px solid #2563eb; background-color: #eff6ff; padding: 20px; margin: 30px 0; border-top-right-radius: 12px; border-bottom-right-radius: 12px; color: #1e40af; font-weight: 800; font-size: 1.2em; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.05);">')
         // Paragraph Styles: Force explicit margin/spacing for "double line break" visual effect
-        .replace(/<p>/g, '<p style="margin-bottom: 24px; line-height: 1.8;">');
+        .replace(/<p>/g, `<p style="margin-bottom: 24px; line-height: 1.8;${blogCategory === '맛집 리뷰' ? ' color: #000000;' : ''}">`);
+
+    if (blogCategory === '맛집 리뷰') {
+        styledHtml = `<div style="text-align: center; word-break: keep-all; color: #000000;">${styledHtml}</div>`;
+    }
 
     const blob = new Blob([styledHtml], { type: 'text/html' });
     const textBlob = new Blob([styledHtml], { type: 'text/plain' });
@@ -374,16 +390,10 @@ export const ContentWriter: React.FC = () => {
       const imagesToDownload: { url: string, name: string }[] = [];
       
       // Collect all images
-      if (copyImageFiles.length > 0) {
-          copyImageFiles.forEach((file, idx) => {
-              imagesToDownload.push({ url: URL.createObjectURL(file), name: file.name });
-          });
-      } else {
-          if (thumbnail) imagesToDownload.push({ url: thumbnail, name: 'thumbnail.png' });
-          generatedImages.forEach((img, idx) => {
-              if (img.url) imagesToDownload.push({ url: img.url, name: `image_${idx + 1}.png` });
-          });
-      }
+      if (thumbnail) imagesToDownload.push({ url: thumbnail, name: 'thumbnail.png' });
+      generatedImages.forEach((img, idx) => {
+          if (img.url) imagesToDownload.push({ url: img.url, name: `image_${idx + 1}.png` });
+      });
 
       if (imagesToDownload.length === 0) {
           alert("다운로드할 이미지가 없습니다.");
@@ -472,6 +482,72 @@ export const ContentWriter: React.FC = () => {
                     </div>
 
                     <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl backdrop-blur-sm">
+                        {/* Platform Input */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-300 ml-1">블로그 플랫폼 <span className="text-red-500">*</span></label>
+                            <select
+                                value={blogPlatform}
+                                onChange={(e) => setBlogPlatform(e.target.value)}
+                                className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner"
+                            >
+                                <option value="">플랫폼을 선택해주세요 (필수)</option>
+                                <option value="네이버">네이버</option>
+                                <option value="티스토리">티스토리</option>
+                                <option value="구글 블로거">구글 블로거</option>
+                                <option value="워드프레스">워드프레스</option>
+                                <option value="벨로그">벨로그</option>
+                                <option value="브런치">브런치</option>
+                                <option value="미디엄">미디엄</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+
+                        {/* Category Input */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-300 ml-1">블로그 분류 <span className="text-red-500">*</span></label>
+                            <select
+                                value={blogCategory}
+                                onChange={(e) => setBlogCategory(e.target.value)}
+                                className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner"
+                            >
+                                <option value="">분류를 선택해주세요 (필수)</option>
+                                <optgroup label="리뷰/후기">
+                                    <option value="제품 리뷰">제품 리뷰</option>
+                                    <option value="맛집 리뷰">맛집 리뷰</option>
+                                    <option value="뷰티 리뷰">뷰티 리뷰</option>
+                                    <option value="여행 리뷰">여행 리뷰</option>
+                                    <option value="도서/영화 리뷰">도서/영화 리뷰</option>
+                                    <option value="IT/테크 기기 리뷰">IT/테크 기기 리뷰</option>
+                                    <option value="자동차/바이크 리뷰">자동차/바이크 리뷰</option>
+                                </optgroup>
+                                <optgroup label="홍보/비즈니스">
+                                    <option value="브랜드 홍보">브랜드 홍보</option>
+                                    <option value="전문직 홍보">전문직 홍보 (변호사, 세무사 등)</option>
+                                    <option value="병원 홍보">병원 홍보</option>
+                                    <option value="학원 홍보">학원 홍보</option>
+                                    <option value="교육 홍보">교육 홍보</option>
+                                    <option value="소상공인 홍보">소상공인 홍보</option>
+                                    <option value="부동산/분양 홍보">부동산/분양 홍보</option>
+                                    <option value="인테리어/시공 홍보">인테리어/시공 홍보</option>
+                                    <option value="B2B 기업 홍보">B2B 기업 홍보</option>
+                                </optgroup>
+                                <optgroup label="정보/라이프스타일">
+                                    <option value="일상/생각">일상/생각</option>
+                                    <option value="육아/결혼">육아/결혼</option>
+                                    <option value="요리/레시피">요리/레시피</option>
+                                    <option value="인테리어/DIY">인테리어/DIY</option>
+                                    <option value="패션/스타일">패션/스타일</option>
+                                    <option value="건강/운동">건강/운동</option>
+                                    <option value="금융/재테크">금융/재테크</option>
+                                    <option value="주식/투자">주식/투자</option>
+                                    <option value="어학/외국어">어학/외국어</option>
+                                    <option value="취미/게임">취미/게임</option>
+                                    <option value="반려동물">반려동물</option>
+                                    <option value="자기계발">자기계발</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
                         {/* Topic Input */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">블로그 주제 (핵심 토픽) <span className="text-red-500">*</span></label>
@@ -551,6 +627,39 @@ export const ContentWriter: React.FC = () => {
                             />
                         </div>
 
+                        {/* Service Price Inputs */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">서비스 금액표 이미지 (다중 선택 가능)</label>
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            setServicePriceFiles(Array.from(e.target.files));
+                                        } else {
+                                            setServicePriceFiles([]);
+                                        }
+                                    }}
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                />
+                                {servicePriceFiles.length > 0 && (
+                                    <p className="text-xs text-slate-400 ml-1 mt-1">{servicePriceFiles.length}개의 파일이 선택되었습니다.</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">서비스 금액 작성 (선택)</label>
+                                <input 
+                                    type="text" 
+                                    value={servicePriceText}
+                                    onChange={(e) => setServicePriceText(e.target.value)}
+                                    placeholder="예: 아메리카노/4500원, 카페라떼/5000원"
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
+                                />
+                            </div>
+                        </div>
+
                         {/* Benchmarking Text (New) */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">벤치마킹 원고 (선택)</label>
@@ -608,18 +717,21 @@ export const ContentWriter: React.FC = () => {
                                  />
                                  {contextImageFiles.length > 0 && <p className="text-[10px] text-slate-300">{contextImageFiles.length}장 선택됨</p>}
                              </div>
-                             {/* Copy Images */}
-                             <div className="space-y-2">
-                                 <label className="text-xs font-bold text-orange-400 block">📸 카피 이미지 (최대 50장)</label>
-                                 <input 
-                                    type="file" 
-                                    multiple
-                                    accept="image/*"
-                                    onChange={handleCopyImagesChange}
-                                    className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-orange-900/30 file:text-orange-300 hover:file:bg-orange-900"
-                                 />
-                                 {copyImageFiles.length > 0 && <p className="text-[10px] text-orange-300">{copyImageFiles.length}장 선택됨</p>}
-                                 <p className="text-[9px] text-slate-500 leading-tight">첨부 시 AI 이미지 생성을 하지 않고, 본문에 삽입 위치를 표시합니다.</p>
+                             {/* Skip Image Generation */}
+                             <div className="space-y-2 flex flex-col mt-4">
+                                 <div className="flex items-center gap-2">
+                                     <input 
+                                        type="checkbox" 
+                                        id="skipImageGeneration"
+                                        checked={skipImageGeneration}
+                                        onChange={(e) => setSkipImageGeneration(e.target.checked)}
+                                        className="w-4 h-4 text-indigo-600 bg-slate-800 border-slate-700 rounded focus:ring-indigo-500"
+                                     />
+                                     <label htmlFor="skipImageGeneration" className="text-sm font-bold text-slate-300 cursor-pointer">
+                                         이미지 생성하지 않음
+                                     </label>
+                                 </div>
+                                 <p className="text-[10px] text-slate-500 ml-6">체크 시 이미지와 썸네일을 생성하지 않습니다.</p>
                              </div>
                         </div>
                     </div>
@@ -662,20 +774,34 @@ export const ContentWriter: React.FC = () => {
                                        </div>
                                    </div>
                                </div>
-                               <div className="relative z-10 flex gap-3 h-14">
-                                    <input 
-                                        type="text" 
-                                        value={manualKeyword}
-                                        onChange={(e) => setManualKeyword(e.target.value)}
-                                        placeholder="키워드를 입력하세요"
-                                        className="flex-1 bg-slate-900 border border-slate-600 rounded-xl px-5 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all text-lg shadow-inner"
-                                        onKeyDown={(e) => e.key === 'Enter' && handleManualStart()} 
-                                    />
+                               <div className="relative z-10 flex flex-col gap-3">
+                                   <div className="flex gap-3 h-14">
+                                        <input 
+                                            type="text" 
+                                            value={manualKeyword}
+                                            onChange={(e) => setManualKeyword(e.target.value)}
+                                            placeholder="키워드를 입력하세요"
+                                            className="flex-1 bg-slate-900 border border-slate-600 rounded-xl px-5 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all text-lg shadow-inner"
+                                            onKeyDown={(e) => e.key === 'Enter' && handleManualStart()} 
+                                        />
+                                       <button 
+                                          onClick={handleManualStart}
+                                          className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 h-full rounded-xl font-bold text-lg transition-all shadow-lg shadow-emerald-900/20 hover:shadow-emerald-500/40 whitespace-nowrap flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
+                                       >
+                                          Go
+                                       </button>
+                                   </div>
                                    <button 
-                                      onClick={handleManualStart}
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 h-full rounded-xl font-bold text-lg transition-all shadow-lg shadow-emerald-900/20 hover:shadow-emerald-500/40 whitespace-nowrap flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
+                                      onClick={() => {
+                                          if (!topic) {
+                                              alert("블로그 주제를 먼저 입력해주세요.");
+                                              return;
+                                          }
+                                          runAutomationSequence(topic);
+                                      }}
+                                      className="w-full bg-slate-700 hover:bg-slate-600 text-white h-12 rounded-xl font-bold text-sm transition-all shadow-md whitespace-nowrap flex items-center justify-center gap-2"
                                    >
-                                      Go
+                                      블로그 주제로 바로 시작하기
                                    </button>
                                </div>
                           </div>
@@ -714,6 +840,25 @@ export const ContentWriter: React.FC = () => {
                             <h2 className="text-2xl font-bold text-white">대본 편집</h2>
                             {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold">AI가 대본을 작성 중입니다... (자동 진행 중)</span>}
                         </div>
+                        
+                        {/* Title Options */}
+                        {titleOptions.length > 0 && (
+                            <div className="flex flex-col gap-2 mb-3">
+                                <label className="text-xs text-slate-400">추천 제목 (클릭하여 선택)</label>
+                                <div className="flex flex-col gap-2">
+                                    {titleOptions.map((t, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setTitle(t)}
+                                            className={`text-left px-3 py-2 rounded-lg text-sm transition-colors ${title === t ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                                        >
+                                            {t}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
                         <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-b border-slate-700 p-2 text-white" />
                         <div className="grid grid-cols-2 gap-6 h-[600px]">
                             <textarea value={outline} onChange={(e) => setOutline(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700" />
@@ -833,26 +978,15 @@ export const ContentWriter: React.FC = () => {
                             {/* Blog Images */}
                             <div className="lg:col-span-2 space-y-3">
                                 <h3 className="text-white font-bold text-lg flex items-center gap-2">
-                                    <span>🖼️</span> {copyImageFiles.length > 0 ? `첨부된 카피 이미지 (${copyImageFiles.length}장)` : `본문 삽입 이미지 (${generatedImages.filter(i => i.url).length}장)`}
+                                    <span>🖼️</span> 본문 삽입 이미지 ({generatedImages.filter(i => i.url).length}장)
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {copyImageFiles.length > 0 ? (
-                                        copyImageFiles.map((file, idx) => (
-                                            <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group">
-                                                <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt={`Copy Image ${idx}`} />
-                                                <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded">이미지 {idx + 1}</div>
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <a href={URL.createObjectURL(file)} download={file.name} className="bg-white text-black px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors">다운로드</a>
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        generatedImages.map((img, idx) => (
-                                            <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group">
-                                                {img.url ? (
-                                                    <>
-                                                        <img src={img.url} className="w-full h-full object-cover" alt={`Blog Image ${idx}`} />
-                                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                    {generatedImages.map((img, idx) => (
+                                        <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group">
+                                            {img.url ? (
+                                                <>
+                                                    <img src={img.url} className="w-full h-full object-cover" alt={`Blog Image ${idx}`} />
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
                                                             <a href={img.url} download={`image_${idx+1}.png`} className="bg-white text-black px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors w-24 text-center">다운로드</a>
                                                             <button 
                                                                 onClick={() => {
@@ -869,30 +1003,52 @@ export const ContentWriter: React.FC = () => {
                                                     <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">대기 중</div>
                                                 )}
                                             </div>
-                                        ))
-                                    )}
+                                        ))}
                                 </div>
                             </div>
                         </div>
 
                         {/* Main Content */}
-                        <div className="bg-white text-black p-12 rounded-2xl shadow-2xl border-t-8 border-indigo-600">
-                             <style>{`
-                                .colored-content p:nth-of-type(4n+1) { color: #D32F2F !important; }
-                                .colored-content p:nth-of-type(4n+2) { color: #1A237E !important; }
-                                .colored-content p:nth-of-type(4n+3) { color: #1B5E20 !important; }
-                                .colored-content p:nth-of-type(4n+4) { color: #3E2723 !important; }
-                                
-                                .colored-content li:nth-of-type(4n+1) { color: #D32F2F !important; }
-                                .colored-content li:nth-of-type(4n+2) { color: #1A237E !important; }
-                                .colored-content li:nth-of-type(4n+3) { color: #1B5E20 !important; }
-                                .colored-content li:nth-of-type(4n+4) { color: #3E2723 !important; }
+                        <div className="space-y-6">
+                            {blogCategory === '맛집 리뷰' && (
+                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-r-2xl shadow-md">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0 mt-0.5">
+                                            <svg className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </div>
+                                        <div className="ml-4">
+                                            <h3 className="text-base font-bold text-yellow-800">주의사항</h3>
+                                            <div className="mt-2 text-sm text-yellow-700 font-medium leading-relaxed">
+                                                <p>
+                                                    영업시간은 리서치 기반으로 작성됩니다. 하지만, 예전 영업시간으로 작성될수도 있으므로 체크후에 최신정보가 제대로 반영이 안되었다면 꼭! 수정해주시길 바랍니다.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="bg-white text-black p-12 rounded-2xl shadow-2xl border-t-8 border-indigo-600">
+                                 <style>{`
+                                    .colored-content p:nth-of-type(4n+1) { color: #D32F2F !important; }
+                                    .colored-content p:nth-of-type(4n+2) { color: #1A237E !important; }
+                                    .colored-content p:nth-of-type(4n+3) { color: #1B5E20 !important; }
+                                    .colored-content p:nth-of-type(4n+4) { color: #3E2723 !important; }
+                                    
+                                    .colored-content li:nth-of-type(4n+1) { color: #D32F2F !important; }
+                                    .colored-content li:nth-of-type(4n+2) { color: #1A237E !important; }
+                                    .colored-content li:nth-of-type(4n+3) { color: #1B5E20 !important; }
+                                    .colored-content li:nth-of-type(4n+4) { color: #3E2723 !important; }
+    
+                                    .colored-content h1, .colored-content h2, .colored-content h3 { color: #0f172a !important; }
 
-                                .colored-content h1, .colored-content h2, .colored-content h3 { color: #0f172a !important; }
-                             `}</style>
-                             <div className="prose prose-lg max-w-none colored-content" ref={resultContentRef}>
-                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-                             </div>
+                                    .black-content p, .black-content li { color: #000000 !important; }
+                                 `}</style>
+                                 <div className={`prose prose-lg max-w-none ${blogCategory === '맛집 리뷰' ? 'text-center break-keep black-content' : 'colored-content'}`} ref={resultContentRef}>
+                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                                 </div>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -4,20 +4,25 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "start": "node server.ts"
   },
   "dependencies": {
-    "react-dom": "^19.2.4",
-    "react": "^19.2.4",
     "@google/genai": "^1.39.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "marked": "12.0.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "react-markdown": "9",
     "remark-gfm": "4",
-    "marked": "12.0.0"
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",

@@ -1,6 +1,22 @@
 import { GoogleGenAI, GenerateContentResponse, Type, Part, ThinkingLevel } from "@google/genai";
 import { KeywordSuggestion } from "../types";
 
+// --- Helper: Fetch Naver Data ---
+async function fetchNaverLocalData(query: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/naver/local?query=${encodeURIComponent(query)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.items && data.items.length > 0) {
+      return JSON.stringify(data.items, null, 2);
+    }
+    return null;
+  } catch (e) {
+    console.error("Failed to fetch Naver data:", e);
+    return null;
+  }
+}
+
 const getClient = () => {
   // 1. 로컬 저장소에서 사용자가 직접 입력한 키가 있는지 먼저 확인합니다.
   const localKey = typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') : null;
@@ -46,13 +62,16 @@ export const testConnection = async (): Promise<{ success: boolean; message: str
   }
 };
 
-// Gemini 3 Flash Preview for High Availability & Speed (Reduces 503 errors)
-const TEXT_MODEL = 'gemini-3.1-pro-preview';
+// Gemini 3 Flash Preview for High Availability, Speed & Higher Quota
+const TEXT_MODEL = 'gemini-3-flash-preview';
 // Gemini 3 Pro Image Preview for High-Quality Image Generation
 const IMAGE_MODEL = 'gemini-3-pro-image-preview';
 
 const handleApiError = (error: any, fallbackMessage: string): string => {
   console.error("Gemini API Error:", error);
+  if (error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+    return "API 사용량이 일일 할당량을 초과했습니다. 잠시 후 다시 시도하거나 다른 API 키를 사용해 주세요.";
+  }
   if (error.message?.includes("503") || error.message?.includes("overloaded") || error.message?.includes("수요가 급증")) {
     return "현재 Google 서버의 일시적인 과부하로 인해 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   }
@@ -94,7 +113,9 @@ export const generateBlogIdeas = async (niche: string): Promise<string> => {
 export const generateUSP = async (
   topic: string,
   storeName: string,
-  salesService: string
+  salesService: string,
+  blogCategory?: string,
+  blogPlatform?: string
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -104,11 +125,13 @@ export const generateUSP = async (
       
       Analyze the following information:
       - Blog Topic: "${topic}"
+      ${blogCategory ? `- Blog Category: "${blogCategory}"` : ""}
+      ${blogPlatform ? `- Blog Platform: "${blogPlatform}"` : ""}
       - Brand/Store Name: "${storeName}"
       - Sales Service/Product: "${salesService}"
 
       **Task**:
-      Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that maximizes the probability of:
+      Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
       1. **Customer Inquiries** (Lead Generation)
       2. **Sales Conversion** (Purchase)
 
@@ -141,13 +164,17 @@ export const suggestRelatedKeywords = async (
   salesService?: string,
   postGoal?: string,
   filePart?: { data: string, mimeType: string },
-  referenceNote?: string
+  referenceNote?: string,
+  blogCategory?: string,
+  blogPlatform?: string
 ): Promise<KeywordSuggestion[]> => {
   try {
     const ai = getClient();
     
     const promptText = `
       Topic: "${baseTopic}"
+      ${blogCategory ? `Blog Category: "${blogCategory}"` : ""}
+      ${blogPlatform ? `Blog Platform: "${blogPlatform}"` : ""}
       ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
       ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
       ${postGoal ? `**Goal of the Post**: "${postGoal}"` : ""}
@@ -210,26 +237,34 @@ export const generateTitle = async (
   keyword: string,
   topic: string,
   postGoal?: string,
-  referenceNote?: string
-): Promise<string> => {
+  referenceNote?: string,
+  blogCategory?: string,
+  blogPlatform?: string,
+  storeName?: string
+): Promise<string[]> => {
   try {
     const ai = getClient();
     const prompt = `
-      Create ONE high-performing, **GEO (Generative Engine Optimization)** and **SEO (Search Engine Optimization)** ready blog post title.
+      Create 3 high-performing, **GEO (Generative Engine Optimization)** and **SEO (Search Engine Optimization)** ready blog post titles.
       
       Context:
       Topic: ${topic}
+      ${blogCategory ? `Blog Category: ${blogCategory}` : ""}
+      ${blogPlatform ? `Blog Platform: ${blogPlatform}` : ""}
       ${postGoal ? `Goal: ${postGoal}` : ""}
       ${referenceNote ? `Reference Note: ${referenceNote}` : ""}
+      ${storeName ? `Store Name: ${storeName}` : ""}
       
       **GEO & SEO GUIDELINES**:
-      1. **Keyword Placement**: The keyword "${keyword}" MUST be at the very beginning of the title to maximize search visibility. (e.g., "${keyword}: ...")
-      2. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
-      3. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
-      4. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
-      5. **Length**: Concise but descriptive (under 40 characters if possible).
+      ${blogCategory === '맛집 리뷰' ? `1. **Keyword & Store Name Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title, and the store name "${storeName || ''}" MUST be placed at the very end of the title. (e.g., "${keyword} ... ${storeName || ''}")` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
+      2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).
+      3. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
+      4. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
+      5. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
+      6. **Length**: Concise but descriptive (under 40 characters if possible).
       
-      Output: Return ONLY the title string. No quotes, no explanations.
+      Output: Return ONLY a valid JSON array of 3 strings. No markdown formatting, no explanations.
+      Example: ["Title 1", "Title 2", "Title 3"]
       Language: Korean.
     `;
 
@@ -238,10 +273,20 @@ export const generateTitle = async (
       contents: prompt,
       config: {
         temperature: 0.8,
+        responseMimeType: "application/json",
       }
     });
     
-    return response.text?.trim() || `${keyword} 관련 추천 포스팅`;
+    const text = response.text?.trim() || "[]";
+    try {
+      const titles = JSON.parse(text);
+      if (Array.isArray(titles) && titles.length > 0) {
+        return titles;
+      }
+    } catch (e) {
+      console.error("Failed to parse titles JSON", e);
+    }
+    return [`${keyword} 관련 추천 포스팅`];
   } catch (error: any) {
     throw new Error(handleApiError(error, "제목 생성 실패"));
   }
@@ -257,14 +302,28 @@ export const generateOutline = async (
   benchmarkingText?: string,
   referenceNote?: string,
   scriptImageParts?: { data: string, mimeType: string }[],
-  copyImageCount?: number,
-  mustIncludeContent?: string
+  mustIncludeContent?: string,
+  blogCategory?: string,
+  blogPlatform?: string,
+  servicePriceText?: string,
+  servicePriceImageParts?: { data: string, mimeType: string }[]
 ): Promise<string> => {
   try {
     const ai = getClient();
     
+    let naverDataText = "";
+    const searchTarget = storeName || topic;
+    if (blogPlatform === '네이버' && searchTarget) {
+      const naverData = await fetchNaverLocalData(searchTarget);
+      if (naverData) {
+        naverDataText = `\n\n**NAVER LOCAL API DATA**: The following is real data fetched from Naver Local API for "${searchTarget}". You MUST use this data (address, phone, etc.) accurately in the outline.\n${naverData}\n`;
+      }
+    }
+    
     const promptText = `
       Create a detailed SEO-optimized blog post outline for the topic: "${topic}".
+      ${blogCategory ? `**Blog Category**: "${blogCategory}"` : ""}
+      ${blogPlatform ? `**Blog Platform**: "${blogPlatform}"` : ""}
       ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
       ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
       ${postGoal ? `**Primary Goal**: "${postGoal}"` : ""}
@@ -273,8 +332,20 @@ export const generateOutline = async (
       ${filePart ? "Analyze the attached reference file and incorporate its key points into the structure." : ""}
       ${scriptImageParts && scriptImageParts.length > 0 ? "**VISUAL ANALYSIS**: I have attached 'Script Reference Images'. Analyze these images to understand the atmosphere and context, but do not explicitly describe them in the outline." : ""}
       ${excludedFilePart ? "**CRITICAL CONSTRAINT**: The attached 'EXCLUDED FILE' contains information that MUST NOT appear in the outline. Do not mention or reference its specific contents." : ""}
+      ${servicePriceText ? `**SERVICE PRICE INFO**: The user provided the following pricing information: "${servicePriceText}". You MUST plan to include a Markdown table in the body detailing these services and prices.` : ""}
+      ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST plan to extract and include the relevant prices in a Markdown table in the body.` : ""}
+      ${blogCategory === '맛집 리뷰' && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Restaurant Review and no specific price information was provided, DO NOT invent or include any prices in the outline or table.` : ""}
+      ${naverDataText}
       
-      ${copyImageCount && copyImageCount > 0 ? `**COPY IMAGES**: The user has provided ${copyImageCount} images. You MUST plan where to insert these images in the outline using placeholders like "[이미지 1 삽입]", "[이미지 2 삽입]", etc. up to [이미지 ${copyImageCount} 삽입]. Distribute them naturally throughout the post.` : ""}
+      **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
+      1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
+      2. **Experience-Based Content**: Structure the outline to reflect a first-hand, authentic experience with honest opinions. Avoid sounding like a generic AI.
+      3. **Intro Strategy**: ${blogCategory === '맛집 리뷰' ? "Start with a natural, authentic, experiential tone from a visitor's perspective. DO NOT use a Q&A format for the introduction." : "Start the introduction with a Q&A structure that provides the conclusion first. Plan to use specific numbers, dates, and clear sources to build absolute trust."}
+      4. **Curiosity Resolution**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
+      5. **Readability & Formatting**: ${blogCategory === '맛집 리뷰' ? "You MUST write with center-aligned formatting in mind. **CRITICAL**: Each line MUST NOT exceed 18 characters (Korean). You MUST insert a hard line break (Enter) after every 18 characters or less. Furthermore, you MUST group exactly 2 lines together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute." : "Plan for extremely short paragraphs (max 3 sentences)."}
+      6. **Structure**: ${blogCategory === '맛집 리뷰' ? "Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the `>` symbol (e.g., `> ## Subheading`)." : "Use at least 3 subheadings (H2, H3) to organize the content clearly."}
+      7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
+      8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
 
       ${benchmarkingText ? `
       **BENCHMARKING MASTER INSTRUCTION**: 
@@ -284,6 +355,30 @@ export const generateOutline = async (
       3. **Adapt Entities**: Where the benchmark promotes its subject, you must structure the outline to promote "${storeName || 'our brand'}" and "${salesService || 'our service'}" instead.
       ` : ""}
       
+      ${blogCategory === '맛집 리뷰' ? `
+      **CRITICAL STRUCTURE REQUIREMENT FOR RESTAURANT REVIEW**:
+      Since the category is "맛집 리뷰" (Restaurant Review), you MUST 100% include the following 6 mandatory sections/information in the outline without fail:
+      1. 🏪 업체명 (Store name)
+      2. 📍 주소 (Address) - You MUST research the actual address.
+      3. ⏰ 영업시간 (Business hours) - You MUST use the Google Search tool to deeply research the latest, most accurate business hours for "${storeName || topic}".
+      4. 🚗 주차 여부 (Parking availability)
+      5. 🚶 오시는 길 (Directions)
+      6. ✨ 인테리어 및 분위기 (Interior and atmosphere)
+      
+      Additionally, include:
+      - 주문메뉴, 맛 평가 (Ordered menu, taste evaluation) - Include prices ONLY if provided via Service Price Text or Image.
+      - 사장님 직원등 친절도 (Kindness of owner/staff)
+      
+      **EMOJI REQUIREMENT**: You MUST prefix the specific sections with the exact emojis shown above (e.g., 🏪 업체명, 📍 주소, ⏰ 영업시간, 🚗 주차 여부, 🚶 오시는 길, ✨ 인테리어 및 분위기).
+      
+      (Optional but recommended: 전화번호, 이벤트, 특징, 총평)
+      
+      **PERSPECTIVE**: The outline must be structured from the first-person perspective of a customer who actually visited the restaurant (experiential tone).
+      
+      ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and explicitly incorporate this real data into the outline.` : ""}
+      ` : ""}
+      ${naverDataText}
+      
       Structure Guidelines:
       1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}".
       2. **Body (H2/H3)**: Structured logic to persuade or inform the reader. 
@@ -292,8 +387,8 @@ export const generateOutline = async (
       
       Output Format:
       1. Introduction (Hook, Problem, Solution)
-      2. Key Headings (Format as Blockquote: > Heading)
-      3. Sub-points (Format as Blockquote: > Sub-point)
+      2. Key Headings (Format as plain Bold text: **Heading**)
+      3. Sub-points (Format as plain Bold text: **Sub-point**)
       4. Conclusion (Summary, Persuasive Call to Action)
       
       Add notes on which keywords to target in each section.
@@ -308,6 +403,13 @@ export const generateOutline = async (
             parts.push({ inlineData: img });
         });
         parts.push({ text: "These are the Script Reference Images. Analyze them for context." });
+    }
+
+    if (servicePriceImageParts && servicePriceImageParts.length > 0) {
+        servicePriceImageParts.forEach(img => {
+            parts.push({ inlineData: img });
+        });
+        parts.push({ text: "These are the Service Price Table Images. Extract the relevant prices to use in the outline." });
     }
 
     if (filePart) {
@@ -329,7 +431,8 @@ export const generateOutline = async (
       contents: { parts },
       config: {
         temperature: 0.7,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        tools: [{ googleSearch: {} }]
       }
     });
 
@@ -350,23 +453,49 @@ export const generateFullPostStream = async (
   benchmarkingText?: string,
   referenceNote?: string,
   scriptImageParts?: { data: string, mimeType: string }[],
-  copyImageCount?: number,
-  mustIncludeContent?: string
+  mustIncludeContent?: string,
+  blogCategory?: string,
+  blogPlatform?: string,
+  servicePriceText?: string,
+  servicePriceImageParts?: { data: string, mimeType: string }[]
 ): Promise<void> => {
   try {
     const ai = getClient();
+
+    let naverDataText = "";
+    const searchTarget = storeName || topic;
+    if (blogPlatform === '네이버' && searchTarget) {
+      const naverData = await fetchNaverLocalData(searchTarget);
+      if (naverData) {
+        naverDataText = `\n\n**NAVER LOCAL API DATA**: The following is real data fetched from Naver Local API for "${searchTarget}". You MUST use this data (address, phone, etc.) accurately in the blog post.\n${naverData}\n`;
+      }
+    }
 
     const prompt = `
       Write a comprehensive, engaging, and **GEO (Generative Engine Optimization)** and **SEO (Search Engine Optimization)** ready blog post based on the following topic and outline.
       
       Topic: ${topic}
+      ${blogCategory ? `Blog Category: "${blogCategory}"` : ""}
+      ${blogPlatform ? `Blog Platform: "${blogPlatform}"` : ""}
       ${storeName ? `Store/Brand Name: "${storeName}"` : ""}
       ${salesService ? `Product/Service for Sale: "${salesService}"` : ""}
       ${postGoal ? `**ULTIMATE GOAL**: The content must achieve this goal: "${postGoal}"` : ""}
       ${referenceNote ? `**USER REFERENCE NOTE**: "${referenceNote}". This is a specific instruction from the user. You MUST reflect this note in the content.` : ""}
       ${mustIncludeContent ? `**MUST INCLUDE CONTENT**: "${mustIncludeContent}". You MUST explicitly include this exact content or information naturally within the blog post.` : ""}
+      ${servicePriceText ? `**SERVICE PRICE INFO**: The user provided the following pricing information: "${servicePriceText}". You MUST include a Markdown table in the body detailing these services and prices.` : ""}
+      ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST extract and include the relevant prices in a Markdown table in the body.` : ""}
+      ${blogCategory === '맛집 리뷰' && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Restaurant Review and no specific price information was provided, DO NOT invent or include any prices in the text or table.` : ""}
+      ${naverDataText}
       
-      ${copyImageCount && copyImageCount > 0 ? `**COPY IMAGES (CRITICAL)**: The user has provided ${copyImageCount} specific images. You MUST insert placeholders like "[이미지 1 삽입]", "[이미지 2 삽입]", ..., "[이미지 ${copyImageCount} 삽입]" in the body text where they fit best. Ensure all ${copyImageCount} placeholders are used and distributed logically.` : ""}
+      **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
+      1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
+      2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI.
+      3. **Intro Strategy**: ${blogCategory === '맛집 리뷰' ? "Start with a natural, authentic, experiential tone from a visitor's perspective. DO NOT use a Q&A format for the introduction." : "Start the introduction with a Q&A structure that provides the conclusion first. Use specific numbers, dates, and clear sources to build absolute trust and increase the chance of being cited by AI."}
+      4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
+      5. **Readability & Formatting**: ${blogCategory === '맛집 리뷰' ? "You MUST write with center-aligned formatting in mind. **CRITICAL**: Each line MUST NOT exceed 18 characters (Korean). You MUST insert a hard line break (Enter) after every 18 characters or less. Furthermore, you MUST group exactly 2 lines together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute." : "Keep paragraphs extremely short—maximum 3 sentences per paragraph."}
+      6. **Structure**: ${blogCategory === '맛집 리뷰' ? "Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the `>` symbol (e.g., `> ## Subheading`)." : "Use at least 3 subheadings (H2, H3) to organize the content clearly."}
+      7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
+      8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
 
       ${benchmarkingText ? `
       **BENCHMARKING & MIMICRY MODE ACTIVATED**:
@@ -384,6 +513,31 @@ export const generateFullPostStream = async (
          - **Entity Swapping**: Ensure the old brand/service is completely removed and replaced with the new one.
       ` : ""}
 
+      ${blogCategory === '맛집 리뷰' ? `
+      **CRITICAL STRUCTURE REQUIREMENT FOR RESTAURANT REVIEW**:
+      Since the category is "맛집 리뷰" (Restaurant Review), you MUST 100% ensure the following mandatory sections/information are clearly written and included in the final post without fail:
+      1. 🏪 업체명 (Store name)
+      2. 📍 주소 (Address) - You MUST research and include the actual address.
+      3. ⏰ 영업시간 (Business hours) - You MUST use the Google Search tool to deeply research the latest, most accurate business hours for "${storeName || topic}" and write them accurately.
+      4. 🚗 주차 여부 (Parking availability)
+      5. 🚶 오시는 길 (Directions)
+      6. ✨ 인테리어 및 분위기 (Interior and atmosphere)
+      
+      Additionally, include:
+      - 주문메뉴, 맛 평가 (Ordered menu, taste evaluation) - Include prices ONLY if provided via Service Price Text or Image.
+      - 사장님 직원등 친절도 (Kindness of owner/staff)
+      
+      **EMOJI REQUIREMENT**: You MUST prefix the specific sections with the exact emojis shown above (e.g., 🏪 업체명, 📍 주소, ⏰ 영업시간, 🚗 주차 여부, 🚶 오시는 길, ✨ 인테리어 및 분위기) in the body text.
+      
+      (Optional but recommended: 전화번호, 이벤트, 특징, 총평)
+      
+      **PERSPECTIVE & TONE**: You MUST write from the first-person perspective of a customer who actually visited the restaurant. Use an authentic, experiential tone (e.g., "I visited...", "The taste was...").
+      Make sure these points are naturally integrated into the blog post flow.
+      
+      ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and write the review based entirely on this real data. Do not invent menu items or hours; use the actual data.` : ""}
+      ` : ""}
+      ${naverDataText}
+
       Outline:
       ${outline}
       
@@ -400,12 +554,11 @@ export const generateFullPostStream = async (
       2. **Important Sentence (RED Text on YELLOW Background)**: Wrap the sentence in **triple asterisks** like this: ***This is a critical sentence.***
       3. **Emphasized Keyword (BLUE Text)**: Wrap the keyword in **single asterisks** like this: *EmphasizedKeyword*.
       4. **Emphasized Sentence (BLUE Text on YELLOW Background)**: Wrap the sentence in **backticks** like this: \`This is an emphasized sentence.\`
-      5. **Subheadings (Citation Style)**: Do NOT use H1 (#), H2 (##), or H3 (###). ALL subheadings must be formatted as Blockquotes using "> ". Example: > Section Title
+      5. **Subheadings**: Subheadings MUST be formatted as plain Bold text (e.g., **Subheading**). DO NOT use H1 (#), H2 (##), H3 (###), or Blockquotes (>). DO NOT apply any colors to subheadings; they must remain default black.
 
       **READABILITY (Spacing - CRITICAL)**: 
       - **Paragraph Structure**: **STRICTLY** end a paragraph after **every 2 sentences**.
       - **Spacing**: Insert a double line break (\\n\\n) after every 2 sentences to create whitespace. Do NOT use single line spacing for the body text.
-      - **NO STANDARD HEADERS**: **Strictly Forbidden** to use #, ##, or ### tags in the body. Only use the "> " syntax for section titles.
       - **NO IMAGE DESCRIPTIONS**: Do NOT write text describing the reference images (e.g. "Image 1 shows..."). The text should focus solely on the topic information.
       - **NO KEYWORD LISTS**: Do NOT output a list of "Target Keywords" or "Keywords". The keywords must be naturally integrated into the flow of the text. Do NOT print the outline notes about keywords.
       
@@ -424,6 +577,13 @@ export const generateFullPostStream = async (
         parts.push({ text: "These are the Script Reference Images. Use them for context/atmosphere ONLY. Do NOT describe them in the text." });
     }
 
+    if (servicePriceImageParts && servicePriceImageParts.length > 0) {
+        servicePriceImageParts.forEach(img => {
+            parts.push({ inlineData: img });
+        });
+        parts.push({ text: "These are the Service Price Table Images. Extract the relevant prices to use in the text and table." });
+    }
+
     if (benchmarkingText) {
         parts.push({ text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]` });
     }
@@ -439,6 +599,7 @@ export const generateFullPostStream = async (
       config: {
         temperature: 0.7,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        tools: [{ googleSearch: {} }]
       }
     });
 
