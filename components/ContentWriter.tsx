@@ -26,6 +26,7 @@ const steps: { id: StudioStep; label: string; icon: string }[] = [
 export const ContentWriter: React.FC = () => {
   // --- State: Inputs ---
   const [topic, setTopic] = useState('');
+  const [blogStyle, setBlogStyle] = useState('');
   const [blogCategory, setBlogCategory] = useState('');
   const [blogPlatform, setBlogPlatform] = useState('');
   const [storeName, setStoreName] = useState('');
@@ -39,8 +40,8 @@ export const ContentWriter: React.FC = () => {
   // --- State: Files ---
   const [referenceFile, setReferenceFile] = useState<File | null>(null); // Text context file
   const [servicePriceFiles, setServicePriceFiles] = useState<File[]>([]);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [faceImageFile, setFaceImageFile] = useState<File | null>(null);
+  const [logoFiles, setLogoFiles] = useState<File[]>([]);
+  const [faceImageFiles, setFaceImageFiles] = useState<File[]>([]);
   const [contextImageFiles, setContextImageFiles] = useState<File[]>([]); // General references
   const [skipImageGeneration, setSkipImageGeneration] = useState<boolean>(false); // Skip image generation
 
@@ -113,16 +114,21 @@ export const ContentWriter: React.FC = () => {
 
   const getImageRefs = async () => {
     const refs: { data: string, mimeType: string }[] = [];
-    if (logoFile) refs.push(await convertFileToBase64(logoFile));
+    for (const file of logoFiles) {
+        refs.push(await convertFileToBase64(file));
+    }
     for (const file of contextImageFiles) {
         refs.push(await convertFileToBase64(file));
     }
     return refs;
   };
 
-  const getFaceRef = async () => {
-      if (faceImageFile) return await convertFileToBase64(faceImageFile);
-      return undefined;
+  const getFaceRefs = async () => {
+      const refs: { data: string, mimeType: string }[] = [];
+      for (const file of faceImageFiles) {
+          refs.push(await convertFileToBase64(file));
+      }
+      return refs;
   };
 
   // --- Automatic Workflow ---
@@ -130,6 +136,10 @@ export const ContentWriter: React.FC = () => {
     if (!keyword) return;
     if (!blogPlatform || !blogCategory) {
         alert('블로그 플랫폼과 블로그 분류를 선택해주세요.');
+        return;
+    }
+    if (!blogStyle) {
+        alert('블로그 스타일을 선택해주세요.');
         return;
     }
     setIsAutoRunning(true);
@@ -158,7 +168,7 @@ export const ContentWriter: React.FC = () => {
         }
 
         const outlineRes = await generateOutline(
-            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts
+            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
         );
         setOutline(outlineRes);
 
@@ -171,7 +181,7 @@ export const ContentWriter: React.FC = () => {
                 accumulatedContent += chunk;
                 setContent(prev => prev + chunk);
             }, 
-            undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts
+            undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
         );
 
         // --- Step 2: Images ---
@@ -194,11 +204,11 @@ export const ContentWriter: React.FC = () => {
             return;
         }
 
-        const facePart = await getFaceRef();
+        const faceParts = await getFaceRefs();
         const refParts = await getImageRefs();
 
         const finalImageCount = isAutoImageCount ? 0 : imageCount;
-        const prompts = await generateImagePromptsForPost(accumulatedContent, !!facePart, finalImageCount, refParts.length > 0);
+        const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0);
         
         const placeholders: GeneratedImage[] = prompts.map(p => ({
             prompt: p.prompt,
@@ -211,7 +221,7 @@ export const ContentWriter: React.FC = () => {
         // Run image generation
         await Promise.all(placeholders.map(async (item, index) => {
             try {
-                const url = await generateBlogImage(item.prompt, "16:9", refParts, facePart);
+                const url = await generateBlogImage(item.prompt, "16:9", refParts, faceParts);
                 setGeneratedImages(prev => {
                     const newArr = [...prev];
                     newArr[index] = { ...newArr[index], url, isLoading: false };
@@ -232,7 +242,7 @@ export const ContentWriter: React.FC = () => {
         const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent);
         setThumbnailPrompt(thumbPrompt);
         
-        const thumbUrl = await generateBlogImage(thumbPrompt, "1:1", refParts, facePart);
+        const thumbUrl = await generateBlogImage(thumbPrompt, "1:1", refParts, faceParts);
         setThumbnail(thumbUrl);
 
         // --- Step 4: Result ---
@@ -301,11 +311,11 @@ export const ContentWriter: React.FC = () => {
     if (editingImageIndex === null) return;
     setIsRegenerating(true);
     try {
-        const facePart = await getFaceRef();
+        const faceParts = await getFaceRefs();
         const refParts = await getImageRefs();
         const ratio = editingImageIndex === -1 ? "1:1" : "16:9";
         
-        const newUrl = await generateBlogImage(editPrompt, ratio, refParts, facePart);
+        const newUrl = await generateBlogImage(editPrompt, ratio, refParts, faceParts);
         
         if (editingImageIndex === -1) {
             setThumbnail(newUrl);
@@ -329,7 +339,7 @@ export const ContentWriter: React.FC = () => {
   const handleContextImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
         const filesArray = Array.from(e.target.files);
-        setContextImageFiles(prev => [...prev, ...filesArray].slice(0, 50));
+        setContextImageFiles(prev => [...prev, ...filesArray]);
     }
   };
 
@@ -550,14 +560,38 @@ export const ContentWriter: React.FC = () => {
 
                         {/* Topic Input */}
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">블로그 주제 (핵심 토픽) <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-bold text-slate-300 ml-1">블로그 주제 (원하시는 주제를 자유롭게 작성해주세요.) <span className="text-red-500">*</span></label>
                             <input 
                                 type="text" 
                                 value={topic}
                                 onChange={(e) => setTopic(e.target.value)}
-                                placeholder="예: 서울 실내 데이트 추천, 아이폰 16 리뷰"
+                                placeholder="예: AI 수익화 전략"
                                 className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner"
                             />
+                        </div>
+
+                        {/* Blog Style Input */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-300 ml-1">블로그 스타일 <span className="text-red-500">*</span></label>
+                            <select 
+                                value={blogStyle}
+                                onChange={(e) => setBlogStyle(e.target.value)}
+                                className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner appearance-none"
+                            >
+                                <option value="" disabled>블로그 스타일을 선택하세요</option>
+                                <option value="전문가/정보전달형 (신뢰감, 논리적, 객관적)">전문가/정보전달형 (신뢰감, 논리적, 객관적)</option>
+                                <option value="친근한 이웃형 (공감, 부드러움, 소통형)">친근한 이웃형 (공감, 부드러움, 소통형)</option>
+                                <option value="감성 에세이형 (서정적, 감각적, 여운)">감성 에세이형 (서정적, 감각적, 여운)</option>
+                                <option value="유머/재치형 (재미, 센스, 가벼운 톤)">유머/재치형 (재미, 센스, 가벼운 톤)</option>
+                                <option value="리뷰/체험단형 (솔직함, 디테일, 경험 위주)">리뷰/체험단형 (솔직함, 디테일, 경험 위주)</option>
+                                <option value="인터뷰/대화형 (문답형, 생동감, 현장감)">인터뷰/대화형 (문답형, 생동감, 현장감)</option>
+                                <option value="스토리텔링형 (기승전결, 몰입감, 서사적)">스토리텔링형 (기승전결, 몰입감, 서사적)</option>
+                                <option value="팩트폭행/직설적 (단호함, 명쾌함, 사이다)">팩트폭행/직설적 (단호함, 명쾌함, 사이다)</option>
+                                <option value="트렌디/MZ세대형 (유행어, 밈, 톡톡 튀는 톤)">트렌디/MZ세대형 (유행어, 밈, 톡톡 튀는 톤)</option>
+                                <option value="일기/기록형 (솔직함, 개인적, 담백함)">일기/기록형 (솔직함, 개인적, 담백함)</option>
+                                <option value="비즈니스/격식형 (정중함, 공식적, 깔끔함)">비즈니스/격식형 (정중함, 공식적, 깔끔함)</option>
+                                <option value="비판적/분석형 (날카로움, 통찰력, 논쟁적)">비판적/분석형 (날카로움, 통찰력, 논쟁적)</option>
+                            </select>
                         </div>
 
                         {/* Store & Service Inputs */}
@@ -568,7 +602,7 @@ export const ContentWriter: React.FC = () => {
                                     type="text" 
                                     value={storeName}
                                     onChange={(e) => setStoreName(e.target.value)}
-                                    placeholder="예: 스타벅스 강남점"
+                                    placeholder="예: 혁신 AI"
                                     className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
                                 />
                             </div>
@@ -578,7 +612,7 @@ export const ContentWriter: React.FC = () => {
                                     type="text" 
                                     value={salesService}
                                     onChange={(e) => setSalesService(e.target.value)}
-                                    placeholder="예: 아메리카노, 시즌 한정 케이크"
+                                    placeholder="예: 혁신적인 AI 수익화 노하우"
                                     className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
                                 />
                             </div>
@@ -662,7 +696,20 @@ export const ContentWriter: React.FC = () => {
 
                         {/* Benchmarking Text (New) */}
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">벤치마킹 원고 (선택)</label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-slate-300 ml-1">벤치마킹 원고 (선택)</label>
+                                <a 
+                                    href="https://docs.google.com/document/d/1UUi9NaY9NUY585E5lt-Hx9Sjz9YWlVFhwX-yrDcGAoM/edit?usp=sharing" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium flex items-center gap-1"
+                                >
+                                    드래그프리 설치 및 사용 매뉴얼
+                                </a>
+                            </div>
+                            <p className="text-xs text-slate-400 ml-1 mb-2">
+                                벤치마킹 원고는 내가 카피하고 싶은 원고를 선택한 블로그 분류, 주제, 상호명 / 브랜드명, 판매 제품 / 서비스, USP에 맞게끔 수정하여 블로그 원고 작성시 참고하는 기능입니다.
+                            </p>
                             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all">
                                 <textarea 
                                     value={benchmarkingText}
@@ -685,29 +732,39 @@ export const ContentWriter: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-800">
                              {/* Logo */}
                              <div className="space-y-2">
-                                 <label className="text-xs font-bold text-teal-400 block">🖼️ 로고 이미지</label>
+                                 <label className="text-xs font-bold text-teal-400 block">🖼️ 로고 이미지 (제한 없음)</label>
                                  <input 
                                     type="file" 
+                                    multiple
                                     accept="image/*"
-                                    onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            setLogoFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                                        }
+                                    }}
                                     className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-teal-900/30 file:text-teal-300 hover:file:bg-teal-900"
                                  />
-                                 {logoFile && <p className="text-[10px] text-teal-300 truncate">{logoFile.name}</p>}
+                                 {logoFiles.length > 0 && <p className="text-[10px] text-teal-300 truncate">{logoFiles.length}장 선택됨</p>}
                              </div>
                              {/* Person */}
                              <div className="space-y-2">
-                                 <label className="text-xs font-bold text-purple-400 block">👤 인물 이미지</label>
+                                 <label className="text-xs font-bold text-purple-400 block">👤 인물 이미지 (제한 없음)</label>
                                  <input 
                                     type="file" 
+                                    multiple
                                     accept="image/*"
-                                    onChange={(e) => setFaceImageFile(e.target.files?.[0] || null)}
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            setFaceImageFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                                        }
+                                    }}
                                     className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-purple-900/30 file:text-purple-300 hover:file:bg-purple-900"
                                  />
-                                 {faceImageFile && <p className="text-[10px] text-purple-300 truncate">{faceImageFile.name}</p>}
+                                 {faceImageFiles.length > 0 && <p className="text-[10px] text-purple-300 truncate">{faceImageFiles.length}장 선택됨</p>}
                              </div>
                              {/* Reference */}
                              <div className="space-y-2">
-                                 <label className="text-xs font-bold text-slate-300 block">📁 참고 이미지 (최대 50장)</label>
+                                 <label className="text-xs font-bold text-slate-300 block">📁 참고 이미지 (제한 없음)</label>
                                  <input 
                                     type="file" 
                                     multiple

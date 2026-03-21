@@ -292,6 +292,77 @@ export const generateTitle = async (
   }
 };
 
+export const extractTextFromUrl = async (url: string): Promise<string> => {
+  const ai = getClient();
+  try {
+    let targetUrl = url;
+    try {
+        if (url.includes('blog.naver.com')) {
+            const match = url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/([0-9]+)/);
+            if (match) {
+                targetUrl = `https://m.blog.naver.com/${match[1]}/${match[2]}`;
+            } else {
+                const urlObj = new URL(url);
+                const blogId = urlObj.searchParams.get('blogId');
+                const logNo = urlObj.searchParams.get('logNo');
+                if (blogId && logNo) {
+                    targetUrl = `https://m.blog.naver.com/${blogId}/${logNo}`;
+                }
+            }
+        }
+    } catch (e) {
+        // Ignore URL parsing errors
+    }
+
+    let text = '';
+    try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: `Extract the main article text from this URL: ${targetUrl}. 
+          
+          CRITICAL INSTRUCTION: If you encounter an error like "Unable to extract the article text because the provided website blocks automated access" or if the site blocks bots (like Naver Blog), you MUST use the googleSearch tool to search for the exact URL or the title of the page, and extract the content from the search results or cached snippets. 
+          
+          Return ONLY the plain text content, without any markdown formatting, headers, or extra conversational text. Do not apologize or explain your method.`,
+          config: {
+            tools: [{ urlContext: {} }, { googleSearch: {} }]
+          }
+        });
+        text = response.text || '';
+    } catch (e: any) {
+        console.warn("Primary extraction failed, trying fallback:", e);
+    }
+    
+    if (text.includes("Unable to extract") || text.includes("blocks automated access") || text.trim() === "") {
+        // Fallback if the model still outputs the error message or threw an error
+        try {
+            const fallbackResponse = await ai.models.generateContent({
+                model: "gemini-3.1-pro-preview",
+                contents: `Search for this exact URL using googleSearch: "${targetUrl}". Read the search results and snippets, and reconstruct the main article text as best as you can. Return ONLY the plain text content.`,
+                config: {
+                    tools: [{ googleSearch: {} }]
+                }
+            });
+            const fallbackText = fallbackResponse.text || '';
+            if (fallbackText.includes("Unable to extract") || fallbackText.includes("blocks automated access")) {
+                throw new Error("Blocked");
+            }
+            return fallbackText;
+        } catch (fallbackError: any) {
+            console.error("Fallback extraction failed:", fallbackError);
+            throw new Error("해당 웹사이트가 보안상의 이유로 내용 추출을 차단하고 있습니다. 원고 내용을 직접 복사하여 붙여넣어 주세요.");
+        }
+    }
+    
+    return text;
+  } catch (error: any) {
+    console.error("URL 추출 실패:", error);
+    if (error.message && error.message.includes("보안상의 이유로")) {
+        throw error;
+    }
+    throw new Error(handleApiError(error, "URL 추출 실패"));
+  }
+};
+
 export const generateOutline = async (
   topic: string,
   storeName?: string,
@@ -306,7 +377,8 @@ export const generateOutline = async (
   blogCategory?: string,
   blogPlatform?: string,
   servicePriceText?: string,
-  servicePriceImageParts?: { data: string, mimeType: string }[]
+  servicePriceImageParts?: { data: string, mimeType: string }[],
+  blogStyle?: string
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -342,17 +414,18 @@ export const generateOutline = async (
       2. **Experience-Based Content**: Structure the outline to reflect a first-hand, authentic experience with honest opinions. Avoid sounding like a generic AI.
       3. **Intro Strategy**: ${blogCategory === '맛집 리뷰' ? "Start with a natural, authentic, experiential tone from a visitor's perspective. DO NOT use a Q&A format for the introduction." : "Start the introduction with a Q&A structure that provides the conclusion first. Plan to use specific numbers, dates, and clear sources to build absolute trust."}
       4. **Curiosity Resolution**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: ${blogCategory === '맛집 리뷰' ? "You MUST write with center-aligned formatting in mind. **CRITICAL**: Each line MUST NOT exceed 18 characters (Korean). You MUST insert a hard line break (Enter) after every 18 characters or less. Furthermore, you MUST group exactly 2 lines together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute." : "Plan for extremely short paragraphs (max 3 sentences)."}
+      5. **Readability & Formatting**: ${blogCategory === '맛집 리뷰' ? "You MUST write with center-aligned formatting in mind. **CRITICAL**: Each line MUST NOT exceed 15 characters (Korean). You MUST insert a hard line break (Enter) after every 15 characters or less. Furthermore, you MUST group exactly 2 lines together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute." : "Plan for extremely short paragraphs (max 3 sentences)."}
       6. **Structure**: ${blogCategory === '맛집 리뷰' ? "Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the `>` symbol (e.g., `> ## Subheading`)." : "Use at least 3 subheadings (H2, H3) to organize the content clearly."}
       7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
+      9. **Year Reference**: If you mention the current year or any recent year, strictly use '2026' (e.g., 2026년). Do not use 2024 or 2025.
 
       ${benchmarkingText ? `
       **BENCHMARKING MASTER INSTRUCTION**: 
-      I have provided "BENCHMARKING TEXT" below. It is a high-performing content model. 
-      1. **Analyze Structure**: Identify its logical flow (e.g., Problem -> Agitation -> Solution).
-      2. **Mimic Logic**: Create an outline for the NEW TOPIC that follows the *exact same persuasive steps* as the benchmark.
-      3. **Adapt Entities**: Where the benchmark promotes its subject, you must structure the outline to promote "${storeName || 'our brand'}" and "${salesService || 'our service'}" instead.
+      I have provided "BENCHMARKING TEXT" below. This text is a reference that the user wants to copy.
+      You MUST modify and adapt this benchmarking text to perfectly fit the selected Blog Category (${blogCategory || 'General'}), Topic (${topic}), Brand/Store Name (${storeName || 'our brand'}), Product/Service (${salesService || 'our service'}), and USP (${postGoal || 'our USP'}).
+      1. **Analyze Structure**: Identify its logical flow and tone.
+      2. **Adapt Content**: Create an outline that uses the benchmark's flow as a reference, but completely changes the subject matter to promote our specific brand, product, and USP.
       ` : ""}
       
       ${blogCategory === '맛집 리뷰' ? `
@@ -376,11 +449,16 @@ export const generateOutline = async (
       **PERSPECTIVE**: The outline must be structured from the first-person perspective of a customer who actually visited the restaurant (experiential tone).
       
       ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and explicitly incorporate this real data into the outline.` : ""}
-      ` : ""}
+      ` : `
+      **CRITICAL RESTRICTION**:
+      Since the category is NOT "맛집 리뷰" (Restaurant Review), you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated outline. Do not write about locations or website links.
+      `}
       ${naverDataText}
       
+      ${blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST structure the outline and write the content to perfectly match this specific style and tone. Do not use a generic tone.` : ""}
+
       Structure Guidelines:
-      1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}".
+      1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}". **CRITICAL**: The introduction MUST include a Q&A section that will be formatted as a single-row table in the final post.
       2. **Body (H2/H3)**: Structured logic to persuade or inform the reader. 
          - **IMPORTANT**: Designate one section to be presented as a **Table/Chart** (e.g., Feature comparison, Price list, Pros/Cons, Specs).
       3. **Conclusion**: MUST be conversion-focused. Summarize and lead the reader to the specific goal ("${postGoal || 'Action'}").
@@ -457,7 +535,8 @@ export const generateFullPostStream = async (
   blogCategory?: string,
   blogPlatform?: string,
   servicePriceText?: string,
-  servicePriceImageParts?: { data: string, mimeType: string }[]
+  servicePriceImageParts?: { data: string, mimeType: string }[],
+  blogStyle?: string
 ): Promise<void> => {
   try {
     const ai = getClient();
@@ -492,25 +571,24 @@ export const generateFullPostStream = async (
       2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI.
       3. **Intro Strategy**: ${blogCategory === '맛집 리뷰' ? "Start with a natural, authentic, experiential tone from a visitor's perspective. DO NOT use a Q&A format for the introduction." : "Start the introduction with a Q&A structure that provides the conclusion first. Use specific numbers, dates, and clear sources to build absolute trust and increase the chance of being cited by AI."}
       4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: ${blogCategory === '맛집 리뷰' ? "You MUST write with center-aligned formatting in mind. **CRITICAL**: Each line MUST NOT exceed 18 characters (Korean). You MUST insert a hard line break (Enter) after every 18 characters or less. Furthermore, you MUST group exactly 2 lines together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute." : "Keep paragraphs extremely short—maximum 3 sentences per paragraph."}
+      5. **Readability & Formatting**: ${blogCategory === '맛집 리뷰' ? "You MUST write with center-aligned formatting in mind. **CRITICAL**: Each line MUST NOT exceed 15 characters (Korean). You MUST insert a hard line break (Enter) after every 15 characters or less. Furthermore, you MUST group exactly 2 lines together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute." : "Keep paragraphs extremely short—maximum 3 sentences per paragraph."}
       6. **Structure**: ${blogCategory === '맛집 리뷰' ? "Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the `>` symbol (e.g., `> ## Subheading`)." : "Use at least 3 subheadings (H2, H3) to organize the content clearly."}
       7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
+      9. **Year Reference**: If you mention the current year or any recent year, strictly use '2026' (e.g., 2026년). Do not use 2024 or 2025.
 
       ${benchmarkingText ? `
-      **BENCHMARKING & MIMICRY MODE ACTIVATED**:
-      I have provided "BENCHMARKING TEXT". You MUST treat this text as a "Golden Template".
+      **BENCHMARKING & ADAPTATION MODE ACTIVATED**:
+      I have provided "BENCHMARKING TEXT". This text is a reference that the user wants to copy.
+      You MUST modify and adapt this benchmarking text to perfectly fit the selected Blog Category (${blogCategory || 'General'}), Topic (${topic}), Brand/Store Name (${storeName || 'our brand'}), Product/Service (${salesService || 'our service'}), and USP (${postGoal || 'our USP'}).
       
       **YOUR MISSION**:
-      1. **Analyze the DNA**: Absorb the benchmark's **tone** (e.g., emotional, cynical, excited), **sentence length rhythm**, and **narrative structure**.
-      2. **Clone the Logic, Change the Content**: 
-         - If the benchmark tells a story about a "Coffee Shop failure", you must tell a similar story about a "${topic} failure".
-         - If the benchmark lists "3 reasons to buy X", you must list "3 reasons to buy ${salesService || 'this service'}" using the same persuasive logic.
+      1. **Analyze the DNA**: Absorb the benchmark's **tone**, **sentence length rhythm**, and **narrative structure**.
+      2. **Adapt & Rewrite**: Use the benchmark as a reference, but rewrite the content to focus entirely on our Topic, Brand, Service, and USP.
       3. **Brand Adaptation**: Replace the benchmark's brand/service with "${storeName || 'our brand'}" and "${salesService || 'our service'}". The hero of this story is now "${storeName}".
       4. **Simulated Document Avoidance**: You must write a completely new article to avoid "Similar Document" penalties by search engines. 
          - **Structure Mimicry**: Copy the *flow* and *logic*, but NOT the *phrasing*.
          - **Sentence Transformation**: Invert sentence structures, use different vocabulary, and change the tone slightly if needed.
-         - **Entity Swapping**: Ensure the old brand/service is completely removed and replaced with the new one.
       ` : ""}
 
       ${blogCategory === '맛집 리뷰' ? `
@@ -535,8 +613,13 @@ export const generateFullPostStream = async (
       Make sure these points are naturally integrated into the blog post flow.
       
       ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and write the review based entirely on this real data. Do not invent menu items or hours; use the actual data.` : ""}
-      ` : ""}
+      ` : `
+      **CRITICAL RESTRICTION**:
+      Since the category is NOT "맛집 리뷰" (Restaurant Review), you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated post. Do not write about locations or website links.
+      `}
       ${naverDataText}
+
+      ${blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST write the entire post to perfectly match this specific style and tone. Do not use a generic tone.` : ""}
 
       Outline:
       ${outline}
@@ -555,6 +638,11 @@ export const generateFullPostStream = async (
       3. **Emphasized Keyword (BLUE Text)**: Wrap the keyword in **single asterisks** like this: *EmphasizedKeyword*.
       4. **Emphasized Sentence (BLUE Text on YELLOW Background)**: Wrap the sentence in **backticks** like this: \`This is an emphasized sentence.\`
       5. **Subheadings**: Subheadings MUST be formatted as plain Bold text (e.g., **Subheading**). DO NOT use H1 (#), H2 (##), H3 (###), or Blockquotes (>). DO NOT apply any colors to subheadings; they must remain default black.
+      6. **Introductory Q&A Table**: The Q&A section in the very first part of the body text (Introduction) MUST be formatted as a Markdown table with exactly one data row (하나의 행의 표).
+         Example:
+         | 핵심 질문 (Q) | 명쾌한 답변 (A) |
+         |---|---|
+         | [질문 내용] | [답변 내용] |
 
       **READABILITY (Spacing - CRITICAL)**: 
       - **Paragraph Structure**: **STRICTLY** end a paragraph after **every 2 sentences**.
@@ -723,16 +811,16 @@ export const generateBlogImage = async (
   prompt: string, 
   aspectRatio: string = "16:9",
   referenceImages: { data: string, mimeType: string }[] = [],
-  faceImagePart?: { data: string, mimeType: string }
+  faceImageParts: { data: string, mimeType: string }[] = []
 ): Promise<string | null> => {
   const ai = getClient();
   try {
     const parts: Part[] = [];
 
     // 1. Handle Person Consistency FIRST (Critical Priority)
-    if (faceImagePart) {
-      parts.push({ inlineData: faceImagePart });
-      parts.push({ text: "REFERENCE ID: PERSON_IMAGE. The image above is the Reference Person. You must generate an image where this exact person is included without any distortion or modification. \n\n**CRITICAL REQUIREMENT**:\n1. **Zero Distortion**: The person must be 100% identical to the reference. Do not deform, caricature, or alter the person in any way. \n2. **Integration**: Incorporate the person naturally into the scene while keeping their appearance completely unmodified." });
+    if (faceImageParts && faceImageParts.length > 0) {
+      faceImageParts.forEach(img => parts.push({ inlineData: img }));
+      parts.push({ text: "REFERENCE ID: PERSON_IMAGE. The image(s) above are the Reference Person(s). You must generate an image where these exact people are included without any distortion or modification. \n\n**CRITICAL REQUIREMENT**:\n1. **Zero Distortion**: The person(s) must be 100% identical to the reference. Do not deform, caricature, or alter the person in any way. \n2. **Integration**: Incorporate the person(s) naturally into the scene while keeping their appearance completely unmodified." });
     }
     
     // 2. Handle other reference images (Logo, Context)
