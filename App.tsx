@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import { ContentWriter } from './components/ContentWriter';
+import Manual from './components/Manual';
 import ApiKeyModal from './components/ApiKeyModal';
 import { ViewState } from './types';
 
@@ -14,6 +15,8 @@ const App: React.FC = () => {
         return <Dashboard onChangeView={setCurrentView} />;
       case 'studio':
         return <ContentWriter />;
+      case 'manual':
+        return <Manual />;
       default:
         return <Dashboard onChangeView={setCurrentView} />;
     }
@@ -48,6 +51,12 @@ const App: React.FC = () => {
                  className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'studio' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
               >
                 블로그 올인원
+              </button>
+              <button 
+                 onClick={() => setCurrentView('manual')}
+                 className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'manual' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+              >
+                매뉴얼
               </button>
               <button 
                 onClick={() => setIsApiKeyModalOpen(true)}
