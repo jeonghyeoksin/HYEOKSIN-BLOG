@@ -4,7 +4,7 @@ const Manual: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto bg-slate-900 rounded-2xl border border-slate-800 p-8 shadow-xl animate-fade-in">
       <h1 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
-        <span>📖</span> 혁신 블로그 AI 사용 매뉴얼
+        <span>📖</span> 혁신 블로그 AI 사용방법
       </h1>
       
       <div className="space-y-8 text-slate-300">

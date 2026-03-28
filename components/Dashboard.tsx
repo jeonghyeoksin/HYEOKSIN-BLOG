@@ -28,13 +28,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onChangeView }) => {
         <div className="absolute bottom-0 left-0 p-10 md:p-16 w-full flex flex-col md:flex-row md:items-end justify-between gap-8 z-10">
            <div>
              <span className="inline-block py-1 px-3 rounded-full bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-md text-emerald-300 text-xs font-bold uppercase tracking-widest mb-4">
-               2026 Future Edition
+               Hyeoksin Blog AI
              </span>
              <h2 className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-2xl mb-4 tracking-tight">
                혁신 블로그 AI
              </h2>
              <p className="text-emerald-50 text-lg md:text-2xl font-light max-w-2xl drop-shadow-lg">
-               인공지능의 힘으로 당신만의 독창적이고 전문적인 블로그 포스팅을 완성하세요.
+               혁신 블로그 AI로 여러분의 독창적이고 전문적인 블로그 포스팅을 자동화하세요!
              </p>
            </div>
            <div className="flex-shrink-0">
@@ -55,9 +55,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onChangeView }) => {
           <div className="w-14 h-14 rounded-2xl bg-indigo-900/50 text-indigo-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-indigo-500/20">
              <span className="text-2xl">🚀</span>
           </div>
-          <h3 className="text-xl font-bold text-slate-100 mb-3">2026 트렌드 반영</h3>
+          <h3 className="text-xl font-bold text-slate-100 mb-3">최신 트렌드 반영</h3>
           <p className="text-slate-400 leading-relaxed">
-            단순한 글쓰기가 아닙니다. 2026년의 시점에서 바라본 미래지향적인 인사이트를 담아 독자들을 사로잡으세요.
+            단순한 글쓰기가 아닙니다. 최신 시점에서 바라본 미래지향적인 인사이트를 담아 독자들을 사로잡으세요.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onChangeView }) => {
           </div>
           <h3 className="text-xl font-bold text-slate-100 mb-3">자동화된 비주얼</h3>
           <p className="text-slate-400 leading-relaxed">
-            Nanobanana 3.0 엔진이 글의 맥락을 이해하고, 가장 적합한 1:1 썸네일과 인포그래픽을 즉시 생성합니다.
+            최신 AI 이미지 모델이 글의 맥락을 이해하고, 가장 적합한 1:1 썸네일과 인포그래픽을 즉시 생성합니다.
           </p>
         </div>
 

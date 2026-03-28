@@ -418,7 +418,7 @@ export const generateOutline = async (
       6. **Structure**: ${blogCategory === '맛집 리뷰' ? "Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the `>` symbol (e.g., `> ## Subheading`)." : "Use at least 3 subheadings (H2, H3) to organize the content clearly."}
       7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
-      9. **Year Reference**: If you mention the current year or any recent year, strictly use '2026' (e.g., 2026년). Do not use 2024 or 2025.
+      9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
 
       ${benchmarkingText ? `
       **BENCHMARKING MASTER INSTRUCTION**: 
@@ -575,7 +575,7 @@ export const generateFullPostStream = async (
       6. **Structure**: ${blogCategory === '맛집 리뷰' ? "Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the `>` symbol (e.g., `> ## Subheading`)." : "Use at least 3 subheadings (H2, H3) to organize the content clearly."}
       7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
-      9. **Year Reference**: If you mention the current year or any recent year, strictly use '2026' (e.g., 2026년). Do not use 2024 or 2025.
+      9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
 
       ${benchmarkingText ? `
       **BENCHMARKING & ADAPTATION MODE ACTIVATED**:
@@ -789,7 +789,7 @@ export const generateThumbnailPrompt = async (keyword: string, content: string):
     **TEXT REQUIREMENTS**:
     - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**. This includes small labels or decorative text.
     - **Content**: The keyword "${keyword}" MUST be the main focus.
-    - **Subtitle**: Add a short, intriguing subtitle below the keyword (e.g., "Must Read", "2026 Trend"). **Total text must be at least 2 lines.**
+    - **Subtitle**: Add a short, intriguing subtitle below the keyword (e.g., "Must Read", "최신 트렌드"). **Total text must be at least 2 lines.**
     - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. If the text is too long or complex, **SUMMARIZE/SHORTEN** it to ensure perfect rendering.
     - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
     - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
