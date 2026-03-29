@@ -112,8 +112,8 @@ export const generateBlogIdeas = async (niche: string): Promise<string> => {
 
 export const generateUSP = async (
   topic: string,
-  storeName: string,
-  salesService: string,
+  storeName?: string,
+  salesService?: string,
   blogCategory?: string,
   blogPlatform?: string
 ): Promise<string> => {
@@ -127,8 +127,8 @@ export const generateUSP = async (
       - Blog Topic: "${topic}"
       ${blogCategory ? `- Blog Category: "${blogCategory}"` : ""}
       ${blogPlatform ? `- Blog Platform: "${blogPlatform}"` : ""}
-      - Brand/Store Name: "${storeName}"
-      - Sales Service/Product: "${salesService}"
+      ${storeName ? `- Brand/Store Name: "${storeName}"` : ""}
+      ${salesService ? `- Sales Service/Product: "${salesService}"` : ""}
 
       **Task**:
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
@@ -137,7 +137,7 @@ export const generateUSP = async (
 
       **Output Requirements**:
       - Identify the core pain point of the target audience related to the topic.
-      - Explain how this specific brand/service solves it better than others.
+      ${storeName || salesService ? '- Explain how this specific brand/service solves it better than others.' : '- If brand/service information is missing, focus on the core value of the topic and the reader\'s needs.'}
       - Formulate a specific "Goal of the Post" that acts as a strategic guideline for the writer.
       - **Format**: Just return the strategic paragraph (approx 3-4 lines) that describes the selling point and the goal. Do not use bullet points.
       - **Language**: Korean.
@@ -707,11 +707,12 @@ export interface ImagePromptRequest {
 }
 
 export const generateImagePromptsForPost = async (content: string, hasFaceReference: boolean = false, numberOfImages: number = 4, hasReferenceImages: boolean = false): Promise<ImagePromptRequest[]> => {
-  const ai = getClient();
-  const isAuto = numberOfImages === 0;
+  try {
+    const ai = getClient();
+    const isAuto = numberOfImages === 0;
 
-  const prompt = `
-    Analyze the blog post content to ${isAuto ? "extract a variable number of (between 4 and 8)" : `extract ${numberOfImages}`} key visual concepts.
+    const prompt = `
+      Analyze the blog post content to ${isAuto ? "extract a variable number of (between 4 and 8)" : `extract ${numberOfImages}`} key visual concepts.
     Create ${isAuto ? "a set of" : numberOfImages} high-quality image generation prompts according to the following structure.
     
     ${hasFaceReference ? "**IMPORTANT**: The user has provided a specific PERSON REFERENCE photo. Therefore, EVERY image prompt (or at least the majority) MUST explicitly describe a 'main character' or 'person' (who matches the reference) acting as the presenter or experiencing the scenario. The person MUST be included without any distortion or modification." : ""}
@@ -770,41 +771,48 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
     }
   });
 
-  try {
-     return JSON.parse(response.text || "[]");
-  } catch (e) {
+    try {
+      return JSON.parse(response.text || "[]");
+    } catch (e) {
       return [];
+    }
+  } catch (error: any) {
+    throw new Error(handleApiError(error, "이미지 프롬프트 생성 실패"));
   }
 };
 
 export const generateThumbnailPrompt = async (keyword: string, content: string): Promise<string> => {
-  const ai = getClient();
-  const prompt = `
-    Create a prompt for a **World-Class Blog Thumbnail** (1:1 ratio).
+  try {
+    const ai = getClient();
+    const prompt = `
+      Create a prompt for a **World-Class Blog Thumbnail** (1:1 ratio).
+      
+      **DESIGN VISION**:
+      - **Vibe**: "Viral YouTube Thumbnail", "Netflix Poster", "High-End Brand Identity".
+      - **Composition**: Central focus, dynamic background, depth of field.
+      
+      **TEXT REQUIREMENTS**:
+      - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**. This includes small labels or decorative text.
+      - **Content**: The keyword "${keyword}" MUST be the main focus.
+      - **Subtitle**: Add a short, intriguing subtitle below the keyword (e.g., "Must Read", "최신 트렌드"). **Total text must be at least 2 lines.**
+      - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. If the text is too long or complex, **SUMMARIZE/SHORTEN** it to ensure perfect rendering.
+      - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
+      - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
+      
+      The output prompt must be in English.
+      Example: "A cinematic 3D render of [Subject]. Center stage: The text '${keyword}' in massive, glowing gold Korean characters. Below it, a smaller white text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles. 8k resolution."
+      
+      Content context: ${content.substring(0, 800)}...
+    `;
     
-    **DESIGN VISION**:
-    - **Vibe**: "Viral YouTube Thumbnail", "Netflix Poster", "High-End Brand Identity".
-    - **Composition**: Central focus, dynamic background, depth of field.
-    
-    **TEXT REQUIREMENTS**:
-    - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**. This includes small labels or decorative text.
-    - **Content**: The keyword "${keyword}" MUST be the main focus.
-    - **Subtitle**: Add a short, intriguing subtitle below the keyword (e.g., "Must Read", "최신 트렌드"). **Total text must be at least 2 lines.**
-    - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. If the text is too long or complex, **SUMMARIZE/SHORTEN** it to ensure perfect rendering.
-    - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
-    - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
-    
-    The output prompt must be in English.
-    Example: "A cinematic 3D render of [Subject]. Center stage: The text '${keyword}' in massive, glowing gold Korean characters. Below it, a smaller white text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles. 8k resolution."
-    
-    Content context: ${content.substring(0, 800)}...
-  `;
-  
-  const response = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: prompt,
-  });
-  return response.text || `A creative 3D typography design of the word "${keyword}" in Korean, surrounded by elements matching the blog topic. No English text.`;
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL,
+      contents: prompt,
+    });
+    return response.text || `A creative 3D typography design of the word "${keyword}" in Korean, surrounded by elements matching the blog topic. No English text.`;
+  } catch (error: any) {
+    throw new Error(handleApiError(error, "썸네일 프롬프트 생성 실패"));
+  }
 };
 
 export const generateBlogImage = async (

@@ -146,6 +146,14 @@ export const ContentWriter: React.FC = () => {
     setSelectedKeyword(keyword);
 
     try {
+        // --- Step 0: API Key Check ---
+        const hasKey = await checkAndRequireApiKey();
+        if (!hasKey) {
+            alert("작업을 위해 API 키 선택이 필요합니다. 자동화를 중단합니다.");
+            setIsAutoRunning(false);
+            return;
+        }
+
         // --- Step 1: Script ---
         setCurrentStep('script');
         
@@ -197,13 +205,6 @@ export const ContentWriter: React.FC = () => {
 
         setCurrentStep('images');
         
-        const hasKey = await checkAndRequireApiKey();
-        if (!hasKey) {
-            alert("이미지 생성을 위해 API 키 선택이 필요합니다. 자동화를 중단합니다.");
-            setIsAutoRunning(false);
-            return;
-        }
-
         const faceParts = await getFaceRefs();
         const refParts = await getImageRefs();
 
@@ -250,7 +251,8 @@ export const ContentWriter: React.FC = () => {
 
     } catch (e) {
         console.error("Automation Error", e);
-        alert("작업 중 오류가 발생했습니다.");
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        alert(`작업 중 오류가 발생했습니다: ${errorMessage}`);
     } finally {
         setIsAutoRunning(false);
     }
@@ -258,17 +260,13 @@ export const ContentWriter: React.FC = () => {
 
   // --- Handlers ---
   const handleGenerateUSP = async () => {
-      if (!blogPlatform || !blogCategory) {
-          alert('블로그 플랫폼과 블로그 분류를 먼저 선택해주세요.');
-          return;
-      }
-      if (!topic || !storeName || !salesService) {
-          alert('주제, 상호명, 판매 서비스를 모두 입력해주세요.');
+      if (!topic) {
+          alert('블로그 주제를 입력해주세요.');
           return;
       }
       setIsGeneratingUSP(true);
       try {
-          const usp = await generateUSP(topic, storeName, salesService, blogCategory, blogPlatform);
+          const usp = await generateUSP(topic, storeName || undefined, salesService || undefined, blogCategory || undefined, blogPlatform || undefined);
           setPostGoal(usp);
       } catch (e) {
           console.error(e);
