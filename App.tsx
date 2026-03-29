@@ -122,7 +122,7 @@ const App: React.FC = () => {
          {apiKeyStatus === 'unset' && (
            <div className="bg-rose-600 text-white py-2 px-4 flex items-center justify-center gap-3 animate-pulse sticky top-0 z-40 shadow-lg shadow-rose-900/20">
              <span className="text-lg">⚠️</span>
-             <span className="text-sm font-bold">API Key가 설정되지 않아 AI 기능을 사용할 수 없습니다. 상단 'API Key 설정' 버튼을 클릭해 주세요.</span>
+             <span className="text-sm font-bold">API 미적용시 혁신 블로그AI를 사용할 수 없습니다. API키를 등록해주세요.</span>
              <button 
                onClick={() => setIsApiKeyModalOpen(true)}
                className="ml-4 bg-white text-rose-600 px-3 py-1 rounded-lg text-xs font-black hover:bg-slate-100 transition-colors"
@@ -162,6 +162,13 @@ const App: React.FC = () => {
         >
           <span>🛠️</span> 오류/유지보수 문의
         </button>
+      </div>
+
+      {/* Developer Credit */}
+      <div className="fixed bottom-6 left-6 z-40">
+        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 px-4 py-2 rounded-full text-slate-400 text-xs font-medium">
+          개발자 : 정혁신
+        </div>
       </div>
 
       {/* Inquiry Modal */}

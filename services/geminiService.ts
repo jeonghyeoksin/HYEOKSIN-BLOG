@@ -412,10 +412,10 @@ export const generateOutline = async (
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
       2. **Experience-Based Content**: Structure the outline to reflect a first-hand, authentic experience with honest opinions. Avoid sounding like a generic AI.
-      3. **Intro Strategy**: ${blogCategory === '맛집 리뷰' ? "Start with a natural, authentic, experiential tone from a visitor's perspective. DO NOT use a Q&A format for the introduction." : "Start the introduction with a Q&A structure that provides the conclusion first. Plan to use specific numbers, dates, and clear sources to build absolute trust."}
+      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory === '맛집 리뷰' ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust."}
       4. **Curiosity Resolution**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: ${blogCategory === '맛집 리뷰' ? "You MUST write with center-aligned formatting in mind. **CRITICAL**: Each line MUST NOT exceed 15 characters (Korean). You MUST insert a hard line break (Enter) after every 15 characters or less. Furthermore, you MUST group exactly 2 lines together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute." : "Plan for extremely short paragraphs (max 3 sentences)."}
-      6. **Structure**: ${blogCategory === '맛집 리뷰' ? "Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the `>` symbol (e.g., `> ## Subheading`)." : "Use at least 3 subheadings (H2, H3) to organize the content clearly."}
+      5. **Readability & Formatting**: **CRITICAL**: You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.
+      6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
@@ -458,16 +458,16 @@ export const generateOutline = async (
       ${blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST structure the outline and write the content to perfectly match this specific style and tone. Do not use a generic tone.` : ""}
 
       Structure Guidelines:
-      1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}". **CRITICAL**: The introduction MUST include a Q&A section that will be formatted as a single-row table in the final post.
+      1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}". **CRITICAL**: The introduction MUST be highly SEO-optimized with a topic-based hook that captures the reader's interest.
       2. **Body (H2/H3)**: Structured logic to persuade or inform the reader. 
          - **IMPORTANT**: Designate one section to be presented as a **Table/Chart** (e.g., Feature comparison, Price list, Pros/Cons, Specs).
-      3. **Conclusion**: MUST be conversion-focused. Summarize and lead the reader to the specific goal ("${postGoal || 'Action'}").
+      3. **Conclusion**: MUST be conversion-focused. Summarize and lead the reader to the specific goal ("${postGoal || 'Action'}"). **CRITICAL**: Do NOT include the word "결론" (Conclusion) as a heading or text. Start the conclusion naturally.
       
       Output Format:
       1. Introduction (Hook, Problem, Solution)
-      2. Key Headings (Format as plain Bold text: **Heading**)
-      3. Sub-points (Format as plain Bold text: **Sub-point**)
-      4. Conclusion (Summary, Persuasive Call to Action)
+      2. Key Headings (Format as blockquotes: > ## Heading)
+      3. Sub-points (Format as blockquotes: > ### Sub-point)
+      4. Conclusion (Summary, Persuasive Call to Action - NO "Conclusion" label)
       
       Add notes on which keywords to target in each section.
       Korean language only.
@@ -569,10 +569,10 @@ export const generateFullPostStream = async (
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
       2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI.
-      3. **Intro Strategy**: ${blogCategory === '맛집 리뷰' ? "Start with a natural, authentic, experiential tone from a visitor's perspective. DO NOT use a Q&A format for the introduction." : "Start the introduction with a Q&A structure that provides the conclusion first. Use specific numbers, dates, and clear sources to build absolute trust and increase the chance of being cited by AI."}
+      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory === '맛집 리뷰' ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI."}
       4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: ${blogCategory === '맛집 리뷰' ? "You MUST write with center-aligned formatting in mind. **CRITICAL**: Each line MUST NOT exceed 15 characters (Korean). You MUST insert a hard line break (Enter) after every 15 characters or less. Furthermore, you MUST group exactly 2 lines together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute." : "Keep paragraphs extremely short—maximum 3 sentences per paragraph."}
-      6. **Structure**: ${blogCategory === '맛집 리뷰' ? "Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the `>` symbol (e.g., `> ## Subheading`)." : "Use at least 3 subheadings (H2, H3) to organize the content clearly."}
+      5. **Readability & Formatting**: **CRITICAL**: You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.
+      6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
@@ -637,22 +637,18 @@ export const generateFullPostStream = async (
       2. **Important Sentence (RED Text on YELLOW Background)**: Wrap the sentence in **triple asterisks** like this: ***This is a critical sentence.***
       3. **Emphasized Keyword (BLUE Text)**: Wrap the keyword in **single asterisks** like this: *EmphasizedKeyword*.
       4. **Emphasized Sentence (BLUE Text on YELLOW Background)**: Wrap the sentence in **backticks** like this: \`This is an emphasized sentence.\`
-      5. **Subheadings**: Subheadings MUST be formatted as plain Bold text (e.g., **Subheading**). DO NOT use H1 (#), H2 (##), H3 (###), or Blockquotes (>). DO NOT apply any colors to subheadings; they must remain default black.
-      6. **Introductory Q&A Table**: The Q&A section in the very first part of the body text (Introduction) MUST be formatted as a Markdown table with exactly one data row (하나의 행의 표).
-         Example:
-         | 핵심 질문 (Q) | 명쾌한 답변 (A) |
-         |---|---|
-         | [질문 내용] | [답변 내용] |
+      5. **Subheadings**: Subheadings MUST be formatted as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`). DO NOT apply any colors to subheadings; they must remain default black.
 
       **READABILITY (Spacing - CRITICAL)**: 
       - **Paragraph Structure**: **STRICTLY** end a paragraph after **every 2 sentences**.
-      - **Spacing**: Insert a double line break (\\n\\n) after every 2 sentences to create whitespace. Do NOT use single line spacing for the body text.
+      - **Spacing**: Insert a double line break (\\n\\n) after every 2 sentences to create whitespace. This is essential for readability and ensures that when the content is copied, it maintains a clear structure with a blank line between every 두 sentences.
       - **NO IMAGE DESCRIPTIONS**: Do NOT write text describing the reference images (e.g. "Image 1 shows..."). The text should focus solely on the topic information.
       - **NO KEYWORD LISTS**: Do NOT output a list of "Target Keywords" or "Keywords". The keywords must be naturally integrated into the flow of the text. Do NOT print the outline notes about keywords.
       
       - **DO NOT** write the Main Title (H1) at the start.
       - Korean language only.
       - **Terminology**: Use '여러분' (Everyone) instead of '당신' (You).
+      - **Conclusion Formatting**: Do NOT include the word "결론" (Conclusion) as a heading or text in the final section. Start the conclusion naturally without a "Conclusion" label.
     `;
 
     const parts: Part[] = [{ text: prompt }];

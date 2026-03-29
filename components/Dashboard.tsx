@@ -34,7 +34,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onChangeView }) => {
                혁신 블로그 AI
              </h2>
              <p className="text-emerald-50 text-lg md:text-2xl font-light max-w-2xl drop-shadow-lg">
-               혁신 블로그 AI로 여러분의 독창적이고 전문적인 블로그 포스팅을 자동화하세요!
+               혁신 블로그 AI로 SEO와 AI 최적화된 혁신적인 수익화 포스팅을 자동화하세요!
              </p>
            </div>
            <div className="flex-shrink-0">

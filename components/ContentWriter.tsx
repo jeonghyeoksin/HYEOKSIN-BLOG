@@ -43,6 +43,7 @@ export const ContentWriter: React.FC = () => {
   const [logoFiles, setLogoFiles] = useState<File[]>([]);
   const [faceImageFiles, setFaceImageFiles] = useState<File[]>([]);
   const [contextImageFiles, setContextImageFiles] = useState<File[]>([]); // General references
+  const [launderedImageFiles, setLaunderedImageFiles] = useState<File[]>([]); // Laundered images
   const [skipImageGeneration, setSkipImageGeneration] = useState<boolean>(false); // Skip image generation
 
   // --- State: Process ---
@@ -58,6 +59,7 @@ export const ContentWriter: React.FC = () => {
   const [outline, setOutline] = useState('');
   const [content, setContent] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [launderedImages, setLaunderedImages] = useState<string[]>([]);
   const [thumbnailPrompt, setThumbnailPrompt] = useState('');
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null); // null for none, -1 for thumbnail, 0+ for generatedImages
@@ -131,6 +133,40 @@ export const ContentWriter: React.FC = () => {
       return refs;
   };
 
+  const launderImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Failed to get canvas context'));
+                    return;
+                }
+                ctx.drawImage(img, 0, 0);
+                
+                // Image Laundering: Slightly modify pixel data to change file hash
+                // without changing visual appearance.
+                const imageData = ctx.getImageData(0, 0, 1, 1);
+                // Change the first pixel's red value by 1 (imperceptible)
+                imageData.data[0] = imageData.data[0] > 128 ? imageData.data[0] - 1 : imageData.data[0] + 1;
+                ctx.putImageData(imageData, 0, 0);
+                
+                // Export as high quality PNG to preserve visual fidelity
+                resolve(canvas.toDataURL('image/png', 1.0));
+            };
+            img.onerror = reject;
+            img.src = e.target?.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  };
+
   // --- Automatic Workflow ---
   const runAutomationSequence = async (keyword: string) => {
     if (!keyword) return;
@@ -193,6 +229,12 @@ export const ContentWriter: React.FC = () => {
         );
 
         // --- Step 2: Images ---
+        const processedLaundered = [];
+        for (const file of launderedImageFiles) {
+            processedLaundered.push(await launderImage(file));
+        }
+        setLaunderedImages(processedLaundered);
+
         if (skipImageGeneration) {
             // Skip AI image generation
             setGeneratedImages([]);
@@ -365,19 +407,21 @@ export const ContentWriter: React.FC = () => {
     let styledHtml = htmlContent
         // Table Styles
         .replace(/<table>/g, '<table style="border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin: 20px 0;">')
-        .replace(/<th>/g, '<th style="border: 1px solid #cbd5e1; padding: 12px; background-color: #f1f5f9; font-weight: bold; text-align: left; color: #0f172a;">')
+        .replace(/<th>/g, '<th style="border: 1px solid #cbd5e1; padding: 12px; background-color: #bfdbfe; font-weight: bold; text-align: left; color: #0f172a;">')
         .replace(/<td>/g, '<td style="border: 1px solid #cbd5e1; padding: 12px; color: #1f2937;">')
         // Blockquote (Citation) Styles - Blue bar on left, light blue background
         .replace(/<blockquote>/g, '<blockquote style="border-left: 8px solid #2563eb; background-color: #eff6ff; padding: 20px; margin: 30px 0; border-top-right-radius: 12px; border-bottom-right-radius: 12px; color: #1e40af; font-weight: 800; font-size: 1.2em; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.05);">')
         // Paragraph Styles: Force explicit margin/spacing for "double line break" visual effect
-        .replace(/<p>/g, `<p style="margin-bottom: 24px; line-height: 1.8;${blogCategory === '맛집 리뷰' ? ' color: #000000;' : ''}">`);
+        .replace(/<p>/g, `<p style="margin-bottom: 32px; line-height: 1.8;${blogCategory === '맛집 리뷰' ? ' color: #000000;' : ''}">`)
+        // Ensure a physical blank line is preserved in rich text editors by adding an empty paragraph
+        .replace(/<\/p>/g, '</p><p><br></p>');
 
     if (blogCategory === '맛집 리뷰') {
         styledHtml = `<div style="text-align: center; word-break: keep-all; color: #000000;">${styledHtml}</div>`;
     }
 
     const blob = new Blob([styledHtml], { type: 'text/html' });
-    const textBlob = new Blob([styledHtml], { type: 'text/plain' });
+    const textBlob = new Blob([content], { type: 'text/plain' });
     
     try {
         await navigator.clipboard.write([
@@ -386,7 +430,7 @@ export const ContentWriter: React.FC = () => {
                 'text/plain': textBlob 
             })
         ]);
-        alert('본문이 HTML 형식(인용구/표/문단간격 포함)으로 복사되었습니다.\n블로그 에디터에 붙여넣으세요.');
+        alert('본문이 복사되었습니다.\n블로그 에디터에 붙여넣으세요.');
     } catch (err) {
         console.error('Clipboard write failed', err);
         alert('복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
@@ -401,6 +445,9 @@ export const ContentWriter: React.FC = () => {
       if (thumbnail) imagesToDownload.push({ url: thumbnail, name: 'thumbnail.png' });
       generatedImages.forEach((img, idx) => {
           if (img.url) imagesToDownload.push({ url: img.url, name: `image_${idx + 1}.png` });
+      });
+      launderedImages.forEach((url, idx) => {
+          imagesToDownload.push({ url, name: `laundered_${idx + 1}.png` });
       });
 
       if (imagesToDownload.length === 0) {
@@ -772,8 +819,25 @@ export const ContentWriter: React.FC = () => {
                                  />
                                  {contextImageFiles.length > 0 && <p className="text-[10px] text-slate-300">{contextImageFiles.length}장 선택됨</p>}
                              </div>
+                             {/* Laundered */}
+                             <div className="space-y-2">
+                                 <label className="text-xs font-bold text-amber-400 block">🧼 세탁 이미지 (제한 없음)</label>
+                                 <input 
+                                    type="file" 
+                                    multiple
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            setLaunderedImageFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                                        }
+                                    }}
+                                    className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-amber-900/30 file:text-amber-300 hover:file:bg-amber-900"
+                                 />
+                                 <p className="text-[9px] text-slate-500 leading-tight">첨부한 이미지의 값을 변경하여 그대로 다시 출력합니다. 이미지 변형은 절대 하지 않습니다.</p>
+                                 {launderedImageFiles.length > 0 && <p className="text-[10px] text-amber-300 truncate">{launderedImageFiles.length}장 선택됨</p>}
+                             </div>
                              {/* Skip Image Generation */}
-                             <div className="space-y-2 flex flex-col mt-4">
+                             <div className="space-y-4 flex flex-col mt-4">
                                  <div className="flex items-center gap-2">
                                      <input 
                                         type="checkbox" 
@@ -786,6 +850,35 @@ export const ContentWriter: React.FC = () => {
                                          이미지 생성하지 않음
                                      </label>
                                  </div>
+                                 {!skipImageGeneration && (
+                                     <div className="space-y-2">
+                                         <label className="text-xs font-bold text-slate-300 block">🖼️ 이미지 생성 개수</label>
+                                         <div className="flex flex-wrap gap-2">
+                                             {[
+                                                 { label: 'AI추천', value: 0 },
+                                                 { label: '3개', value: 3 },
+                                                 { label: '5개', value: 5 },
+                                                 { label: '10개', value: 10 },
+                                                 { label: '15개', value: 15 }
+                                             ].map((opt) => (
+                                                 <button
+                                                     key={opt.value}
+                                                     onClick={() => {
+                                                         setIsAutoImageCount(opt.value === 0);
+                                                         setImageCount(opt.value);
+                                                     }}
+                                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                         (isAutoImageCount && opt.value === 0) || (!isAutoImageCount && imageCount === opt.value)
+                                                             ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 border-indigo-500'
+                                                             : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                                                     }`}
+                                                 >
+                                                     {opt.label}
+                                                 </button>
+                                             ))}
+                                         </div>
+                                     </div>
+                                 )}
                                  <p className="text-[10px] text-slate-500 ml-6">체크 시 이미지와 썸네일을 생성하지 않습니다.</p>
                              </div>
                         </div>
@@ -980,7 +1073,7 @@ export const ContentWriter: React.FC = () => {
                                     onClick={handleCopyHtml}
                                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors border border-slate-700"
                                 >
-                                    📋 HTML 복사 (표/인용구 포함)
+                                    📋 본문 복사 (표/인용구 포함)
                                 </button>
                                 <button 
                                     onClick={downloadAllImagesAsPng}
@@ -1062,6 +1155,25 @@ export const ContentWriter: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Laundered Images Gallery (New) */}
+                        {launderedImages.length > 0 && (
+                            <div className="space-y-3">
+                                <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                                    <span>🧼</span> 세탁 완료 이미지 ({launderedImages.length}장)
+                                </h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                    {launderedImages.map((url, idx) => (
+                                        <div key={idx} className="aspect-square rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group">
+                                            <img src={url} className="w-full h-full object-cover" alt={`Laundered ${idx}`} />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <a href={url} download={`laundered_${idx+1}.png`} className="bg-white text-black px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors">다운로드</a>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Main Content */}
                         <div className="space-y-6">
