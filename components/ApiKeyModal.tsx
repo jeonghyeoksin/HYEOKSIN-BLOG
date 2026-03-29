@@ -4,9 +4,10 @@ import { testConnection } from '../services/geminiService';
 interface ApiKeyModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onKeyChange?: () => void;
 }
 
-const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
+const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKeyChange }) => {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [hasKey, setHasKey] = useState(false);
@@ -34,6 +35,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => {
       localStorage.setItem('gemini_api_key', manualKey.trim());
       setHasKey(true);
       setTestResult({ success: true, message: "API 키가 브라우저에 성공적으로 저장되었습니다!" });
+      if (onKeyChange) onKeyChange();
     } else {
       localStorage.removeItem('gemini_api_key');
       setHasKey(false);

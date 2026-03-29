@@ -4,11 +4,38 @@ import { ContentWriter } from './components/ContentWriter';
 import Manual from './components/Manual';
 import ApiKeyModal from './components/ApiKeyModal';
 import { ViewState } from './types';
+import { useEffect } from 'react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState<'unset' | 'set'>('unset');
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+
+  const checkApiKey = () => {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    const newStatus = savedKey ? 'set' : 'unset';
+    
+    if (apiKeyStatus === 'unset' && newStatus === 'set') {
+      setShowSuccessBanner(true);
+      setTimeout(() => setShowSuccessBanner(false), 3000);
+    }
+    
+    setApiKeyStatus(newStatus);
+  };
+
+  useEffect(() => {
+    checkApiKey();
+    // Listen for storage changes (in case of multiple tabs, though unlikely here)
+    window.addEventListener('storage', checkApiKey);
+    return () => window.removeEventListener('storage', checkApiKey);
+  }, []);
+
+  const handleModalClose = () => {
+    setIsApiKeyModalOpen(false);
+    checkApiKey();
+  };
 
   const renderView = () => {
     switch (currentView) {
@@ -40,7 +67,19 @@ const App: React.FC = () => {
             </div>
 
             {/* Nav Items */}
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden md:flex items-center space-x-6">
+              {/* API Status Indicator */}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all duration-500 ${
+                apiKeyStatus === 'set' 
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${apiKeyStatus === 'set' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'}`} />
+                {apiKeyStatus === 'set' ? 'AI 서비스 정상 작동 중' : 'AI 서비스 중단 (API Key 미설정)'}
+              </div>
+
+              <div className="h-4 w-[1px] bg-slate-800 mx-2" />
+
               <button 
                 onClick={() => setCurrentView('dashboard')}
                 className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'dashboard' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
@@ -71,6 +110,28 @@ const App: React.FC = () => {
       </nav>
 
       <main className={`flex-1 relative ${currentView === 'studio' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+         {/* API Key Success Banner */}
+         {showSuccessBanner && (
+           <div className="bg-emerald-600 text-white py-2 px-4 flex items-center justify-center gap-3 sticky top-0 z-40 shadow-lg shadow-emerald-900/20 animate-in slide-in-from-top duration-500">
+             <span className="text-lg">✅</span>
+             <span className="text-sm font-bold">API Key가 정상적으로 적용되었습니다. 이제 모든 AI 기능을 사용할 수 있습니다!</span>
+           </div>
+         )}
+
+         {/* API Key Warning Banner */}
+         {apiKeyStatus === 'unset' && (
+           <div className="bg-rose-600 text-white py-2 px-4 flex items-center justify-center gap-3 animate-pulse sticky top-0 z-40 shadow-lg shadow-rose-900/20">
+             <span className="text-lg">⚠️</span>
+             <span className="text-sm font-bold">API Key가 설정되지 않아 AI 기능을 사용할 수 없습니다. 상단 'API Key 설정' 버튼을 클릭해 주세요.</span>
+             <button 
+               onClick={() => setIsApiKeyModalOpen(true)}
+               className="ml-4 bg-white text-rose-600 px-3 py-1 rounded-lg text-xs font-black hover:bg-slate-100 transition-colors"
+             >
+               지금 설정하기
+             </button>
+           </div>
+         )}
+
          {/* If studio, full bleed. If dashboard, centered container. */}
          {currentView === 'studio' ? (
              renderView()
@@ -83,7 +144,8 @@ const App: React.FC = () => {
 
       <ApiKeyModal 
         isOpen={isApiKeyModalOpen} 
-        onClose={() => setIsApiKeyModalOpen(false)} 
+        onClose={handleModalClose} 
+        onKeyChange={checkApiKey}
       />
 
       {/* Floating Action Buttons */}
