@@ -17,6 +17,40 @@ async function fetchNaverLocalData(query: string): Promise<string | null> {
   }
 }
 
+// --- Helper: withRetry for robust API calls ---
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, initialDelay = 1500): Promise<T> {
+  let lastError: any;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      const errorMessage = error.message || "";
+      // 503 (Overloaded), 429 (Quota), and other transient errors are retryable
+      const isRetryable = 
+        errorMessage.includes("503") || 
+        errorMessage.includes("overloaded") || 
+        errorMessage.includes("수요가 급증") ||
+        errorMessage.includes("429") ||
+        errorMessage.includes("RESOURCE_EXHAUSTED") ||
+        errorMessage.includes("Service Unavailable") ||
+        errorMessage.includes("Deadline Exceeded") ||
+        errorMessage.includes("Internal Server Error") ||
+        errorMessage.includes("500");
+      
+      if (!isRetryable || i === maxRetries - 1) {
+        throw error;
+      }
+      
+      // Exponential backoff with a bit of jitter
+      const delay = initialDelay * Math.pow(2, i) + Math.random() * 500;
+      console.warn(`Gemini API call failed (attempt ${i + 1}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`, error);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
+
 const getClient = () => {
   // 1. 로컬 저장소에서 사용자가 직접 입력한 키가 있는지 먼저 확인합니다.
   const localKey = typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') : null;
@@ -34,10 +68,10 @@ export const testConnection = async (): Promise<{ success: boolean; message: str
   try {
     const ai = getClient();
     // 연결 테스트용으로 더 가볍고 가용성이 높은 flash 모델을 사용합니다.
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: "Connection test. Reply with 'OK'.",
-    });
+    }));
     if (response.text) {
       return { success: true, message: "연결 성공! API 키가 정상적으로 작동합니다." };
     }
@@ -94,7 +128,7 @@ export const generateBlogIdeas = async (niche: string): Promise<string> => {
       Korean language only.
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: TEXT_MODEL,
       contents: prompt,
       config: {
@@ -102,7 +136,7 @@ export const generateBlogIdeas = async (niche: string): Promise<string> => {
         // thinkingLevel is the correct parameter for Gemini 3 series
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       }
-    });
+    }));
 
     return response.text || "아이디어를 생성할 수 없습니다.";
   } catch (error: any) {
@@ -143,14 +177,14 @@ export const generateUSP = async (
       - **Language**: Korean.
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: TEXT_MODEL,
       contents: prompt,
       config: {
         temperature: 0.7,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       }
-    });
+    }));
 
     return response.text || "전략을 도출할 수 없습니다.";
   } catch (error: any) {
@@ -200,7 +234,7 @@ export const suggestRelatedKeywords = async (
         parts.unshift({ inlineData: filePart });
     }
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: TEXT_MODEL,
       contents: { parts },
       config: {
@@ -208,17 +242,17 @@ export const suggestRelatedKeywords = async (
         responseSchema: {
           type: Type.ARRAY,
           items: {
-              type: Type.OBJECT,
-              properties: {
-                  rank: { type: Type.INTEGER },
-                  keyword: { type: Type.STRING },
-                  suitabilityScore: { type: Type.INTEGER },
-                  reason: { type: Type.STRING }
-              }
+            type: Type.OBJECT,
+            properties: {
+              rank: { type: Type.INTEGER },
+              keyword: { type: Type.STRING },
+              suitabilityScore: { type: Type.INTEGER },
+              reason: { type: Type.STRING }
+            }
           }
         }
       }
-    });
+    }));
 
     const text = response.text;
     if (!text) return [];
@@ -268,14 +302,14 @@ export const generateTitle = async (
       Language: Korean.
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: TEXT_MODEL,
       contents: prompt,
       config: {
         temperature: 0.8,
         responseMimeType: "application/json",
       }
-    });
+    }));
     
     const text = response.text?.trim() || "[]";
     try {
@@ -316,7 +350,7 @@ export const extractTextFromUrl = async (url: string): Promise<string> => {
 
     let text = '';
     try {
-        const response = await ai.models.generateContent({
+        const response = await withRetry(() => ai.models.generateContent({
           model: "gemini-3.1-pro-preview",
           contents: `Extract the main article text from this URL: ${targetUrl}. 
           
@@ -326,7 +360,7 @@ export const extractTextFromUrl = async (url: string): Promise<string> => {
           config: {
             tools: [{ urlContext: {} }, { googleSearch: {} }]
           }
-        });
+        }));
         text = response.text || '';
     } catch (e: any) {
         console.warn("Primary extraction failed, trying fallback:", e);
@@ -335,13 +369,13 @@ export const extractTextFromUrl = async (url: string): Promise<string> => {
     if (text.includes("Unable to extract") || text.includes("blocks automated access") || text.trim() === "") {
         // Fallback if the model still outputs the error message or threw an error
         try {
-            const fallbackResponse = await ai.models.generateContent({
+            const fallbackResponse = await withRetry(() => ai.models.generateContent({
                 model: "gemini-3.1-pro-preview",
                 contents: `Search for this exact URL using googleSearch: "${targetUrl}". Read the search results and snippets, and reconstruct the main article text as best as you can. Return ONLY the plain text content.`,
                 config: {
                     tools: [{ googleSearch: {} }]
                 }
-            });
+            }));
             const fallbackText = fallbackResponse.text || '';
             if (fallbackText.includes("Unable to extract") || fallbackText.includes("blocks automated access")) {
                 throw new Error("Blocked");
@@ -504,7 +538,7 @@ export const generateOutline = async (
         parts.push({ text: "This previous file is the EXCLUDED FILE. Its contents are forbidden." });
     }
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: TEXT_MODEL,
       contents: { parts },
       config: {
@@ -512,7 +546,7 @@ export const generateOutline = async (
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         tools: [{ googleSearch: {} }]
       }
-    });
+    }));
 
     return response.text || "개요를 생성할 수 없습니다.";
   } catch (error: any) {
@@ -677,7 +711,7 @@ export const generateFullPostStream = async (
         parts.push({ text: "This file content above is FORBIDDEN. Do not use it." });
     }
 
-    const streamResult = await ai.models.generateContentStream({
+    const streamResult = await withRetry(() => ai.models.generateContentStream({
       model: TEXT_MODEL,
       contents: { parts },
       config: {
@@ -685,7 +719,7 @@ export const generateFullPostStream = async (
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         tools: [{ googleSearch: {} }]
       }
-    });
+    }));
 
     for await (const chunk of streamResult) {
       if (chunk.text) {
@@ -747,7 +781,7 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
     Content snippet: ${content.substring(0, 4000)}...
   `;
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: TEXT_MODEL,
     contents: prompt,
     config: {
@@ -765,7 +799,7 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
         }
       }
     }
-  });
+  }));
 
     try {
       return JSON.parse(response.text || "[]");
@@ -801,10 +835,10 @@ export const generateThumbnailPrompt = async (keyword: string, content: string):
       Content context: ${content.substring(0, 800)}...
     `;
     
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: TEXT_MODEL,
       contents: prompt,
-    });
+    }));
     return response.text || `A creative 3D typography design of the word "${keyword}" in Korean, surrounded by elements matching the blog topic. No English text.`;
   } catch (error: any) {
     throw new Error(handleApiError(error, "썸네일 프롬프트 생성 실패"));
@@ -842,7 +876,7 @@ export const generateBlogImage = async (
     const safePrompt = prompt + " Ensure the image is a professional flat design or 3D isometric style as requested. High-resolution, no distortion. All Korean text must be perfectly spelled, bold sans-serif, and arranged in at least two lines. The text must be visually attractive and integrated into the design. ABSOLUTELY NO KOREAN TEXT CORRUPTION. If text is complex, simplify it. NO ENGLISH TEXT AT ALL. ABSOLUTELY NO placeholder text like '<IMAGE>', 'IMAGE 1', or file names should appear in the image.";
     parts.push({ text: safePrompt });
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: IMAGE_MODEL,
       contents: {
         parts: parts
@@ -853,7 +887,7 @@ export const generateBlogImage = async (
           imageSize: "1K" // gemini-3-pro-image-preview supports this
         }
       }
-    });
+    }));
 
     for (const part of response.candidates[0]?.content?.parts || []) {
         if (part.inlineData) {
