@@ -18,7 +18,7 @@ async function fetchNaverLocalData(query: string): Promise<string | null> {
 }
 
 // --- Helper: withRetry for robust API calls ---
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 5, initialDelay = 2000, timeoutMs = 60000): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 50, initialDelay = 2000, timeoutMs = 60000): Promise<T> {
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -55,8 +55,8 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 5, initialDelay =
         throw error;
       }
       
-      // Exponential backoff with a bit of jitter
-      const delay = initialDelay * Math.pow(2, i) + Math.random() * 1000;
+      // Exponential backoff with a bit of jitter, capped at 5 seconds to prevent extremely long waits
+      const delay = Math.min(initialDelay * Math.pow(1.5, i), 5000) + Math.random() * 1000;
       console.warn(`Gemini API call failed (attempt ${i + 1}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`, error);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -118,9 +118,6 @@ const handleApiError = (error: any, fallbackMessage: string): string => {
   console.error("Gemini API Error:", error);
   if (error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
     return "API 사용량이 일일 할당량을 초과했습니다. 잠시 후 다시 시도하거나 다른 API 키를 사용해 주세요.";
-  }
-  if (error.message?.includes("503") || error.message?.includes("overloaded") || error.message?.includes("수요가 급증")) {
-    return "현재 Google 서버의 일시적인 과부하로 인해 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   }
   if (error.message?.includes("entity was not found") || error.message?.includes("API_KEY_INVALID")) {
     return "API 키가 올바르지 않거나 권한이 없습니다. 상단 'API Key 설정'에서 키를 다시 확인해주세요.";
