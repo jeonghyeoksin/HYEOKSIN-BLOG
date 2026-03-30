@@ -69,6 +69,7 @@ export const ContentWriter: React.FC = () => {
   // --- State: UI Flags ---
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingUSP, setIsGeneratingUSP] = useState(false);
+  const [uspProgress, setUspProgress] = useState(0);
   const [imageCount, setImageCount] = useState<number>(4);
   const [isAutoImageCount, setIsAutoImageCount] = useState<boolean>(true);
   
@@ -307,14 +308,29 @@ export const ContentWriter: React.FC = () => {
           return;
       }
       setIsGeneratingUSP(true);
+      setUspProgress(0);
+      
+      // Progress simulation
+      const interval = setInterval(() => {
+          setUspProgress(prev => {
+              if (prev >= 90) return prev;
+              return prev + Math.random() * 15;
+          });
+      }, 600);
+
       try {
           const usp = await generateUSP(topic, storeName || undefined, salesService || undefined, blogCategory || undefined, blogPlatform || undefined);
           setPostGoal(usp);
+          setUspProgress(100);
       } catch (e) {
           console.error(e);
           alert('USP 도출 중 오류가 발생했습니다.');
       } finally {
-          setIsGeneratingUSP(false);
+          clearInterval(interval);
+          setTimeout(() => {
+              setIsGeneratingUSP(false);
+              setUspProgress(0);
+          }, 500);
       }
   };
 
@@ -666,21 +682,47 @@ export const ContentWriter: React.FC = () => {
                         {/* USP Section */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">포스팅 목표 (USP) - <span className="text-indigo-400">AI 자동 도출 가능</span></label>
-                            <div className="flex gap-3">
-                                <input 
-                                    type="text" 
-                                    value={postGoal}
-                                    onChange={(e) => setPostGoal(e.target.value)}
-                                    placeholder="직접 입력하거나 우측 버튼으로 자동 생성하세요."
-                                    className="flex-1 p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
-                                />
-                                <button 
-                                    onClick={handleGenerateUSP}
-                                    disabled={isGeneratingUSP || !topic}
-                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 whitespace-nowrap flex items-center gap-2 disabled:opacity-50"
-                                >
-                                    {isGeneratingUSP ? <span className="animate-spin">🌀</span> : '🎯 USP 자동 도출'}
-                                </button>
+                            <div className="flex flex-col gap-3">
+                                <div className="flex gap-3">
+                                    <input 
+                                        type="text" 
+                                        value={postGoal}
+                                        onChange={(e) => setPostGoal(e.target.value)}
+                                        placeholder="직접 입력하거나 우측 버튼으로 자동 생성하세요."
+                                        className="flex-1 p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
+                                    />
+                                    <button 
+                                        onClick={handleGenerateUSP}
+                                        disabled={isGeneratingUSP || !topic}
+                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 relative overflow-hidden"
+                                    >
+                                        {isGeneratingUSP ? (
+                                            <>
+                                                <span className="animate-spin">🌀</span>
+                                                <span>도출 중...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span>🎯 USP 자동 도출</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                                
+                                {isGeneratingUSP && (
+                                    <div className="space-y-1.5 animate-fade-in">
+                                        <div className="flex justify-between text-[10px] font-bold text-indigo-400 px-1">
+                                            <span>AI 전략 분석 중...</span>
+                                            <span>{Math.round(uspProgress)}%</span>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(79,70,229,0.5)]"
+                                                style={{ width: `${uspProgress}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

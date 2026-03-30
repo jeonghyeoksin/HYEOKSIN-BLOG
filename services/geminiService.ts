@@ -18,16 +18,27 @@ async function fetchNaverLocalData(query: string): Promise<string | null> {
 }
 
 // --- Helper: withRetry for robust API calls ---
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, initialDelay = 1500): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, initialDelay = 1500, timeoutMs = 45000): Promise<T> {
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await fn();
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("API 호출 시간 초과 (Timeout)")), timeoutMs)
+      );
+
+      // Race the actual function against the timeout
+      return await Promise.race([fn(), timeoutPromise]) as T;
     } catch (error: any) {
       lastError = error;
       const errorMessage = error.message || "";
+      
+      // If it's a timeout, we might want to retry as well if it's not the last attempt
+      const isTimeout = errorMessage.includes("Timeout") || errorMessage.includes("시간 초과");
+
       // 503 (Overloaded), 429 (Quota), and other transient errors are retryable
       const isRetryable = 
+        isTimeout ||
         errorMessage.includes("503") || 
         errorMessage.includes("overloaded") || 
         errorMessage.includes("수요가 급증") ||
