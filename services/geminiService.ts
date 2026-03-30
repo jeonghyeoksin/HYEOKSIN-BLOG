@@ -18,7 +18,7 @@ async function fetchNaverLocalData(query: string): Promise<string | null> {
 }
 
 // --- Helper: withRetry for robust API calls ---
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, initialDelay = 1500, timeoutMs = 45000): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 5, initialDelay = 2000, timeoutMs = 60000): Promise<T> {
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -31,10 +31,10 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, initialDelay =
       return await Promise.race([fn(), timeoutPromise]) as T;
     } catch (error: any) {
       lastError = error;
-      const errorMessage = error.message || "";
+      const errorMessage = (error.message || "").toLowerCase();
       
       // If it's a timeout, we might want to retry as well if it's not the last attempt
-      const isTimeout = errorMessage.includes("Timeout") || errorMessage.includes("시간 초과");
+      const isTimeout = errorMessage.includes("timeout") || errorMessage.includes("시간 초과") || errorMessage.includes("deadline exceeded");
 
       // 503 (Overloaded), 429 (Quota), and other transient errors are retryable
       const isRetryable = 
@@ -43,18 +43,20 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, initialDelay =
         errorMessage.includes("overloaded") || 
         errorMessage.includes("수요가 급증") ||
         errorMessage.includes("429") ||
-        errorMessage.includes("RESOURCE_EXHAUSTED") ||
-        errorMessage.includes("Service Unavailable") ||
-        errorMessage.includes("Deadline Exceeded") ||
-        errorMessage.includes("Internal Server Error") ||
-        errorMessage.includes("500");
+        errorMessage.includes("resource_exhausted") ||
+        errorMessage.includes("service unavailable") ||
+        errorMessage.includes("internal server error") ||
+        errorMessage.includes("500") ||
+        errorMessage.includes("bad gateway") ||
+        errorMessage.includes("502") ||
+        errorMessage.includes("504");
       
       if (!isRetryable || i === maxRetries - 1) {
         throw error;
       }
       
       // Exponential backoff with a bit of jitter
-      const delay = initialDelay * Math.pow(2, i) + Math.random() * 500;
+      const delay = initialDelay * Math.pow(2, i) + Math.random() * 1000;
       console.warn(`Gemini API call failed (attempt ${i + 1}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`, error);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
