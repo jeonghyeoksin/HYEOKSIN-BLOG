@@ -58,6 +58,7 @@ export const ContentWriter: React.FC = () => {
   const [titleOptions, setTitleOptions] = useState<string[]>([]);
   const [outline, setOutline] = useState('');
   const [content, setContent] = useState('');
+  const [hashtags, setHashtags] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [launderedImages, setLaunderedImages] = useState<string[]>([]);
   const [thumbnailPrompt, setThumbnailPrompt] = useState('');
@@ -220,11 +221,25 @@ export const ContentWriter: React.FC = () => {
         // Generate Content
         let accumulatedContent = '';
         setContent('');
+        setHashtags('');
+        const hashtagMarker = "[HASHTAGS]";
+        let hasReachedHashtags = false;
+
         await generateFullPostStream(
             keyword, outlineRes, storeName, salesService, postGoal, 
             (chunk) => {
                 accumulatedContent += chunk;
-                setContent(prev => prev + chunk);
+                if (accumulatedContent.includes(hashtagMarker)) {
+                    hasReachedHashtags = true;
+                    const parts = accumulatedContent.split(hashtagMarker);
+                    setContent(parts[0].trim());
+                    setHashtags(parts[1].trim());
+                } else if (!hasReachedHashtags) {
+                    setContent(prev => prev + chunk);
+                } else {
+                    const parts = accumulatedContent.split(hashtagMarker);
+                    setHashtags(parts[1].trim());
+                }
             }, 
             undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
         );
@@ -1259,6 +1274,26 @@ export const ContentWriter: React.FC = () => {
                                  </div>
                             </div>
                         </div>
+
+                        {/* Hashtags Section */}
+                        {hashtags && (
+                            <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl space-y-4 animate-fade-in">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                                        <span>#️⃣</span> 추천 해시태그
+                                    </h3>
+                                    <button 
+                                        onClick={() => copyToClipboard(hashtags)}
+                                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-500/20"
+                                    >
+                                        📋 해시태그 복사
+                                    </button>
+                                </div>
+                                <div className="p-4 bg-slate-800 rounded-xl border border-slate-700 text-indigo-300 font-medium leading-relaxed break-all">
+                                    {hashtags}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
