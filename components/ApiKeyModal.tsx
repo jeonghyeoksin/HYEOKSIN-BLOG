@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { testConnection } from '../services/geminiService';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -8,10 +7,10 @@ interface ApiKeyModalProps {
 }
 
 const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKeyChange }) => {
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [hasKey, setHasKey] = useState(false);
   const [manualKey, setManualKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     const checkKey = () => {
@@ -26,7 +25,8 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKeyChange 
     };
     if (isOpen) {
       checkKey();
-      setTestResult(null);
+      setSaveStatus(null);
+      setShowKey(false);
     }
   }, [isOpen]);
 
@@ -34,28 +34,15 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKeyChange 
     if (manualKey.trim()) {
       localStorage.setItem('gemini_api_key', manualKey.trim());
       setHasKey(true);
-      setTestResult({ success: true, message: "API 키가 브라우저에 성공적으로 저장되었습니다!" });
+      setSaveStatus({ success: true, message: "API 키가 성공적으로 저장 및 적용되었습니다!" });
       if (onKeyChange) onKeyChange();
+      
+      // 2초 후 메시지 사라짐
+      setTimeout(() => setSaveStatus(null), 2000);
     } else {
       localStorage.removeItem('gemini_api_key');
       setHasKey(false);
       alert('API 키를 입력해 주세요.');
-    }
-  };
-
-  const handleTestConnection = async () => {
-    setIsTesting(true);
-    setTestResult(null);
-    try {
-      const result = await testConnection();
-      setTestResult(result);
-      if (!result.success && result.message.includes("다시 설정")) {
-        setHasKey(false);
-      }
-    } catch (error) {
-      setTestResult({ success: false, message: "테스트 중 오류가 발생했습니다." });
-    } finally {
-      setIsTesting(false);
     }
   };
 
@@ -86,14 +73,28 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKeyChange 
             </div>
             
             <div className="space-y-3">
-              <input 
-                type="password"
-                id="apiKeyInput"
-                value={manualKey}
-                onChange={(e) => setManualKey(e.target.value)}
-                placeholder="AIzaSy... (API 키 입력)"
-                className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white placeholder-slate-600 transition-all"
-              />
+              <div className="relative">
+                <input 
+                  type={showKey ? "text" : "password"}
+                  id="apiKeyInput"
+                  value={manualKey}
+                  onChange={(e) => setManualKey(e.target.value)}
+                  placeholder="AIzaSy... (API 키 입력)"
+                  className="w-full p-4 pr-12 rounded-xl bg-slate-900 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white placeholder-slate-600 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  title={showKey ? "숨기기" : "보기"}
+                >
+                  {showKey ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  )}
+                </button>
+              </div>
               <button
                 onClick={handleSaveManualKey}
                 className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
@@ -102,41 +103,20 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKeyChange 
               </button>
             </div>
             
-            <p className="mt-3 text-[10px] text-slate-500 text-center">
-              Gemini API 키는 브라우저의 로컬 저장소에 안전하게 저장됩니다.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <button
-              onClick={handleTestConnection}
-              disabled={!hasKey || isTesting}
-              className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                !hasKey || isTesting 
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                  : 'bg-slate-700 hover:bg-slate-600 text-white'
-              }`}
-            >
-              {isTesting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  연결 테스트 중...
-                </>
-              ) : (
-                <><span>⚡</span> 연결 테스트 실행</>
-              )}
-            </button>
-
-            {testResult && (
-              <div className={`p-4 rounded-xl text-sm animate-in fade-in slide-in-from-top-2 duration-300 ${
-                testResult.success ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+            {saveStatus && (
+              <div className={`p-3 rounded-xl text-xs animate-in fade-in slide-in-from-top-2 duration-300 ${
+                saveStatus.success ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
               }`}>
-                <div className="flex gap-3">
-                  <span className="text-lg">{testResult.success ? '✅' : '❌'}</span>
-                  <p className="leading-snug">{testResult.message}</p>
+                <div className="flex items-center gap-2">
+                  <span>{saveStatus.success ? '✅' : '❌'}</span>
+                  <p>{saveStatus.message}</p>
                 </div>
               </div>
             )}
+
+            <p className="mt-3 text-[10px] text-slate-500 text-center">
+              Gemini API 키는 브라우저의 로컬 저장소에 안전하게 저장됩니다.
+            </p>
           </div>
         </div>
 

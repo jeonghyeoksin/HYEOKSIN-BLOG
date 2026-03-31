@@ -77,38 +77,6 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-export const testConnection = async (): Promise<{ success: boolean; message: string }> => {
-  try {
-    const ai = getClient();
-    // 연결 테스트용으로 더 가볍고 가용성이 높은 flash 모델을 사용합니다.
-    const response = await withRetry(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: "Connection test. Reply with 'OK'.",
-    }));
-    if (response.text) {
-      return { success: true, message: "연결 성공! API 키가 정상적으로 작동합니다." };
-    }
-    return { success: false, message: "연결 실패: 응답을 받을 수 없습니다." };
-  } catch (error: any) {
-    console.error("Connection test error:", error);
-    
-    // 503 에러 (모델 과부하) 처리
-    if (error.message?.includes("503") || error.message?.includes("overloaded") || error.message?.includes("수요가 급증")) {
-      return { 
-        success: false, 
-        message: "현재 Google 서버의 일시적인 과부하로 인해 연결 확인이 지연되고 있습니다. 잠시 후 다시 시도해 주세요. (API 키 자체는 정상일 가능성이 높습니다.)" 
-      };
-    }
-
-    return { 
-      success: false, 
-      message: error.message?.includes("entity was not found") 
-        ? "API 키가 올바르지 않거나 권한이 없습니다. 다시 설정해주세요." 
-        : `연결 실패: ${error.message || "알 수 없는 오류"}` 
-    };
-  }
-};
-
 // Gemini 3 Flash Preview for High Availability, Speed & Higher Quota
 const TEXT_MODEL = 'gemini-3-flash-preview';
 // Gemini 3 Pro Image Preview for High-Quality Image Generation
