@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [isCostModalOpen, setIsCostModalOpen] = useState(false);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [apiKeyStatus, setApiKeyStatus] = useState<'unset' | 'set'>('unset');
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
@@ -67,43 +68,54 @@ const App: React.FC = () => {
             </div>
 
             {/* Nav Items */}
-            <div className="hidden md:flex items-center space-x-6">
-              {/* API Status Indicator */}
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all duration-500 ${
-                apiKeyStatus === 'set' 
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
-                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.2)]'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${apiKeyStatus === 'set' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'}`} />
-                {apiKeyStatus === 'set' ? 'AI 서비스 정상 작동 중' : 'AI 서비스 중단 (API Key 미설정)'}
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Always visible: API Cost Info */}
+              <button 
+                onClick={() => setIsCostModalOpen(true)}
+                className="text-[10px] sm:text-sm font-bold transition-all px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-indigo-400 hover:text-white hover:bg-indigo-500/10 flex items-center gap-1 sm:gap-2 border border-indigo-500/30 shadow-lg shadow-indigo-500/5 bg-indigo-500/5"
+              >
+                <span>💰</span> <span className="hidden xs:inline sm:inline">API 비용 안내</span>
+              </button>
+
+              <div className="hidden md:flex items-center space-x-4">
+                {/* API Status Indicator */}
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all duration-500 ${
+                  apiKeyStatus === 'set' 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${apiKeyStatus === 'set' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'}`} />
+                  {apiKeyStatus === 'set' ? 'AI 서비스 정상 작동 중' : 'AI 서비스 중단 (API Key 미설정)'}
+                </div>
+
+                <div className="h-4 w-[1px] bg-slate-800 mx-2" />
+
+                <button 
+                  onClick={() => setCurrentView('dashboard')}
+                  className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'dashboard' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  홈
+                </button>
+                <button 
+                   onClick={() => setCurrentView('studio')}
+                   className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'studio' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  블로그 올인원
+                </button>
+                <button 
+                   onClick={() => setCurrentView('manual')}
+                   className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'manual' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                  사용방법
+                </button>
+
+                <button 
+                  onClick={() => setIsApiKeyModalOpen(true)}
+                  className="text-sm font-medium transition-colors px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2 border border-slate-700/50"
+                >
+                  <span>🔑</span> API Key 설정
+                </button>
               </div>
-
-              <div className="h-4 w-[1px] bg-slate-800 mx-2" />
-
-              <button 
-                onClick={() => setCurrentView('dashboard')}
-                className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'dashboard' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-              >
-                홈
-              </button>
-              <button 
-                 onClick={() => setCurrentView('studio')}
-                 className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'studio' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-              >
-                블로그 올인원
-              </button>
-              <button 
-                 onClick={() => setCurrentView('manual')}
-                 className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'manual' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-              >
-                사용방법
-              </button>
-              <button 
-                onClick={() => setIsApiKeyModalOpen(true)}
-                className="text-sm font-medium transition-colors px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2 border border-slate-700/50"
-              >
-                <span>🔑</span> API Key 설정
-              </button>
             </div>
           </div>
         </div>
@@ -147,6 +159,80 @@ const App: React.FC = () => {
         onClose={handleModalClose} 
         onKeyChange={checkApiKey}
       />
+
+      {/* API Cost Modal */}
+      {isCostModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-2xl w-full space-y-6 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                <div className="flex justify-between items-center">
+                    <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <span className="text-indigo-400">💰</span> API 비용 안내 (원화 기준)
+                    </h3>
+                    <button onClick={() => setIsCostModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                
+                <div className="space-y-6 text-slate-300">
+                    <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 space-y-4">
+                        <h4 className="font-bold text-white border-b border-slate-700 pb-2">1. 사용 모델별 단가 (대략)</h4>
+                        <ul className="space-y-2 text-sm">
+                            <li className="flex justify-between"><span className="text-slate-400">• Gemini 3 Flash (텍스트/개요)</span> <span className="text-emerald-400 font-mono">매우 저렴</span></li>
+                            <li className="flex justify-between"><span className="text-slate-400">• Gemini 3 Pro Image (이미지 생성)</span> <span className="text-pink-400 font-mono">장당 약 27원</span></li>
+                        </ul>
+                    </div>
+
+                    <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 space-y-4">
+                        <h4 className="font-bold text-white border-b border-slate-700 pb-2">2. 작업 1회당 예상 비용 (풀세트 기준)</h4>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead>
+                                    <tr className="text-slate-500 border-b border-slate-700">
+                                        <th className="pb-2 font-medium">항목</th>
+                                        <th className="pb-2 font-medium">모델</th>
+                                        <th className="pb-2 font-medium text-right">비용</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700/50">
+                                    <tr>
+                                        <td className="py-3">텍스트 생성</td>
+                                        <td className="py-3 text-xs text-slate-500">Flash</td>
+                                        <td className="py-3 text-right text-emerald-400 font-mono">약 1원 미만</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-3">이미지 생성 (5장)</td>
+                                        <td className="py-3 text-xs text-slate-500">Pro Image</td>
+                                        <td className="py-3 text-right text-pink-400 font-mono">약 135원</td>
+                                    </tr>
+                                    <tr className="font-bold text-white bg-indigo-500/10">
+                                        <td className="py-3 px-2 rounded-l-lg">합계 (1세트)</td>
+                                        <td className="py-3">-</td>
+                                        <td className="py-3 px-2 text-right text-indigo-300 rounded-r-lg font-mono">약 136원</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="bg-indigo-900/20 p-4 rounded-xl border border-indigo-500/30 text-xs leading-relaxed">
+                        <p className="text-indigo-300">
+                            💡 <strong>팁:</strong> 이미지가 필요 없는 경우 '이미지 생성 건너뛰기'를 활용하면 비용을 <strong>1원 수준</strong>으로 절감할 수 있습니다.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex justify-center pt-4">
+                    <button 
+                        onClick={() => setIsCostModalOpen(false)}
+                        className="px-10 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 transition-all border border-slate-700 shadow-lg"
+                    >
+                        확인 및 닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* Floating Action Buttons */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">

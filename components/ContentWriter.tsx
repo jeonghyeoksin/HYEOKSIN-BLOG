@@ -542,7 +542,7 @@ export const ContentWriter: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-slate-950 overflow-hidden">
         {/* Step Header */}
-        <div className="bg-slate-900 border-b border-slate-800 pt-8 pb-4 shadow-sm z-20 flex-none">
+        <div className="bg-slate-900 border-b border-slate-800 pt-8 pb-4 shadow-sm z-20 flex-none relative">
             {currentStep !== 'keyword' && !isAutoRunning && (
                 <button 
                     onClick={handleBackStep}
