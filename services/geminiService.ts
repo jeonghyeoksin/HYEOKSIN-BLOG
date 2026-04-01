@@ -439,6 +439,7 @@ export const generateOutline = async (
       7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
+      10. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
 
       ${benchmarkingText ? `
       **BENCHMARKING MASTER INSTRUCTION**: 
@@ -598,6 +599,7 @@ export const generateFullPostStream = async (
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
       10. **Hashtags**: At the very end of the post, provide exactly 5 highly relevant hashtags. Separate them from the main content with the marker "[HASHTAGS]". Format them as a single line of space-separated hashtags starting with #.
+      11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
 
       ${benchmarkingText ? `
       **BENCHMARKING & ADAPTATION MODE ACTIVATED**:
