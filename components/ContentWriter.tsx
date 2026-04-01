@@ -241,6 +241,12 @@ export const ContentWriter: React.FC = () => {
                     setHashtags(parts[1].trim());
                 }
             }, 
+            () => {
+                accumulatedContent = '';
+                setContent('');
+                setHashtags('');
+                hasReachedHashtags = false;
+            },
             undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
         );
 

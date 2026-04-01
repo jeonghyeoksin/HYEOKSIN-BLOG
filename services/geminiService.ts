@@ -44,12 +44,15 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 50, initialDelay 
         errorMessage.includes("수요가 급증") ||
         errorMessage.includes("429") ||
         errorMessage.includes("resource_exhausted") ||
+        errorMessage.includes("unavailable") ||
         errorMessage.includes("service unavailable") ||
         errorMessage.includes("internal server error") ||
         errorMessage.includes("500") ||
         errorMessage.includes("bad gateway") ||
         errorMessage.includes("502") ||
-        errorMessage.includes("504");
+        errorMessage.includes("504") ||
+        errorMessage.includes("deadline exceeded") ||
+        errorMessage.includes("transient");
       
       if (!isRetryable || i === maxRetries - 1) {
         throw error;
@@ -84,10 +87,15 @@ const IMAGE_MODEL = 'gemini-3-pro-image-preview';
 
 const handleApiError = (error: any, fallbackMessage: string): string => {
   console.error("Gemini API Error:", error);
-  if (error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+  const errorMessage = (error.message || "").toLowerCase();
+
+  if (errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("resource_exhausted")) {
     return "API 사용량이 일일 할당량을 초과했습니다. 잠시 후 다시 시도하거나 다른 API 키를 사용해 주세요.";
   }
-  if (error.message?.includes("entity was not found") || error.message?.includes("API_KEY_INVALID")) {
+  if (errorMessage.includes("503") || errorMessage.includes("unavailable") || errorMessage.includes("overloaded")) {
+    return "현재 AI 모델의 수요가 급증하여 일시적으로 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+  }
+  if (errorMessage.includes("entity was not found") || errorMessage.includes("api_key_invalid")) {
     return "API 키가 올바르지 않거나 권한이 없습니다. 상단 'API Key 설정'에서 키를 다시 확인해주세요.";
   }
   return `${fallbackMessage}: ${error.message || "알 수 없는 오류"}`;
@@ -539,6 +547,7 @@ export const generateFullPostStream = async (
   salesService: string | undefined,
   postGoal: string | undefined,
   onChunk: (text: string) => void,
+  onReset?: () => void,
   excludedFilePart?: { data: string, mimeType: string },
   benchmarkingText?: string,
   referenceNote?: string,
@@ -627,7 +636,8 @@ export const generateFullPostStream = async (
 
       **RESTAURANT REVIEW ENTITY & LINE RULES**:
       1. **Entity Reference**: NEVER use the generic word '이것' (this) to refer to the restaurant or its products. ALWAYS use the actual Store/Brand Name ("${storeName || topic}") instead.
-      2. **Strict Line Length**: EVERY single line in the blog post body MUST be 10 characters or less. You MUST manually insert a newline (\n) to ensure no line exceeds 10 characters. This is a hard constraint for readability on specific mobile layouts.
+      2. **Strict Line Length**: EVERY single line in the blog post body MUST be 20 characters or less. You MUST manually insert a newline (\n) to ensure no line exceeds 20 characters. This is a hard constraint for readability on specific mobile layouts.
+      3. **Content Length**: The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length.
       
       ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and write the review based entirely on this real data. Do not invent menu items or hours; use the actual data.` : ""}
       ` : `
@@ -694,21 +704,25 @@ export const generateFullPostStream = async (
         parts.push({ text: "This file content above is FORBIDDEN. Do not use it." });
     }
 
-    const streamResult = await withRetry(() => ai.models.generateContentStream({
-      model: TEXT_MODEL,
-      contents: { parts },
-      config: {
-        temperature: 0.7,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        tools: [{ googleSearch: {} }]
-      }
-    }));
+    await withRetry(async () => {
+      if (onReset) onReset();
+      
+      const streamResult = await ai.models.generateContentStream({
+        model: TEXT_MODEL,
+        contents: { parts },
+        config: {
+          temperature: 0.7,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          tools: [{ googleSearch: {} }]
+        }
+      });
 
-    for await (const chunk of streamResult) {
-      if (chunk.text) {
-        onChunk(chunk.text);
+      for await (const chunk of streamResult) {
+        if (chunk.text) {
+          onChunk(chunk.text);
+        }
       }
-    }
+    });
   } catch (error: any) {
     throw new Error(handleApiError(error, "본문 생성 실패"));
   }
