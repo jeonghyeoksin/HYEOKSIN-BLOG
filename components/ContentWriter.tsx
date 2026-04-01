@@ -432,7 +432,7 @@ export const ContentWriter: React.FC = () => {
     processed = processed.replace(/\*(.*?)\*/g, '<span style="color: #2563eb;">$1</span>');
 
     // Parse markdown to HTML (handles tables, lists, etc.)
-    const htmlContent = marked.parse(processed) as string;
+    const htmlContent = marked.parse(processed, { breaks: true }) as string;
 
     // Apply inline styles to Tables and Blockquotes (Citations) for clipboard compatibility
     let styledHtml = htmlContent
@@ -443,12 +443,12 @@ export const ContentWriter: React.FC = () => {
         // Blockquote (Citation) Styles - Blue bar on left, light blue background
         .replace(/<blockquote>/g, '<blockquote style="border-left: 8px solid #2563eb; background-color: #eff6ff; padding: 20px; margin: 30px 0; border-top-right-radius: 12px; border-bottom-right-radius: 12px; color: #1e40af; font-weight: 800; font-size: 1.2em; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.05);">')
         // Paragraph Styles: Force explicit margin/spacing for "double line break" visual effect
-        .replace(/<p>/g, `<p style="margin-bottom: 32px; line-height: 1.8;${blogCategory === '맛집 리뷰' ? ' color: #000000;' : ''}">`)
+        .replace(/<p>/g, `<p style="margin-bottom: 32px; line-height: 1.8;${blogCategory === '맛집 리뷰' ? ' color: #000000; margin-bottom: 16px;' : ''}">`)
         // Ensure a physical blank line is preserved in rich text editors by adding an empty paragraph
         .replace(/<\/p>/g, '</p><p><br></p>');
 
     if (blogCategory === '맛집 리뷰') {
-        styledHtml = `<div style="text-align: center; word-break: keep-all; color: #000000;">${styledHtml}</div>`;
+        styledHtml = `<div style="text-align: center; word-break: keep-all; color: #000000; font-family: sans-serif;">${styledHtml}</div>`;
     }
 
     const blob = new Blob([styledHtml], { type: 'text/html' });
@@ -1267,7 +1267,7 @@ export const ContentWriter: React.FC = () => {
     
                                     .colored-content h1, .colored-content h2, .colored-content h3 { color: #0f172a !important; }
 
-                                    .black-content p, .black-content li { color: #000000 !important; }
+                                    .black-content p, .black-content li { color: #000000 !important; white-space: pre-wrap !important; }
                                  `}</style>
                                  <div className={`prose prose-lg max-w-none ${blogCategory === '맛집 리뷰' ? 'text-center break-keep black-content' : 'colored-content'}`} ref={resultContentRef}>
                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>

@@ -624,6 +624,10 @@ export const generateFullPostStream = async (
       
       **PERSPECTIVE & TONE**: You MUST write from the first-person perspective of a customer who actually visited the restaurant. Use an authentic, experiential tone (e.g., "I visited...", "The taste was...").
       Make sure these points are naturally integrated into the blog post flow.
+
+      **RESTAURANT REVIEW ENTITY & LINE RULES**:
+      1. **Entity Reference**: NEVER use the generic word '이것' (this) to refer to the restaurant or its products. ALWAYS use the actual Store/Brand Name ("${storeName || topic}") instead.
+      2. **Strict Line Length**: EVERY single line in the blog post body MUST be 10 characters or less. You MUST manually insert a newline (\n) to ensure no line exceeds 10 characters. This is a hard constraint for readability on specific mobile layouts.
       
       ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and write the review based entirely on this real data. Do not invent menu items or hours; use the actual data.` : ""}
       ` : `
