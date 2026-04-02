@@ -864,16 +864,16 @@ export const generateThumbnailPrompt = async (keyword: string, content: string, 
     const supportsText = modelName === 'gemini-3.1-flash-image-preview';
     
     const textRequirements = supportsText ? `
-      **TEXT REQUIREMENTS**:
-      - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**. This includes small labels or decorative text.
-      - **Content**: The keyword "${keyword}" MUST be the main focus.
-      - **Subtitle**: Add a short, intriguing subtitle below the keyword (e.g., "Must Read", "최신 트렌드"). **Total text must be at least 2 lines.**
-      - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. To prevent corruption, **KEEP ALL TEXT EXTREMELY SHORT (1-3 words per line)**. Summarize long concepts into punchy, short phrases.
+      **TEXT REQUIREMENTS (CRITICAL)**:
+      - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**.
+      - **Main Text**: The blog topic or keyword "${keyword}" MUST be the prominent, central text in the image.
+      - **Subtitle**: Add a short, catchy subtitle below the main text (e.g., "필독 가이드", "최신 정보"). **Total text must be at least 2 lines.**
+      - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. To prevent corruption, **KEEP ALL TEXT EXTREMELY SHORT (1-3 words per line)**.
       - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
       - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
       
       The output prompt must be in English.
-      Example: "A cinematic 3D render of [Subject]. Center stage: The text '${keyword}' in massive, glowing gold Korean characters. Below it, a smaller white text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles."
+      Example: "A cinematic 3D render of [Subject]. Center stage: The Korean text '${keyword}' in massive, glowing gold characters. Below it, a smaller white Korean text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles."
     ` : `
       **TEXT REQUIREMENTS**:
       - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.

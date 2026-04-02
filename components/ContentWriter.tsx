@@ -81,7 +81,7 @@ export const ContentWriter: React.FC = () => {
 
   const IMAGE_MODELS = [
       { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', desc: '표준 이미지 생성' },
-      { id: 'gemini-3.1-flash-image-preview', name: 'Gemini 3.1 Flash Image Preview', desc: '한국어 텍스트 이미지 생성' },
+      { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2 (Gemini 3.1 Flash Image)', desc: '한국어 텍스트 이미지 생성' },
       { id: 'imagen-4.0-generate-001', name: 'Imagen 4.0', desc: '사실적인 이미지 생성' },
   ];
   
@@ -991,51 +991,60 @@ export const ContentWriter: React.FC = () => {
                                  {launderedImageFiles.length > 0 && <p className="text-[10px] text-amber-300 truncate">{launderedImageFiles.length}장 선택됨</p>}
                              </div>
                              {/* Skip Image Generation */}
-                             <div className="space-y-4 flex flex-col mt-4">
-                                 <div className="flex items-center gap-2">
-                                     <input 
-                                        type="checkbox" 
-                                        id="skipImageGeneration"
-                                        checked={skipImageGeneration}
-                                        onChange={(e) => setSkipImageGeneration(e.target.checked)}
-                                        className="w-4 h-4 text-indigo-600 bg-slate-800 border-slate-700 rounded focus:ring-indigo-500"
-                                     />
-                                     <label htmlFor="skipImageGeneration" className="text-sm font-bold text-slate-300 cursor-pointer">
-                                         이미지 생성하지 않음
-                                     </label>
-                                 </div>
-                                 {!skipImageGeneration && (
-                                     <div className="space-y-2">
-                                         <label className="text-xs font-bold text-slate-300 block">🖼️ 이미지 생성 개수</label>
-                                         <div className="flex flex-wrap gap-2">
-                                             {[
-                                                 { label: 'AI추천', value: 0 },
-                                                 { label: '3개', value: 3 },
-                                                 { label: '5개', value: 5 },
-                                                 { label: '10개', value: 10 },
-                                                 { label: '15개', value: 15 }
-                                             ].map((opt) => (
-                                                 <button
-                                                     key={opt.value}
-                                                     onClick={() => {
-                                                         setIsAutoImageCount(opt.value === 0);
-                                                         setImageCount(opt.value);
-                                                     }}
-                                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                                         (isAutoImageCount && opt.value === 0) || (!isAutoImageCount && imageCount === opt.value)
-                                                             ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 border-indigo-500'
-                                                             : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
-                                                     }`}
-                                                 >
-                                                     {opt.label}
-                                                 </button>
-                                             ))}
-                                         </div>
+                             <div className="space-y-4 flex flex-col p-4 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-inner">
+                                 <div className="flex items-center gap-3">
+                                     <div className="relative flex items-center">
+                                         <input 
+                                            type="checkbox" 
+                                            id="skipImageGeneration"
+                                            checked={skipImageGeneration}
+                                            onChange={(e) => setSkipImageGeneration(e.target.checked)}
+                                            className="w-6 h-6 text-indigo-600 bg-slate-800 border-slate-700 rounded-lg focus:ring-indigo-500 cursor-pointer transition-all hover:scale-110"
+                                         />
                                      </div>
-                                 )}
-                                 <p className="text-[10px] text-slate-500 ml-6">체크 시 이미지와 썸네일을 생성하지 않습니다.</p>
+                                     <div className="flex flex-col">
+                                         <label htmlFor="skipImageGeneration" className="text-base font-black text-white cursor-pointer">
+                                             이미지 생성하지 않음
+                                         </label>
+                                         <p className="text-xs text-slate-400 font-medium mt-0.5">이미지 생성을 안하고 싶다면 해당 버튼을 체크하세요.</p>
+                                     </div>
+                                 </div>
                              </div>
-                        </div>
+
+                             {/* Image Count Selection */}
+                             {!skipImageGeneration && (
+                                 <div className="space-y-3 p-4 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-inner">
+                                     <label className="text-sm font-bold text-slate-300 flex items-center gap-2">
+                                         <span className="text-lg">🖼️</span> 이미지 생성 개수 선택
+                                     </label>
+                                     <div className="flex flex-wrap gap-2">
+                                         {[
+                                             { label: 'AI추천', value: 0 },
+                                             { label: '1개', value: 1 },
+                                             { label: '3개', value: 3 },
+                                             { label: '5개', value: 5 },
+                                             { label: '10개', value: 10 }
+                                         ].map((opt) => (
+                                             <button
+                                                 key={opt.value}
+                                                 onClick={() => {
+                                                     setIsAutoImageCount(opt.value === 0);
+                                                     setImageCount(opt.value);
+                                                 }}
+                                                 className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                                                     (isAutoImageCount && opt.value === 0) || (!isAutoImageCount && imageCount === opt.value)
+                                                     ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-900/40 scale-105'
+                                                     : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-white'
+                                                 }`}
+                                             >
+                                                 {opt.label}
+                                             </button>
+                                         ))}
+                                     </div>
+                                     <p className="text-[10px] text-slate-500">생성할 이미지의 개수를 선택하세요. AI추천은 본문 길이에 맞춰 적절한 개수를 생성합니다.</p>
+                                 </div>
+                             )}
+                         </div>
                     </div>
 
                     {/* Action Area */}
