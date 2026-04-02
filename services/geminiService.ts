@@ -476,7 +476,24 @@ export const generateOutline = async (
       `}
       ${naverDataText}
       
-      ${blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST structure the outline and write the content to perfectly match this specific style and tone. Do not use a generic tone.` : ""}
+      ${blogStyle === '현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)' ? `
+      **[현장 밀착형 스토리텔링 스타일 가이드]**
+      1. **현장감 (Realness)**: 스튜디오 사진이 아닌, 실제 작업 현장의 '가공되지 않은' 사진을 활용해 투명성을 강조합니다.
+      2. **신뢰 자본 축적**: "내부용 지게차만 사용한다", "라벨링을 철저히 한다" 등 디테일한 원칙을 언급하며 '보이지 않는 곳에서도 정직하다'는 인상을 줍니다.
+      3. **관계 지향적 어조**: 독자를 '사장님'이라 부르며, 단순한 판매자가 아니라 함께 성장하는 '파트너'로서의 유대감을 형성합니다.
+      4. **구조적 연결**: 지난번 포스팅을 언급하며 이야기를 이어가는 '연재물' 형식을 취해 블로그의 체류 시간을 높입니다.
+      5. **사진 활용**: 완벽하게 세팅된 사진보다는 조금 투박하더라도 현장의 디테일(작업 중인 손, 온도계 수치 등)이 담긴 사진을 활용합니다.
+      6. **과정 중심**: "우리는 신선합니다" 대신 "왜 신선할 수밖에 없는지" 그 과정을 설명하세요.
+      7. **구체적 데이터**: '여러 지역' 대신 '부산/대구/울산' 등 구체적인 명칭을 사용하세요.
+      8. **독자 이익 마무리**: [우리의 노력] → [사장님이 얻는 가치] → [감사 인사 및 문의 유도] 공식으로 마무리하세요.
+      
+      **[구조 지침]**
+      - 도입: 지난 이야기 언급 또는 오늘 현장에 나가게 된 계기
+      - 전개 1: 전체적인 현장 모습 (입구, 창고 전경 등)
+      - 전개 2: 우리의 디테일 한 가지 (청결, 정리 정돈, 검수 과정 등)
+      - 강점: 왜 이렇게 까다롭게 하는지 우리만의 철학 한 줄
+      - 정보: 활동 범위 및 취급 품목 언급
+      ` : (blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST structure the outline and write the content to perfectly match this specific style and tone. Do not use a generic tone.` : "")}
 
       Structure Guidelines:
       1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}". **CRITICAL**: The introduction MUST be highly SEO-optimized with a topic-based hook that captures the reader's interest.
@@ -648,7 +665,30 @@ export const generateFullPostStream = async (
       `}
       ${naverDataText}
 
-      ${blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST write the entire post to perfectly match this specific style and tone. Do not use a generic tone.` : ""}
+      ${blogStyle === '현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)' ? `
+      **[현장 밀착형 스토리텔링 스타일 가이드]**
+      1. **현장감 (Realness)**: 스튜디오 사진이 아닌, 실제 작업 현장의 '가공되지 않은' 사진을 활용해 투명성을 강조합니다.
+      2. **신뢰 자본 축적**: "내부용 지게차만 사용한다", "라벨링을 철저히 한다" 등 디테일한 원칙을 언급하며 '보이지 않는 곳에서도 정직하다'는 인상을 줍니다.
+      3. **관계 지향적 어조**: 독자를 '사장님'이라 부르며, 단순한 판매자가 아니라 함께 성장하는 '파트너'로서의 유대감을 형성합니다.
+      4. **구조적 연결**: 지난번 포스팅을 언급하며 이야기를 이어가는 '연재물' 형식을 취해 블로그의 체류 시간을 높입니다.
+      5. **사진 활용**: 완벽하게 세팅된 사진보다는 조금 투박하더라도 현장의 디테일(작업 중인 손, 온도계 수치 등)이 담긴 사진을 활용합니다.
+      6. **과정 중심**: "우리는 신선합니다" 대신 "왜 신선할 수밖에 없는지" 그 과정을 설명하세요.
+      7. **구체적 데이터**: '여러 지역' 대신 '부산/대구/울산' 등 구체적인 명칭을 사용하세요.
+      8. **독자 이익 마무리**: [우리의 노력] → [사장님이 얻는 가치] → [감사 인사 및 문의 유도] 공식으로 마무리하세요.
+      
+      **[구조 지침]**
+      - 도입: 지난 이야기 언급 또는 오늘 현장에 나가게 된 계기
+      - 전개 1: 전체적인 현장 모습 (입구, 창고 전경 등)
+      - 전개 2: 우리의 디테일 한 가지 (청결, 정리 정돈, 검수 과정 등)
+      - 강점: 왜 이렇게 까다롭게 하는지 우리만의 철학 한 줄
+      - 정보: 활동 범위 및 취급 품목 언급
+
+      **[톤앤매너 및 포맷팅 지침]**
+      - **말투**: 구어체와 문어체를 적절히 섞어 친근하고 신뢰감 있는 말투를 사용하세요.
+      - **포맷팅 (필수)**: 
+        - 모든 본문 텍스트는 **가운데 정렬**되어야 합니다.
+        - **한 줄에 최대 10자(한글 기준)**까지만 입력하고, 그 이후에는 반드시 줄바꿈을 하세요.
+      ` : (blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST write the entire post to perfectly match this specific style and tone. Do not use a generic tone.` : "")}
 
       Outline:
       ${outline}

@@ -45,6 +45,8 @@ export const ContentWriter: React.FC = () => {
   const [logoFiles, setLogoFiles] = useState<File[]>([]);
   const [faceImageFiles, setFaceImageFiles] = useState<File[]>([]);
   const [contextImageFiles, setContextImageFiles] = useState<File[]>([]); // General references
+  const [blogImageFiles, setBlogImageFiles] = useState<File[]>([]); // Image-based blog generation
+  const [blogImageDescription, setBlogImageDescription] = useState(''); // Description for images
   const [launderedImageFiles, setLaunderedImageFiles] = useState<File[]>([]); // Laundered images
   const [skipImageGeneration, setSkipImageGeneration] = useState<boolean>(false); // Skip image generation
 
@@ -221,9 +223,16 @@ export const ContentWriter: React.FC = () => {
         for (const file of contextImageFiles) {
              scriptImageParts.push(await convertFileToBase64(file));
         }
+        for (const file of blogImageFiles) {
+             scriptImageParts.push(await convertFileToBase64(file));
+        }
+
+        const combinedReferenceNote = blogImageDescription 
+            ? `${referenceNote}\n\n[이미지 설명]: ${blogImageDescription}` 
+            : referenceNote;
 
         const outlineRes = await generateOutline(
-            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
+            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
         );
         setOutline(outlineRes);
 
@@ -256,7 +265,7 @@ export const ContentWriter: React.FC = () => {
                 setHashtags('');
                 hasReachedHashtags = false;
             },
-            undefined, benchmarkingText, referenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
+            undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
         );
 
         // --- Step 2: Images ---
@@ -448,6 +457,13 @@ export const ContentWriter: React.FC = () => {
     }
   };
 
+  const handleBlogImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+        const filesArray = Array.from(e.target.files);
+        setBlogImageFiles(prev => [...prev, ...filesArray]);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text);
       alert('클립보드에 복사되었습니다.');
@@ -602,6 +618,30 @@ export const ContentWriter: React.FC = () => {
                     </div>
 
                     <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl backdrop-blur-sm">
+                        {/* Image Upload Section */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-300 ml-1">이미지 기반 블로그 생성 (선택)</label>
+                          <input 
+                            type="file" 
+                            multiple 
+                            onChange={handleBlogImagesChange} 
+                            className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500"
+                          />
+                          <p className="text-xs text-slate-500 mt-2">이미지를 첨부하면 해당 이미지의 내용을 분석하여 블로그 글을 생성합니다.</p>
+                          {blogImageFiles.length > 0 && (
+                              <div className="mt-2 text-xs text-emerald-400">
+                                  {blogImageFiles.length}개의 이미지가 선택되었습니다.
+                              </div>
+                          )}
+                          <textarea
+                            value={blogImageDescription}
+                            onChange={(e) => setBlogImageDescription(e.target.value)}
+                            placeholder="이미지에 대한 설명을 입력해주세요 (예: 이 사진은 강남역 1번 출구 앞 맛집의 입구 모습입니다.)"
+                            className="w-full mt-4 bg-slate-900 border border-slate-700 rounded-2xl p-4 text-white placeholder-slate-600 focus:border-indigo-500 outline-none transition-all"
+                            rows={3}
+                          />
+                        </div>
+                        
                         {/* Platform Input */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">블로그 플랫폼 <span className="text-red-500">*</span></label>
@@ -696,6 +736,7 @@ export const ContentWriter: React.FC = () => {
                                 <option value="리뷰/체험단형 (솔직함, 디테일, 경험 위주)">리뷰/체험단형 (솔직함, 디테일, 경험 위주)</option>
                                 <option value="인터뷰/대화형 (문답형, 생동감, 현장감)">인터뷰/대화형 (문답형, 생동감, 현장감)</option>
                                 <option value="스토리텔링형 (기승전결, 몰입감, 서사적)">스토리텔링형 (기승전결, 몰입감, 서사적)</option>
+                                <option value="현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)">현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)</option>
                                 <option value="팩트폭행/직설적 (단호함, 명쾌함, 사이다)">팩트폭행/직설적 (단호함, 명쾌함, 사이다)</option>
                                 <option value="트렌디/MZ세대형 (유행어, 밈, 톡톡 튀는 톤)">트렌디/MZ세대형 (유행어, 밈, 톡톡 튀는 톤)</option>
                                 <option value="일기/기록형 (솔직함, 개인적, 담백함)">일기/기록형 (솔직함, 개인적, 담백함)</option>
