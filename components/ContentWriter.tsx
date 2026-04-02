@@ -284,7 +284,7 @@ export const ContentWriter: React.FC = () => {
         setGeneratedImages(placeholders);
 
         // Run image generation
-        await Promise.all(placeholders.map(async (item, index) => {
+        for (const [index, item] of placeholders.entries()) {
             try {
                 const url = await generateBlogImage(item.prompt, "16:9", refParts, faceParts);
                 setGeneratedImages(prev => {
@@ -300,7 +300,7 @@ export const ContentWriter: React.FC = () => {
                     return newArr;
                 });
             }
-        }));
+        }
 
         // --- Step 3: Thumbnail ---
         setCurrentStep('thumbnail');

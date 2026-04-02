@@ -18,7 +18,7 @@ async function fetchNaverLocalData(query: string): Promise<string | null> {
 }
 
 // --- Helper: withRetry for robust API calls ---
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 50, initialDelay = 2000, timeoutMs = 60000): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, minDelay = 10000, maxDelay = 30000, timeoutMs = 60000): Promise<T> {
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -58,8 +58,8 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 50, initialDelay 
         throw error;
       }
       
-      // Exponential backoff with a bit of jitter, capped at 5 seconds to prevent extremely long waits
-      const delay = Math.min(initialDelay * Math.pow(1.5, i), 5000) + Math.random() * 1000;
+      // Wait for a random delay between minDelay and maxDelay
+      const delay = Math.random() * (maxDelay - minDelay) + minDelay;
       console.warn(`Gemini API call failed (attempt ${i + 1}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`, error);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
