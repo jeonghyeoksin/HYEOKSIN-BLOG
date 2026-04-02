@@ -11,6 +11,7 @@ export interface GeneratedImage {
   prompt: string;
   context: string;
   isLoading: boolean;
+  error?: string;
 }
 
 export interface KeywordSuggestion {

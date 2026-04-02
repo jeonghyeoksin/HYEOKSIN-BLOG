@@ -55,19 +55,31 @@ const Manual: React.FC = () => {
         <section className="space-y-4">
           <h2 className="text-2xl font-bold text-indigo-400 flex items-center gap-2">
             <span className="bg-indigo-500/20 text-indigo-400 w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
-            이미지 에셋 및 세탁 기능
+            이미지 모델 선택 및 에셋 활용
           </h2>
           <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 space-y-6">
+            <div className="space-y-3 border-b border-slate-700/50 pb-6">
+              <h4 className="text-purple-400 font-bold text-sm flex items-center gap-2">
+                <span>🤖</span> 이미지 생성 모델 선택
+              </h4>
+              <p className="text-sm text-slate-300">원하는 품질과 예산에 맞춰 3가지 이미지 생성 모델 중 하나를 선택할 수 있습니다.</p>
+              <ul className="space-y-2 text-xs text-slate-400 list-disc list-inside ml-2">
+                <li><strong className="text-slate-200">Gemini 3.1 Flash Image Preview (기본):</strong> 한국어 텍스트 렌더링이 가능한 고품질 모델</li>
+                <li><strong className="text-slate-200">Gemini 2.5 Flash Image:</strong> 텍스트 생성은 불가하지만 가장 빠르고 저렴한 표준 모델</li>
+                <li><strong className="text-slate-200">Imagen 4.0:</strong> 사실적인 사진 생성에 특화된 프리미엄 모델</li>
+              </ul>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <h4 className="text-teal-400 font-bold text-sm">🖼️ 이미지 소스 활용</h4>
-                <p className="text-xs leading-relaxed">
+                <p className="text-xs leading-relaxed text-slate-400">
                   로고, 인물, 참고 이미지를 업로드하면 AI가 원고 작성 시 해당 이미지들을 적재적소에 배치하도록 가이드를 제공합니다.
                 </p>
               </div>
               <div className="space-y-2">
                 <h4 className="text-amber-400 font-bold text-sm">🧼 세탁 이미지 (Hash 변경)</h4>
-                <p className="text-xs leading-relaxed">
+                <p className="text-xs leading-relaxed text-slate-400">
                   기존 이미지를 그대로 사용하고 싶지만 '유사 이미지' 판독이 걱정될 때 사용하세요. 
                   <strong>이미지 변형 없이</strong> 데이터 값만 미세하게 변경하여 새로운 이미지로 인식되게끔 처리합니다.
                 </p>
@@ -134,6 +146,37 @@ const Manual: React.FC = () => {
               <div className="bg-slate-800 p-3 rounded-lg">
                 <h5 className="text-indigo-300 font-bold mb-1">📥 이미지 다운로드</h5>
                 <p>생성된 이미지와 세탁 이미지를 한 번에 다운로드하거나 개별적으로 저장할 수 있습니다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Step 6 */}
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold text-indigo-400 flex items-center gap-2">
+            <span className="bg-indigo-500/20 text-indigo-400 w-8 h-8 rounded-full flex items-center justify-center text-sm">6</span>
+            API 비용 관리 및 최적화
+          </h2>
+          <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 space-y-4">
+            <p className="text-sm text-slate-300 leading-relaxed">
+              본 서비스는 사용자의 API Key를 직접 사용하여 구동되므로, 과도한 요금 청구를 방지하기 위한 비용 관리 기능이 탑재되어 있습니다.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                <h4 className="text-emerald-400 font-bold mb-2 flex items-center gap-2">
+                  <span>💰</span> 실시간 비용 확인
+                </h4>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  정확한 API 사용량과 청구 금액은 Google Cloud Console의 결제(Billing) 보고서에서 실시간으로 확인하실 수 있습니다.
+                </p>
+              </div>
+              <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                <h4 className="text-blue-400 font-bold mb-2 flex items-center gap-2">
+                  <span>⚙️</span> 자동 해상도 최적화
+                </h4>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  이미지 생성 비용을 최소화하기 위해, 본 앱은 모든 생성 이미지의 기본 해상도를 <strong className="text-slate-200">512px</strong>로 자동 하향 조정하여 요청합니다. 이를 통해 고해상도 대비 상당한 비용을 절감합니다.
+                </p>
               </div>
             </div>
           </div>

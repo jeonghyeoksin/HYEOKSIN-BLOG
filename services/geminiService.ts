@@ -735,10 +735,31 @@ export interface ImagePromptRequest {
   prompt: string;
 }
 
-export const generateImagePromptsForPost = async (content: string, hasFaceReference: boolean = false, numberOfImages: number = 4, hasReferenceImages: boolean = false): Promise<ImagePromptRequest[]> => {
+export const generateImagePromptsForPost = async (content: string, hasFaceReference: boolean = false, numberOfImages: number = 4, hasReferenceImages: boolean = false, modelName: string = 'gemini-3.1-flash-image-preview'): Promise<ImagePromptRequest[]> => {
   try {
     const ai = getClient();
     const isAuto = numberOfImages === 0;
+    const supportsText = modelName === 'gemini-3.1-flash-image-preview';
+
+    const textRules = supportsText ? `
+    **STRICT TEXT RULES (KOREAN ONLY - CRITICAL)**:
+    1. **Line Count**: **MUST include AT LEAST 2 LINES of attractive Korean text**.
+    2. **Structure**:
+       - **Line 1 (Headline)**: Impactful, Bold Sans-serif font.
+       - **Line 2 (Subtitle)**: Descriptive, smaller.
+    3. **Legibility & Accuracy**: Text must be perfectly legible and aesthetically pleasing. **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. To prevent corruption, **KEEP TEXT EXTREMELY SHORT (1-3 words per line)**. Summarize long concepts into punchy, short phrases.
+    4. **NO ENGLISH**: **DO NOT include any English text** in the image. This is a strict requirement.
+    5. **Privacy**: Do not include contact info unless explicitly present in content.
+    6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", "[IMAGE]", or any file names in the image. Only include the specified Korean headline and subtitle.
+
+    **Prompt Format (English)**:
+    - Detailed visual description.
+    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the Korean text '[Line 1 Text]' in a massive, bold Sans-serif font. Directly below it, render '[Line 2 Text]' in a clean font. Text must be perfectly spelled in Korean Hangul."
+    ` : `
+    **STRICT TEXT RULES**:
+    - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
+    - **Prompt Format (English)**: Detailed visual description ONLY. Focus purely on the visual elements, composition, and style.
+    `;
 
     const prompt = `
       Analyze the blog post content to ${isAuto ? "extract a variable number of (between 4 and 8)" : `extract ${numberOfImages}`} key visual concepts.
@@ -755,23 +776,10 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
     **VISUAL DESIGN STYLE**:
     - **Style**: "Modern Professional Infographic" with a clean, high-end aesthetic.
     - **Theme**: Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".
-    - **Quality**: 8K resolution, clean, no AI distortion, no excessive glaze.
+    - **Quality**: Clean, no AI distortion, no excessive glaze.
     - **Layout**: Mobile-optimized, central or Z-pattern. Use clear visual hierarchy.
     - **Constraint**: DO NOT put image numbers on the image.
-
-    **STRICT TEXT RULES (KOREAN ONLY - CRITICAL)**:
-    1. **Line Count**: **MUST include AT LEAST 2 LINES of attractive Korean text**.
-    2. **Structure**:
-       - **Line 1 (Headline)**: Impactful, Bold Sans-serif font.
-       - **Line 2 (Subtitle)**: Descriptive, smaller.
-    3. **Legibility & Accuracy**: Text must be perfectly legible and aesthetically pleasing. **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. If the text is too long or complex and might cause corruption, **SUMMARIZE and SHORTEN** it to ensure perfect rendering.
-    4. **NO ENGLISH**: **DO NOT include any English text** in the image. This is a strict requirement.
-    5. **Privacy**: Do not include contact info unless explicitly present in content.
-    6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", "[IMAGE]", or any file names in the image. Only include the specified Korean headline and subtitle.
-
-    **Prompt Format (English)**:
-    - Detailed visual description.
-    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the Korean text '[Line 1 Text]' in a massive, bold Sans-serif font. Directly below it, render '[Line 2 Text]' in a clean font. Text must be perfectly spelled in Korean Hangul."
+    ${textRules}
 
     Return JSON array of ${isAuto ? "objects (length between 4 and 8, determined by content length)" : `${numberOfImages} objects`}:
     - 'context': Korean description.
@@ -810,9 +818,30 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
   }
 };
 
-export const generateThumbnailPrompt = async (keyword: string, content: string): Promise<string> => {
+export const generateThumbnailPrompt = async (keyword: string, content: string, modelName: string = 'gemini-3.1-flash-image-preview'): Promise<string> => {
   try {
     const ai = getClient();
+    const supportsText = modelName === 'gemini-3.1-flash-image-preview';
+    
+    const textRequirements = supportsText ? `
+      **TEXT REQUIREMENTS**:
+      - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**. This includes small labels or decorative text.
+      - **Content**: The keyword "${keyword}" MUST be the main focus.
+      - **Subtitle**: Add a short, intriguing subtitle below the keyword (e.g., "Must Read", "최신 트렌드"). **Total text must be at least 2 lines.**
+      - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. To prevent corruption, **KEEP ALL TEXT EXTREMELY SHORT (1-3 words per line)**. Summarize long concepts into punchy, short phrases.
+      - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
+      - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
+      
+      The output prompt must be in English.
+      Example: "A cinematic 3D render of [Subject]. Center stage: The text '${keyword}' in massive, glowing gold Korean characters. Below it, a smaller white text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles."
+    ` : `
+      **TEXT REQUIREMENTS**:
+      - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
+      
+      The output prompt must be in English.
+      Example: "A cinematic 3D render of [Subject]. Center stage: A glowing golden icon representing the topic. Background is a deep, rich gradient with floating particles."
+    `;
+
     const prompt = `
       Create a prompt for a **World-Class Blog Thumbnail** (1:1 ratio).
       
@@ -820,16 +849,7 @@ export const generateThumbnailPrompt = async (keyword: string, content: string):
       - **Vibe**: "Viral YouTube Thumbnail", "Netflix Poster", "High-End Brand Identity".
       - **Composition**: Central focus, dynamic background, depth of field.
       
-      **TEXT REQUIREMENTS**:
-      - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**. This includes small labels or decorative text.
-      - **Content**: The keyword "${keyword}" MUST be the main focus.
-      - **Subtitle**: Add a short, intriguing subtitle below the keyword (e.g., "Must Read", "최신 트렌드"). **Total text must be at least 2 lines.**
-      - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. If the text is too long or complex, **SUMMARIZE/SHORTEN** it to ensure perfect rendering.
-      - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
-      - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
-      
-      The output prompt must be in English.
-      Example: "A cinematic 3D render of [Subject]. Center stage: The text '${keyword}' in massive, glowing gold Korean characters. Below it, a smaller white text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles. 8k resolution."
+      ${textRequirements}
       
       Content context: ${content.substring(0, 800)}...
     `;
@@ -838,7 +858,7 @@ export const generateThumbnailPrompt = async (keyword: string, content: string):
       model: TEXT_MODEL,
       contents: prompt,
     }));
-    return response.text || `A creative 3D typography design of the word "${keyword}" in Korean, surrounded by elements matching the blog topic. No English text.`;
+    return response.text || `A creative 3D design representing the blog topic. No text.`;
   } catch (error: any) {
     throw new Error(handleApiError(error, "썸네일 프롬프트 생성 실패"));
   }
@@ -848,55 +868,97 @@ export const generateBlogImage = async (
   prompt: string, 
   aspectRatio: string = "16:9",
   referenceImages: { data: string, mimeType: string }[] = [],
-  faceImageParts: { data: string, mimeType: string }[] = []
+  faceImageParts: { data: string, mimeType: string }[] = [],
+  modelName: string = 'gemini-3.1-flash-image-preview'
 ): Promise<string | null> => {
   const ai = getClient();
   try {
-    const parts: Part[] = [];
+    if (modelName.startsWith('imagen-')) {
+        const response = await withRetry(() => ai.models.generateImages({
+            model: modelName,
+            prompt: prompt,
+            config: {
+              numberOfImages: 1,
+              outputMimeType: 'image/jpeg',
+              aspectRatio: aspectRatio as any,
+            },
+        }));
+        const base64EncodeString: string = response.generatedImages[0].image.imageBytes;
+        return `data:image/jpeg;base64,${base64EncodeString}`;
+    } else {
+        const parts: Part[] = [];
 
-    // 1. Handle Person Consistency FIRST (Critical Priority)
-    if (faceImageParts && faceImageParts.length > 0) {
-      faceImageParts.forEach(img => parts.push({ inlineData: img }));
-      parts.push({ text: "REFERENCE ID: PERSON_IMAGE. The image(s) above are the Reference Person(s). You must generate an image where these exact people are included without any distortion or modification. \n\n**CRITICAL REQUIREMENT**:\n1. **Zero Distortion**: The person(s) must be 100% identical to the reference. Do not deform, caricature, or alter the person in any way. \n2. **Integration**: Incorporate the person(s) naturally into the scene while keeping their appearance completely unmodified." });
-    }
-    
-    // 2. Handle other reference images (Logo, Context)
-    if (referenceImages && referenceImages.length > 0) {
-      referenceImages.forEach(img => {
-          parts.push({ inlineData: img });
-      });
-      // Append instruction to use the images without distortion
-      parts.push({ 
-        text: "REFERENCE ID: SOURCE_IMAGES. The images above are the Reference Images. You MUST use them 100% as provided. \n\n**STRICT REQUIREMENTS**:\n1. **Zero Distortion**: Do not deform, caricature, or alter the reference images in any way. They must be 100% identical to the source.\n2. **Integration**: Incorporate them into a professional, attractive infographic. Use them as core visual elements (e.g., in a comparison, a step-by-step guide, or a feature highlight).\n3. **Composition**: The overall composition should be a high-quality, data-driven infographic with clean typography and balanced layout." 
-      });
-    }
-
-    // 3. Add the main prompt and safety instructions
-    const safePrompt = prompt + " Ensure the image is a professional flat design or 3D isometric style as requested. High-resolution, no distortion. All Korean text must be perfectly spelled, bold sans-serif, and arranged in at least two lines. The text must be visually attractive and integrated into the design. ABSOLUTELY NO KOREAN TEXT CORRUPTION. If text is complex, simplify it. NO ENGLISH TEXT AT ALL. ABSOLUTELY NO placeholder text like '<IMAGE>', 'IMAGE 1', or file names should appear in the image.";
-    parts.push({ text: safePrompt });
-
-    const response = await withRetry(() => ai.models.generateContent({
-      model: IMAGE_MODEL,
-      contents: {
-        parts: parts
-      },
-      config: {
-        imageConfig: {
-          aspectRatio: aspectRatio as any,
-          imageSize: "1K" // gemini-3-pro-image-preview supports this
+        // 1. Handle Person Consistency FIRST (Critical Priority)
+        if (faceImageParts && faceImageParts.length > 0) {
+          faceImageParts.forEach(img => parts.push({ inlineData: img }));
+          parts.push({ text: "REFERENCE ID: PERSON_IMAGE. The image(s) above are the Reference Person(s). You must generate an image where these exact people are included without any distortion or modification. \n\n**CRITICAL REQUIREMENT**:\n1. **Zero Distortion**: The person(s) must be 100% identical to the reference. Do not deform, caricature, or alter the person in any way. \n2. **Integration**: Incorporate the person(s) naturally into the scene while keeping their appearance completely unmodified." });
         }
-      }
-    }));
-
-    for (const part of response.candidates[0]?.content?.parts || []) {
-        if (part.inlineData) {
-            const cleanBase64 = part.inlineData.data.replace(/[\r\n\s]+/g, '');
-            return `data:${part.inlineData.mimeType || 'image/png'};base64,${cleanBase64}`;
+        
+        // 2. Handle other reference images (Logo, Context)
+        if (referenceImages && referenceImages.length > 0) {
+          referenceImages.forEach(img => {
+              parts.push({ inlineData: img });
+          });
+          // Append instruction to use the images without distortion
+          parts.push({ 
+            text: "REFERENCE ID: SOURCE_IMAGES. The images above are the Reference Images. You MUST use them 100% as provided. \n\n**STRICT REQUIREMENTS**:\n1. **Zero Distortion**: Do not deform, caricature, or alter the reference images in any way. They must be 100% identical to the source.\n2. **Integration**: Incorporate them into a professional, attractive infographic. Use them as core visual elements (e.g., in a comparison, a step-by-step guide, or a feature highlight).\n3. **Composition**: The overall composition should be a high-quality, data-driven infographic with clean typography and balanced layout." 
+          });
         }
+
+        // 3. Add the main prompt and safety instructions
+        const supportsText = modelName === 'gemini-3.1-flash-image-preview';
+        
+        let safePrompt = `GENERATE_IMAGE: ${prompt}
+Style: Professional flat design or 3D isometric.
+Requirements: Clear and clean resolution, no distortion.
+Constraints: NO placeholder text, NO tool calls, NO JSON.
+CRITICAL: You must output the image part directly. Do not talk about generating it. Do not return JSON.`;
+
+        if (supportsText) {
+            safePrompt += `\n\n**TEXT REQUIREMENTS**: Perfectly spelled Korean text (bold sans-serif), integrated into design. NO ENGLISH.
+**CRITICAL TEXT CONSTRAINT FOR THIS MODEL**: To absolutely prevent Korean text corruption or breaking, keep any generated Korean text EXTREMELY short (maximum 1-3 words). If the requested text is long, summarize it to the most impactful 1-3 words. Perfect spelling is mandatory.`;
+        } else {
+            safePrompt += `\n\n**TEXT REQUIREMENTS**: NO TEXT ALLOWED. Do not generate any text, typography, or labels in the image.`;
+        }
+
+        parts.push({ text: safePrompt });
+
+        const response = await withRetry(() => {
+            const config: any = {
+                imageConfig: {
+                    aspectRatio: aspectRatio as any,
+                    imageSize: "512px"
+                }
+            };
+
+            return ai.models.generateContent({
+                model: modelName,
+                contents: {
+                    parts: parts
+                },
+                config: config
+            });
+        });
+
+        for (const part of response.candidates[0]?.content?.parts || []) {
+            if (part.inlineData) {
+                const cleanBase64 = part.inlineData.data.replace(/[\r\n\s]+/g, '');
+                return `data:${part.inlineData.mimeType || 'image/png'};base64,${cleanBase64}`;
+            }
+            if (part.text) {
+                // Check if the model is returning a JSON tool call instead of an image
+                if (part.text.includes('"action":') || part.text.includes('"prompt":')) {
+                    console.error("Model hallucinated a tool call:", part.text);
+                    throw new Error("모델이 이미지를 생성하는 대신 도구 호출을 제안했습니다. 다른 모델을 선택하거나 다시 시도해 주세요.");
+                }
+                console.log("Model returned text instead of image:", part.text);
+            }
+        }
+        console.error("Full response candidates:", JSON.stringify(response.candidates, null, 2));
+        throw new Error("응답에서 이미지 데이터를 찾을 수 없습니다.");
     }
-    return null;
   } catch (error) {
     console.error("Image generation error:", error);
-    return null;
+    throw error;
   }
 };

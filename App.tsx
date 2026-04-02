@@ -3,6 +3,7 @@ import Dashboard from './components/Dashboard';
 import { ContentWriter } from './components/ContentWriter';
 import Manual from './components/Manual';
 import ApiKeyModal from './components/ApiKeyModal';
+import { ApiCostGuideModal } from './components/ApiCostGuideModal';
 import { ViewState } from './types';
 import { useEffect } from 'react';
 
@@ -69,7 +70,7 @@ const App: React.FC = () => {
 
             {/* Nav Items */}
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* Always visible: API Cost Info */}
+              {/* API Cost Info Button */}
               <button 
                 onClick={() => setIsCostModalOpen(true)}
                 className="text-[10px] sm:text-sm font-bold transition-all px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-indigo-400 hover:text-white hover:bg-indigo-500/10 flex items-center gap-1 sm:gap-2 border border-indigo-500/30 shadow-lg shadow-indigo-500/5 bg-indigo-500/5"
@@ -160,118 +161,10 @@ const App: React.FC = () => {
         onKeyChange={checkApiKey}
       />
 
-      {/* API Cost Modal */}
-      {isCostModalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-2xl w-full space-y-6 shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-                <div className="flex justify-between items-center">
-                    <h3 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <span className="text-indigo-400">💰</span> API 비용 상세 안내
-                    </h3>
-                    <button onClick={() => setIsCostModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                </div>
-                
-                <div className="space-y-6 text-slate-300">
-                    <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 space-y-4">
-                        <h4 className="font-bold text-white border-b border-slate-700 pb-2 flex items-center gap-2">
-                            <span className="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">UNIT</span> 모델별 단가 (1,000토큰/장당)
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                            <div className="p-3 bg-slate-900/50 rounded-xl border border-slate-700/50">
-                                <p className="text-slate-400 text-xs mb-1">텍스트 생성</p>
-                                <p className="font-bold text-white">Gemini 3 Flash</p>
-                                <p className="text-emerald-400 font-mono text-xs mt-1">약 0.1원 ~ 0.5원 / 1k 토큰</p>
-                            </div>
-                            <div className="p-3 bg-slate-900/50 rounded-xl border border-slate-700/50">
-                                <p className="text-slate-400 text-xs mb-1">이미지 생성</p>
-                                <p className="font-bold text-white">Gemini 3 Pro Image</p>
-                                <p className="text-pink-400 font-mono text-xs mt-1">약 27원 / 1장</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 space-y-4">
-                        <h4 className="font-bold text-white border-b border-slate-700 pb-2">혁신 블로그 AI 결과물별 예상 비용</h4>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead>
-                                    <tr className="text-slate-500 border-b border-slate-700">
-                                        <th className="pb-2 font-medium">항목</th>
-                                        <th className="pb-2 font-medium">내용</th>
-                                        <th className="pb-2 font-medium text-right">예상 비용</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-700/50">
-                                    <tr>
-                                        <td className="py-3">키워드/전략/제목</td>
-                                        <td className="py-3 text-xs text-slate-500">분석 및 아이디어 도출</td>
-                                        <td className="py-3 text-right text-emerald-400 font-mono">약 0.1원 미만</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-3">원고 생성 (풀버전)</td>
-                                        <td className="py-3 text-xs text-slate-500">개요 + 본문 (약 2~3천자)</td>
-                                        <td className="py-3 text-right text-emerald-400 font-mono">약 1원 내외</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-3">이미지 (기본 4장)</td>
-                                        <td className="py-3 text-xs text-slate-500">본문 삽입용 인포그래픽</td>
-                                        <td className="py-3 text-right text-pink-400 font-mono">약 108원</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-3">썸네일 (1장)</td>
-                                        <td className="py-3 text-xs text-slate-500">블로그 대표 이미지</td>
-                                        <td className="py-3 text-right text-pink-400 font-mono">약 27원</td>
-                                    </tr>
-                                    <tr className="font-bold text-white bg-indigo-500/10">
-                                        <td className="py-3 px-2 rounded-l-lg">표준 세트 합계</td>
-                                        <td className="py-3 text-xs text-slate-400">원고 + 이미지 5장</td>
-                                        <td className="py-3 px-2 text-right text-indigo-300 rounded-r-lg font-mono">약 136원</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-rose-500/10 p-5 rounded-2xl border border-rose-500/20 space-y-2">
-                            <h4 className="font-bold text-rose-400 text-sm flex items-center gap-2">
-                                <span>⚠️</span> 최대 예상 비용 (Max)
-                            </h4>
-                            <p className="text-xs text-slate-400 leading-relaxed">
-                                본문 이미지를 최대(8장)로 생성하고 썸네일까지 포함할 경우의 최대 비용입니다.
-                            </p>
-                            <p className="text-xl font-bold text-rose-400 font-mono">약 245원 / 1회</p>
-                        </div>
-                        <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 space-y-2">
-                            <h4 className="font-bold text-emerald-400 text-sm flex items-center gap-2">
-                                <span>💡</span> 절약 팁 (Min)
-                            </h4>
-                            <p className="text-xs text-slate-400 leading-relaxed">
-                                이미지를 생성하지 않고 텍스트 원고만 작성할 경우의 최소 비용입니다.
-                            </p>
-                            <p className="text-xl font-bold text-emerald-400 font-mono">약 1원 미만 / 1회</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700 text-[11px] leading-relaxed text-slate-400">
-                        <p>※ 위 비용은 Google Gemini API의 공식 가격을 기준으로 한 추정치이며, 원/달러 환율 및 입력 데이터의 양(토큰 수)에 따라 실제 청구 금액과 약간의 차이가 있을 수 있습니다.</p>
-                    </div>
-                </div>
-
-                <div className="flex justify-center pt-4">
-                    <button 
-                        onClick={() => setIsCostModalOpen(false)}
-                        className="px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
-                    >
-                        확인 및 닫기
-                    </button>
-                </div>
-            </div>
-        </div>
-      )}
+      <ApiCostGuideModal 
+        isOpen={isCostModalOpen} 
+        onClose={() => setIsCostModalOpen(false)} 
+      />
 
       {/* Floating Action Buttons */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">

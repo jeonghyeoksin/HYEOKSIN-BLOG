@@ -24,6 +24,8 @@ const steps: { id: StudioStep; label: string; icon: string }[] = [
 ];
 
 export const ContentWriter: React.FC = () => {
+  // --- State: UI Flags ---
+  
   // --- State: Inputs ---
   const [topic, setTopic] = useState('');
   const [blogStyle, setBlogStyle] = useState('');
@@ -62,7 +64,7 @@ export const ContentWriter: React.FC = () => {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [launderedImages, setLaunderedImages] = useState<string[]>([]);
   const [thumbnailPrompt, setThumbnailPrompt] = useState('');
-  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [thumbnail, setThumbnail] = useState<GeneratedImage | null>(null);
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null); // null for none, -1 for thumbnail, 0+ for generatedImages
   const [editPrompt, setEditPrompt] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -73,6 +75,13 @@ export const ContentWriter: React.FC = () => {
   const [uspProgress, setUspProgress] = useState(0);
   const [imageCount, setImageCount] = useState<number>(4);
   const [isAutoImageCount, setIsAutoImageCount] = useState<boolean>(true);
+  const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview');
+
+  const IMAGE_MODELS = [
+      { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', desc: '표준 이미지 생성' },
+      { id: 'gemini-3.1-flash-image-preview', name: 'Gemini 3.1 Flash Image Preview', desc: '한국어 텍스트 이미지 생성' },
+      { id: 'imagen-4.0-generate-001', name: 'Imagen 4.0', desc: '사실적인 이미지 생성' },
+  ];
   
   // --- Refs ---
   const resultContentRef = useRef<HTMLDivElement>(null);
@@ -272,8 +281,8 @@ export const ContentWriter: React.FC = () => {
         const faceParts = await getFaceRefs();
         const refParts = await getImageRefs();
 
-        const finalImageCount = isAutoImageCount ? 0 : imageCount;
-        const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0);
+        const finalImageCount = isAutoImageCount ? 5 : imageCount;
+        const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0, selectedImageModel);
         
         const placeholders: GeneratedImage[] = prompts.map(p => ({
             prompt: p.prompt,
@@ -286,7 +295,7 @@ export const ContentWriter: React.FC = () => {
         // Run image generation
         for (const [index, item] of placeholders.entries()) {
             try {
-                const url = await generateBlogImage(item.prompt, "16:9", refParts, faceParts);
+                const url = await generateBlogImage(item.prompt, "16:9", refParts, faceParts, selectedImageModel);
                 setGeneratedImages(prev => {
                     const newArr = [...prev];
                     newArr[index] = { ...newArr[index], url, isLoading: false };
@@ -294,9 +303,10 @@ export const ContentWriter: React.FC = () => {
                 });
             } catch (e) {
                 console.error(`Image ${index} failed`, e);
+                const errorMessage = e instanceof Error ? e.message : String(e);
                 setGeneratedImages(prev => {
                     const newArr = [...prev];
-                    newArr[index] = { ...newArr[index], isLoading: false };
+                    newArr[index] = { ...newArr[index], isLoading: false, error: errorMessage };
                     return newArr;
                 });
             }
@@ -304,11 +314,19 @@ export const ContentWriter: React.FC = () => {
 
         // --- Step 3: Thumbnail ---
         setCurrentStep('thumbnail');
-        const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent);
+        const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel);
         setThumbnailPrompt(thumbPrompt);
         
-        const thumbUrl = await generateBlogImage(thumbPrompt, "1:1", refParts, faceParts);
-        setThumbnail(thumbUrl);
+        setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: true });
+        
+        try {
+            const thumbUrl = await generateBlogImage(thumbPrompt, "1:1", refParts, faceParts, selectedImageModel);
+            setThumbnail({ prompt: thumbPrompt, context: '', url: thumbUrl, isLoading: false });
+        } catch (e) {
+            console.error("Thumbnail generation failed", e);
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: false, error: errorMessage });
+        }
 
         // --- Step 4: Result ---
         setCurrentStep('result');
@@ -392,22 +410,32 @@ export const ContentWriter: React.FC = () => {
         const refParts = await getImageRefs();
         const ratio = editingImageIndex === -1 ? "1:1" : "16:9";
         
-        const newUrl = await generateBlogImage(editPrompt, ratio, refParts, faceParts);
+        const newUrl = await generateBlogImage(editPrompt, ratio, refParts, faceParts, selectedImageModel);
         
         if (editingImageIndex === -1) {
-            setThumbnail(newUrl);
+            setThumbnail({ prompt: editPrompt, context: '', url: newUrl, isLoading: false });
             setThumbnailPrompt(editPrompt);
         } else {
             setGeneratedImages(prev => {
                 const newArr = [...prev];
-                newArr[editingImageIndex] = { ...newArr[editingImageIndex], url: newUrl, prompt: editPrompt };
+                newArr[editingImageIndex] = { ...newArr[editingImageIndex], url: newUrl, prompt: editPrompt, isLoading: false, error: undefined };
                 return newArr;
             });
         }
         setEditingImageIndex(null);
     } catch (e) {
         console.error("Regeneration failed", e);
-        alert("이미지 수정 중 오류가 발생했습니다.");
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        if (editingImageIndex === -1) {
+            setThumbnail(prev => prev ? { ...prev, isLoading: false, error: errorMessage } : null);
+        } else if (editingImageIndex !== null) {
+            setGeneratedImages(prev => {
+                const newArr = [...prev];
+                newArr[editingImageIndex] = { ...newArr[editingImageIndex], isLoading: false, error: errorMessage };
+                return newArr;
+            });
+        }
+        alert(`이미지 수정 중 오류가 발생했습니다: ${errorMessage}`);
     } finally {
         setIsRegenerating(false);
     }
@@ -479,7 +507,7 @@ export const ContentWriter: React.FC = () => {
       const imagesToDownload: { url: string, name: string }[] = [];
       
       // Collect all images
-      if (thumbnail) imagesToDownload.push({ url: thumbnail, name: 'thumbnail.png' });
+      if (thumbnail?.url) imagesToDownload.push({ url: thumbnail.url, name: 'thumbnail.png' });
       generatedImages.forEach((img, idx) => {
           if (img.url) imagesToDownload.push({ url: img.url, name: `image_${idx + 1}.png` });
       });
@@ -838,6 +866,28 @@ export const ContentWriter: React.FC = () => {
 
                         {/* Image Asset Inputs */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-800">
+                             {/* Image Generation Model Selector */}
+                             <div className="space-y-2">
+                                 <label className="text-xs font-bold text-slate-300 block">🎨 이미지 생성 모델</label>
+                                 <div className="grid grid-cols-1 gap-2">
+                                     {IMAGE_MODELS.map((model) => (
+                                         <button
+                                             key={model.id}
+                                             onClick={() => setSelectedImageModel(model.id)}
+                                             className={`px-3 py-2 rounded-lg text-xs font-bold transition-all border text-left ${
+                                                 selectedImageModel === model.id
+                                                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
+                                                     : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                                             }`}
+                                         >
+                                             <div className="flex justify-between items-center">
+                                                 <span>{model.name}</span>
+                                             </div>
+                                             <div className="text-[10px] opacity-70 mt-1">{model.desc}</div>
+                                         </button>
+                                     ))}
+                                 </div>
+                             </div>
                              {/* Logo */}
                              <div className="space-y-2">
                                  <label className="text-xs font-bold text-teal-400 block">🖼️ 로고 이미지 (제한 없음)</label>
@@ -1091,6 +1141,8 @@ export const ContentWriter: React.FC = () => {
                                      <div className="aspect-video bg-slate-900 relative">
                                          {img.isLoading ? (
                                              <div className="absolute inset-0 flex items-center justify-center text-indigo-500">생성 중...</div>
+                                         ) : img.error ? (
+                                             <div className="absolute inset-0 flex items-center justify-center text-red-500 text-xs p-2 text-center">{img.error}</div>
                                          ) : img.url ? (
                                              <img src={img.url} alt="Gen" className="w-full h-full object-cover" />
                                          ) : (
@@ -1110,11 +1162,15 @@ export const ContentWriter: React.FC = () => {
                         <h2 className="text-2xl font-bold text-white">썸네일</h2>
                         {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold mb-4">1:1 고해상도 썸네일 제작 중... (자동 진행 중)</span>}
                         <div className="w-96 h-96 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden relative shadow-2xl">
-                             {thumbnail ? (
-                                 <img src={thumbnail} className="w-full h-full object-cover" />
-                             ) : (
-                                 <div className="absolute inset-0 flex items-center justify-center text-slate-500">생성 중...</div>
-                             )}
+                              {thumbnail?.isLoading ? (
+                                  <div className="absolute inset-0 flex items-center justify-center text-indigo-500">생성 중...</div>
+                              ) : thumbnail?.error ? (
+                                  <div className="absolute inset-0 flex items-center justify-center text-red-500 text-sm p-4 text-center">{thumbnail.error}</div>
+                              ) : thumbnail?.url ? (
+                                  <img src={thumbnail.url} className="w-full h-full object-cover" />
+                              ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center text-slate-500">대기</div>
+                              )}
                         </div>
                     </div>
                 )}
@@ -1164,11 +1220,11 @@ export const ContentWriter: React.FC = () => {
                                     <span>🎨</span> 메인 썸네일 (1:1)
                                 </h3>
                                 <div className="aspect-square rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl bg-slate-800 relative group">
-                                    {thumbnail ? (
+                                    {thumbnail?.url ? (
                                         <>
-                                            <img src={thumbnail} className="w-full h-full object-cover" alt="Thumbnail" />
+                                            <img src={thumbnail.url} className="w-full h-full object-cover" alt="Thumbnail" />
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                                                <a href={thumbnail} download="thumbnail.png" className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors w-32 text-center">다운로드</a>
+                                                <a href={thumbnail.url} download="thumbnail.png" className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors w-32 text-center">다운로드</a>
                                                 <button 
                                                     onClick={() => {
                                                         setEditingImageIndex(-1);
@@ -1180,6 +1236,21 @@ export const ContentWriter: React.FC = () => {
                                                 </button>
                                             </div>
                                         </>
+                                    ) : thumbnail?.error ? (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-red-500 text-sm p-4 text-center gap-2">
+                                            <span>{thumbnail.error}</span>
+                                            <button 
+                                                onClick={() => {
+                                                    setEditingImageIndex(-1);
+                                                    setEditPrompt(thumbnailPrompt);
+                                                }}
+                                                className="bg-indigo-600 text-white px-3 py-1.5 rounded font-bold hover:bg-indigo-500 transition-colors"
+                                            >
+                                                다시 생성
+                                            </button>
+                                        </div>
+                                    ) : thumbnail?.isLoading ? (
+                                        <div className="w-full h-full flex items-center justify-center text-indigo-500">생성 중...</div>
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-slate-500">이미지 없음</div>
                                     )}
@@ -1210,6 +1281,21 @@ export const ContentWriter: React.FC = () => {
                                                             </button>
                                                         </div>
                                                     </>
+                                                ) : img.error ? (
+                                                    <div className="w-full h-full flex flex-col items-center justify-center text-red-500 text-xs p-2 text-center gap-2">
+                                                        <span>{img.error}</span>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setEditingImageIndex(idx);
+                                                                setEditPrompt(img.prompt);
+                                                            }}
+                                                            className="bg-indigo-600 text-white px-2 py-1 rounded font-bold hover:bg-indigo-500 transition-colors"
+                                                        >
+                                                            다시 생성
+                                                        </button>
+                                                    </div>
+                                                ) : img.isLoading ? (
+                                                    <div className="w-full h-full flex items-center justify-center text-indigo-500 text-xs">생성 중...</div>
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">대기 중</div>
                                                 )}
