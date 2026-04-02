@@ -23,7 +23,7 @@ export interface KeywordSuggestion {
 
 export type ViewState = 'dashboard' | 'studio' | 'manual';
 
-export type StudioStep = 'keyword' | 'script' | 'images' | 'thumbnail' | 'result';
+export type StudioStep = 'keyword' | 'usp' | 'title' | 'script' | 'images' | 'thumbnail' | 'result';
 
 export interface WriterState {
   step: StudioStep;

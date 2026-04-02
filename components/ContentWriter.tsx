@@ -9,17 +9,21 @@ import {
   generateImagePromptsForPost, 
   generateThumbnailPrompt, 
   generateBlogImage,
-  generateTitle,
+  generateTitleStream,
+  generateUSPStream,
   generateUSP,
+  generateTitle,
   ImagePromptRequest
 } from '../services/geminiService';
 import { StudioStep, GeneratedImage, KeywordSuggestion } from '../types';
 
 const steps: { id: StudioStep; label: string; icon: string }[] = [
   { id: 'keyword', label: '키워드 발굴', icon: '🔍' },
-  { id: 'script', label: '대본 생성', icon: '📝' },
-  { id: 'images', label: '이미지 자동생성', icon: '🖼️' },
-  { id: 'thumbnail', label: '1:1 썸네일', icon: '🎨' },
+  { id: 'usp', label: 'USP 도출', icon: '🎯' },
+  { id: 'title', label: '제목 생성', icon: '📝' },
+  { id: 'script', label: '대본 생성', icon: '📄' },
+  { id: 'images', label: '이미지 생성', icon: '🖼️' },
+  { id: 'thumbnail', label: '썸네일 생성', icon: '🎨' },
   { id: 'result', label: '최종 결과', icon: '🏆' },
 ];
 
@@ -56,6 +60,7 @@ export const ContentWriter: React.FC = () => {
   const [selectedKeyword, setSelectedKeyword] = useState('');
   const [manualKeyword, setManualKeyword] = useState('');
   const [isAutoRunning, setIsAutoRunning] = useState(false);
+  const [isFullAuto, setIsFullAuto] = useState(false);
   
   // --- State: Generation Results ---
   const [title, setTitle] = useState('');
@@ -75,20 +80,55 @@ export const ContentWriter: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingUSP, setIsGeneratingUSP] = useState(false);
   const [uspProgress, setUspProgress] = useState(0);
+  const [stepProgress, setStepProgress] = useState(0);
+  const [isStepComplete, setIsStepComplete] = useState(false);
   const [imageCount, setImageCount] = useState<number>(4);
   const [isAutoImageCount, setIsAutoImageCount] = useState<boolean>(true);
   const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview');
+  const [selectedImageStyle, setSelectedImageStyle] = useState<string>('기본 스타일');
 
   const IMAGE_MODELS = [
       { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', desc: '표준 이미지 생성' },
       { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2 (Gemini 3.1 Flash Image)', desc: '한국어 텍스트 이미지 생성' },
       { id: 'imagen-4.0-generate-001', name: 'Imagen 4.0', desc: '사실적인 이미지 생성' },
   ];
+
+  const IMAGE_STYLES = [
+      { id: '기본 스타일', name: '기본 스타일', desc: '블로그 주제에 가장 적합한 스타일로 자동 생성' },
+      { id: '실사/사진', name: '실사/사진', desc: '고해상도 카메라로 촬영한 듯한 사실적인 사진 스타일' },
+      { id: '3D 렌더링', name: '3D 렌더링', desc: '입체적이고 매끄러운 3D 그래픽 스타일' },
+      { id: '일러스트', name: '일러스트', desc: '깔끔하고 현대적인 벡터 일러스트 스타일' },
+      { id: '수채화', name: '수채화', desc: '부드럽고 감성적인 수채화 느낌의 스타일' },
+      { id: '유화', name: '유화', desc: '질감이 살아있는 클래식한 유화 스타일' },
+      { id: '미니멀리즘', name: '미니멀리즘', desc: '여백의 미를 살린 심플하고 깨끗한 스타일' },
+      { id: '팝아트', name: '팝아트', desc: '강렬한 색감과 굵은 선의 팝아트 스타일' },
+      { id: '빈티지/레트로', name: '빈티지/레트로', desc: '오래된 필름 사진이나 복고풍 느낌의 스타일' },
+      { id: '애니메이션', name: '애니메이션', desc: '생동감 넘치는 일본 애니메이션 감성의 스타일' },
+  ];
   
   // --- Refs ---
   const resultContentRef = useRef<HTMLDivElement>(null);
+  const nextStepResolver = useRef<(() => void) | null>(null);
 
   // --- Helpers ---
+  const waitForNextStep = (forceAuto?: boolean) => {
+    if (forceAuto ?? isFullAuto) {
+        return new Promise<void>(resolve => setTimeout(resolve, 2000));
+    }
+    setIsStepComplete(true);
+    return new Promise<void>((resolve) => {
+        nextStepResolver.current = resolve;
+    });
+  };
+
+  const handleNextStep = () => {
+    if (nextStepResolver.current) {
+        nextStepResolver.current();
+        nextStepResolver.current = null;
+        setIsStepComplete(false);
+    }
+  };
+
   const checkAndRequireApiKey = async (): Promise<boolean> => {
     if (typeof window !== 'undefined' && (window as any).aistudio) {
         try {
@@ -181,7 +221,7 @@ export const ContentWriter: React.FC = () => {
   };
 
   // --- Automatic Workflow ---
-  const runAutomationSequence = async (keyword: string) => {
+  const runAutomationSequence = async (keyword: string, fullAuto: boolean = false) => {
     if (!keyword) return;
     if (!blogPlatform || !blogCategory) {
         alert('블로그 플랫폼과 블로그 분류를 선택해주세요.');
@@ -192,6 +232,7 @@ export const ContentWriter: React.FC = () => {
         return;
     }
     setIsAutoRunning(true);
+    setIsFullAuto(fullAuto);
     setSelectedKeyword(keyword);
 
     try {
@@ -203,20 +244,57 @@ export const ContentWriter: React.FC = () => {
             return;
         }
 
-        // --- Step 1: Script ---
+        // --- Step 1: USP ---
+        setCurrentStep('usp');
+        setStepProgress(0);
+        const suggestedKeywordStrings = keywords.map(k => k.keyword);
+        setPostGoal(''); // Clear before streaming
+        const uspRes = await generateUSPStream(
+            topic, 
+            (chunk) => {
+                setPostGoal(prev => prev + chunk);
+                setStepProgress(prev => Math.min(prev + 0.5, 95));
+            },
+            storeName || undefined, 
+            salesService || undefined, 
+            blogCategory || undefined, 
+            blogPlatform || undefined, 
+            suggestedKeywordStrings
+        );
+        setStepProgress(100);
+        await waitForNextStep(fullAuto);
+
+        // --- Step 2: Title ---
+        setCurrentStep('title');
+        setStepProgress(0);
+        setTitleOptions([]); // Clear before streaming
+        const generatedTitles = await generateTitleStream(
+            keyword, 
+            topic || keyword, 
+            (titles) => {
+                setTitleOptions(titles);
+                setStepProgress(prev => Math.min(prev + 5, 95));
+            },
+            uspRes, 
+            referenceNote, 
+            blogCategory, 
+            blogPlatform, 
+            storeName
+        );
+        setTitle(generatedTitles[0] || '');
+        setStepProgress(100);
+        await waitForNextStep(fullAuto);
+
+        // --- Step 3: Script ---
         setCurrentStep('script');
+        setStepProgress(0);
         
         let filePart = referenceFile ? await convertFileToBase64(referenceFile) : undefined;
-        
+
         const servicePriceImageParts = [];
         for (const file of servicePriceFiles) {
              servicePriceImageParts.push(await convertFileToBase64(file));
         }
-        
-        // Generate Title
-        const generatedTitles = await generateTitle(keyword, topic || keyword, postGoal, referenceNote, blogCategory, blogPlatform, storeName);
-        setTitleOptions(generatedTitles);
-        setTitle(generatedTitles[0] || '');
 
         // Generate Outline
         const scriptImageParts = [];
@@ -232,7 +310,7 @@ export const ContentWriter: React.FC = () => {
             : referenceNote;
 
         const outlineRes = await generateOutline(
-            keyword, storeName, salesService, postGoal, filePart, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
+            keyword, storeName, salesService, uspRes, filePart, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
         );
         setOutline(outlineRes);
 
@@ -244,9 +322,10 @@ export const ContentWriter: React.FC = () => {
         let hasReachedHashtags = false;
 
         await generateFullPostStream(
-            keyword, outlineRes, storeName, salesService, postGoal, 
+            keyword, outlineRes, storeName, salesService, uspRes, 
             (chunk) => {
                 accumulatedContent += chunk;
+                setStepProgress(prev => Math.min(prev + 0.1, 95));
                 if (accumulatedContent.includes(hashtagMarker)) {
                     hasReachedHashtags = true;
                     const parts = accumulatedContent.split(hashtagMarker);
@@ -267,6 +346,8 @@ export const ContentWriter: React.FC = () => {
             },
             undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
         );
+        setStepProgress(100);
+        await waitForNextStep(fullAuto);
 
         // --- Step 2: Images ---
         const processedLaundered = [];
@@ -286,12 +367,13 @@ export const ContentWriter: React.FC = () => {
         }
 
         setCurrentStep('images');
+        setStepProgress(0);
         
         const faceParts = await getFaceRefs();
         const refParts = await getImageRefs();
 
         const finalImageCount = isAutoImageCount ? 5 : imageCount;
-        const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0, selectedImageModel);
+        const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0, selectedImageModel, selectedImageStyle);
         
         const placeholders: GeneratedImage[] = prompts.map(p => ({
             prompt: p.prompt,
@@ -310,6 +392,7 @@ export const ContentWriter: React.FC = () => {
                     newArr[index] = { ...newArr[index], url, isLoading: false };
                     return newArr;
                 });
+                setStepProgress(((index + 1) / placeholders.length) * 100);
             } catch (e) {
                 console.error(`Image ${index} failed`, e);
                 const errorMessage = e instanceof Error ? e.message : String(e);
@@ -320,10 +403,13 @@ export const ContentWriter: React.FC = () => {
                 });
             }
         }
+        setStepProgress(100);
+        await waitForNextStep(fullAuto);
 
         // --- Step 3: Thumbnail ---
         setCurrentStep('thumbnail');
-        const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel);
+        setStepProgress(0);
+        const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle);
         setThumbnailPrompt(thumbPrompt);
         
         setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: true });
@@ -331,11 +417,13 @@ export const ContentWriter: React.FC = () => {
         try {
             const thumbUrl = await generateBlogImage(thumbPrompt, "1:1", refParts, faceParts, selectedImageModel);
             setThumbnail({ prompt: thumbPrompt, context: '', url: thumbUrl, isLoading: false });
+            setStepProgress(100);
         } catch (e) {
             console.error("Thumbnail generation failed", e);
             const errorMessage = e instanceof Error ? e.message : String(e);
             setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: false, error: errorMessage });
         }
+        await waitForNextStep(fullAuto);
 
         // --- Step 4: Result ---
         setCurrentStep('result');
@@ -351,35 +439,8 @@ export const ContentWriter: React.FC = () => {
 
   // --- Handlers ---
   const handleGenerateUSP = async () => {
-      if (!topic) {
-          alert('블로그 주제를 입력해주세요.');
-          return;
-      }
-      setIsGeneratingUSP(true);
-      setUspProgress(0);
-      
-      // Progress simulation
-      const interval = setInterval(() => {
-          setUspProgress(prev => {
-              if (prev >= 90) return prev;
-              return prev + Math.random() * 15;
-          });
-      }, 600);
-
-      try {
-          const usp = await generateUSP(topic, storeName || undefined, salesService || undefined, blogCategory || undefined, blogPlatform || undefined);
-          setPostGoal(usp);
-          setUspProgress(100);
-      } catch (e) {
-          console.error(e);
-          alert('USP 도출 중 오류가 발생했습니다.');
-      } finally {
-          clearInterval(interval);
-          setTimeout(() => {
-              setIsGeneratingUSP(false);
-              setUspProgress(0);
-          }, 500);
-      }
+      // This function is no longer used in the keyword step UI
+      return;
   };
 
   const handleDiscoverKeywords = async () => {
@@ -404,11 +465,21 @@ export const ContentWriter: React.FC = () => {
   };
 
   const handleBackStep = () => {
-      // In auto mode, stepping back is less common, but we'll allow basic navigation if not running
       if (isAutoRunning) return;
-      const stepOrder: StudioStep[] = ['keyword', 'script', 'images', 'thumbnail', 'result'];
+      const stepOrder: StudioStep[] = ['keyword', 'usp', 'title', 'script', 'images', 'thumbnail', 'result'];
       const currentIdx = stepOrder.indexOf(currentStep);
       if (currentIdx > 0) setCurrentStep(stepOrder[currentIdx - 1]);
+  };
+
+  const handleForwardStep = () => {
+      if (isAutoRunning) return;
+      const stepOrder: StudioStep[] = ['keyword', 'usp', 'title', 'script', 'images', 'thumbnail', 'result'];
+      const currentIdx = stepOrder.indexOf(currentStep);
+      if (currentIdx < stepOrder.length - 1) {
+          setCurrentStep(stepOrder[currentIdx + 1]);
+      } else {
+          setCurrentStep('keyword');
+      }
   };
 
   const handleRegenerateImage = async () => {
@@ -594,13 +665,22 @@ export const ContentWriter: React.FC = () => {
         {/* Step Header */}
         <div className="bg-slate-900 border-b border-slate-800 pt-8 pb-4 shadow-sm z-20 flex-none relative">
             {currentStep !== 'keyword' && !isAutoRunning && (
-                <button 
-                    onClick={handleBackStep}
-                    className="absolute left-8 top-8 text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    이전
-                </button>
+                <div className="absolute left-8 top-8 flex gap-2">
+                    <button 
+                        onClick={handleBackStep}
+                        className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        이전
+                    </button>
+                    <button 
+                        onClick={handleForwardStep}
+                        className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+                    >
+                        다음
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </button>
+                </div>
             )}
             {renderStepIndicator()}
         </div>
@@ -769,53 +849,6 @@ export const ContentWriter: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* USP Section */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">포스팅 목표 (USP) - <span className="text-indigo-400">AI 자동 도출 가능</span></label>
-                            <div className="flex flex-col gap-3">
-                                <div className="flex gap-3">
-                                    <input 
-                                        type="text" 
-                                        value={postGoal}
-                                        onChange={(e) => setPostGoal(e.target.value)}
-                                        placeholder="직접 입력하거나 우측 버튼으로 자동 생성하세요."
-                                        className="flex-1 p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
-                                    />
-                                    <button 
-                                        onClick={handleGenerateUSP}
-                                        disabled={isGeneratingUSP || !topic}
-                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 relative overflow-hidden"
-                                    >
-                                        {isGeneratingUSP ? (
-                                            <>
-                                                <span className="animate-spin">🌀</span>
-                                                <span>도출 중...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span>🎯 USP 자동 도출</span>
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                                
-                                {isGeneratingUSP && (
-                                    <div className="space-y-1.5 animate-fade-in">
-                                        <div className="flex justify-between text-[10px] font-bold text-indigo-400 px-1">
-                                            <span>AI 전략 분석 중...</span>
-                                            <span>{Math.round(uspProgress)}%</span>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                                            <div 
-                                                className="h-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(79,70,229,0.5)]"
-                                                style={{ width: `${uspProgress}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
                         {/* Reference Note */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">참고 노트 (선택)</label>
@@ -902,6 +935,26 @@ export const ContentWriter: React.FC = () => {
                                         유사 문서 회피 모드
                                     </span>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Image Style Selector */}
+                        <div className="pt-4 border-t border-slate-800 space-y-3">
+                            <label className="text-xs font-bold text-slate-300 block">🎨 이미지 스타일 선택</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-2">
+                                {IMAGE_STYLES.map((style) => (
+                                    <button
+                                        key={style.id}
+                                        onClick={() => setSelectedImageStyle(style.id)}
+                                        className={`px-2 py-2 rounded-lg text-[10px] font-bold transition-all border text-center ${
+                                            selectedImageStyle === style.id
+                                                ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
+                                                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        {style.name}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
@@ -1049,23 +1102,21 @@ export const ContentWriter: React.FC = () => {
 
                     {/* Action Area */}
                     <div className="pt-4 border-t border-slate-800">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-                          {/* Discover */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                          {/* 1. Discover Keywords */}
                           <button 
                             onClick={handleDiscoverKeywords}
                             disabled={isGenerating || !topic}
-                            className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-8 rounded-3xl font-bold text-xl hover:shadow-2xl hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group text-left flex flex-col justify-center min-h-[140px] relative overflow-hidden border border-indigo-400/30 ring-1 ring-indigo-500/20"
+                            className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-6 rounded-3xl font-bold hover:shadow-2xl hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group text-left flex flex-col justify-between min-h-[180px] relative overflow-hidden border border-indigo-400/30 ring-1 ring-indigo-500/20"
                           >
                              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
-                                <svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                              </div>
-                             <div className="relative z-10 flex items-center gap-3 mb-3">
-                                 <span className="text-3xl bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">🔍</span>
-                                 <span className="text-2xl tracking-tight">키워드 발굴하기</span>
+                             <div className="relative z-10">
+                                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl mb-4 backdrop-blur-sm">🔍</div>
+                                 <h3 className="text-xl font-bold tracking-tight mb-2">키워드 발굴하기</h3>
+                                 <p className="text-xs text-indigo-100 font-normal opacity-80 leading-relaxed">AI가 주제를 분석하여 황금 키워드를 찾아드립니다.</p>
                              </div>
-                             <span className="relative z-10 text-base text-indigo-100 font-normal opacity-90 leading-relaxed max-w-[90%]">
-                                 AI가 주제를 심층 분석하여 <span className="text-white font-bold underline decoration-indigo-300 decoration-2 underline-offset-2">황금 키워드</span>를 찾아드립니다.
-                             </span>
                              {isGenerating && (
                                 <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center z-20">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -1073,49 +1124,69 @@ export const ContentWriter: React.FC = () => {
                              )}
                           </button>
                           
-                          {/* Manual Start */}
-                          <div className="bg-slate-800/60 p-8 rounded-3xl border border-slate-700/50 hover:border-emerald-500/30 hover:bg-slate-800 flex flex-col justify-center shadow-lg group focus-within:ring-2 focus-within:ring-emerald-500/30 transition-all min-h-[140px] relative overflow-hidden">
-                               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                               <div className="relative z-10 flex items-center justify-between mb-5">
-                                   <div className="flex items-center gap-3">
-                                       <span className="text-2xl bg-emerald-500/20 p-2 rounded-xl text-emerald-400">⚡️</span>
-                                       <div>
-                                           <span className="text-white font-bold text-xl block">빠른 시작 (Direct)</span>
-                                           <span className="text-xs text-slate-400 font-medium">키워드를 이미 알고 계신가요?</span>
-                                       </div>
-                                   </div>
+                          {/* 2. Manual Keyword Start */}
+                          <div className="bg-slate-800/60 p-6 rounded-3xl border border-slate-700/50 hover:border-emerald-500/30 hover:bg-slate-800 flex flex-col justify-between shadow-lg group transition-all min-h-[180px] relative overflow-hidden">
+                               <div className="relative z-10">
+                                   <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center text-2xl mb-4 text-emerald-400">⚡️</div>
+                                   <h3 className="text-xl font-bold text-white tracking-tight mb-2">원하는 키워드로 시작</h3>
+                                   <p className="text-xs text-slate-400 font-medium mb-4">직접 입력한 키워드로 작성합니다.</p>
                                </div>
-                               <div className="relative z-10 flex flex-col gap-3">
-                                   <div className="flex gap-3 h-14">
-                                        <input 
-                                            type="text" 
-                                            value={manualKeyword}
-                                            onChange={(e) => setManualKeyword(e.target.value)}
-                                            placeholder="키워드를 입력하세요"
-                                            className="flex-1 bg-slate-900 border border-slate-600 rounded-xl px-5 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all text-lg shadow-inner"
-                                            onKeyDown={(e) => e.key === 'Enter' && handleManualStart()} 
-                                        />
-                                       <button 
-                                          onClick={handleManualStart}
-                                          className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 h-full rounded-xl font-bold text-lg transition-all shadow-lg shadow-emerald-900/20 hover:shadow-emerald-500/40 whitespace-nowrap flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
-                                       >
-                                          Go
-                                       </button>
-                                   </div>
+                               <div className="relative z-10 flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={manualKeyword}
+                                        onChange={(e) => setManualKeyword(e.target.value)}
+                                        placeholder="키워드 입력"
+                                        className="flex-1 bg-slate-900 border border-slate-600 rounded-xl px-3 text-sm text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all"
+                                        onKeyDown={(e) => e.key === 'Enter' && handleManualStart()} 
+                                    />
                                    <button 
-                                      onClick={() => {
-                                          if (!topic) {
-                                              alert("블로그 주제를 먼저 입력해주세요.");
-                                              return;
-                                          }
-                                          runAutomationSequence(topic);
-                                      }}
-                                      className="w-full bg-slate-700 hover:bg-slate-600 text-white h-12 rounded-xl font-bold text-sm transition-all shadow-md whitespace-nowrap flex items-center justify-center gap-2"
+                                      onClick={handleManualStart}
+                                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-900/20"
                                    >
-                                      블로그 주제로 바로 시작하기
+                                      Go
                                    </button>
                                </div>
                           </div>
+
+                          {/* 3. Start with Blog Topic */}
+                          <button 
+                            onClick={() => {
+                                if (!topic) {
+                                    alert("블로그 주제를 먼저 입력해주세요.");
+                                    return;
+                                }
+                                runAutomationSequence(topic);
+                            }}
+                            className="bg-slate-800/60 p-6 rounded-3xl border border-slate-700/50 hover:border-blue-500/30 hover:bg-slate-800 flex flex-col justify-between shadow-lg group transition-all min-h-[180px] relative overflow-hidden text-left"
+                          >
+                             <div className="relative z-10">
+                                 <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center text-2xl mb-4 text-blue-400">📝</div>
+                                 <h3 className="text-xl font-bold text-white tracking-tight mb-2">블로그 주제로 바로 시작하기</h3>
+                                 <p className="text-xs text-slate-400 font-medium leading-relaxed">입력한 주제를 바탕으로 즉시 원고 작성을 시작합니다.</p>
+                             </div>
+                          </button>
+
+                          {/* 4. One-Click Automation */}
+                          <button 
+                            onClick={() => {
+                                if (!topic) {
+                                    alert("블로그 주제를 먼저 입력해주세요.");
+                                    return;
+                                }
+                                runAutomationSequence(topic, true);
+                            }}
+                            className="bg-gradient-to-br from-amber-500 to-orange-600 p-6 rounded-3xl border border-amber-400/30 hover:shadow-2xl hover:shadow-orange-500/40 transition-all group text-left flex flex-col justify-between min-h-[180px] relative overflow-hidden animate-pulse-subtle"
+                          >
+                             <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity transform group-hover:scale-110 duration-500">
+                                <span className="text-6xl">🚀</span>
+                             </div>
+                             <div className="relative z-10">
+                                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl mb-4 backdrop-blur-sm">🤖</div>
+                                 <h3 className="text-xl font-bold text-white tracking-tight mb-2">원클릭 자동화 진행하기</h3>
+                                 <p className="text-xs text-amber-50 font-normal opacity-90 leading-relaxed">주제 입력부터 최종 결과물까지 AI가 한 번에 해결합니다.</p>
+                             </div>
+                          </button>
                         </div>
                     </div>
 
@@ -1126,15 +1197,28 @@ export const ContentWriter: React.FC = () => {
                           {keywords.map((k, idx) => (
                             <div 
                               key={idx}
-                              onClick={() => runAutomationSequence(k.keyword)}
-                              className="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-indigo-500 cursor-pointer transition-all hover:bg-slate-750 group relative overflow-hidden shadow-md"
+                              className="bg-slate-800 p-6 rounded-2xl border border-slate-700 transition-all hover:bg-slate-750 group relative overflow-hidden shadow-md"
                             >
-                              <div className="flex justify-between items-center mb-2">
+                              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                                 <div className="flex items-center gap-3">
                                     <span className="text-2xl font-bold text-white">{k.keyword}</span>
                                     <span className="px-2 py-1 rounded bg-indigo-900 text-indigo-300 text-xs">적합도 {k.suitabilityScore}%</span>
                                 </div>
-                                <span className="text-slate-400 text-sm">선택 및 자동 실행 &rarr;</span>
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <button 
+                                        onClick={() => runAutomationSequence(k.keyword)}
+                                        className="flex-1 md:flex-none px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-bold transition-all border border-slate-600"
+                                    >
+                                        수동으로 진행하기
+                                    </button>
+                                    <button 
+                                        onClick={() => runAutomationSequence(k.keyword, true)}
+                                        className="flex-1 md:flex-none px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 animate-shine"
+                                    >
+                                        <span>🚀</span>
+                                        <span>원클릭 자동화</span>
+                                    </button>
+                                </div>
                               </div>
                               <p className="text-slate-400 text-sm">{k.reason}</p>
                             </div>
@@ -1144,37 +1228,127 @@ export const ContentWriter: React.FC = () => {
                   </div>
                 )}
 
-                {/* Step 2: Script */}
+                {/* Step 2: USP */}
+                {currentStep === 'usp' && (
+                    <div className="animate-fade-in space-y-6 pb-20">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-white">USP 도출 중 ({Math.round(stepProgress)}%)</h2>
+                            <span className="animate-pulse text-indigo-400 font-bold">AI가 최적의 USP를 도출하고 있습니다...</span>
+                        </div>
+                        <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-2xl">🎯</div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">전략적 USP 도출</h3>
+                                    <p className="text-slate-400 text-sm">키워드 분석 결과를 바탕으로 차별화된 소구점을 찾습니다.</p>
+                                </div>
+                            </div>
+                            <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-700 min-h-[100px] text-lg text-indigo-100 leading-relaxed whitespace-pre-wrap">
+                                {postGoal || <span className="text-slate-600 italic">USP를 작성 중입니다...</span>}
+                            </div>
+                        </div>
+                        {isStepComplete && (
+                            <div className="flex justify-center gap-4 pt-4">
+                                <button 
+                                    onClick={handleBackStep}
+                                    className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
+                                >
+                                    <span className="text-2xl">←</span>
+                                    <span>이전 단계</span>
+                                </button>
+                                <button 
+                                    onClick={handleNextStep}
+                                    className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-indigo-500/30 flex items-center gap-3 animate-bounce"
+                                >
+                                    <span>다음 단계로 이동</span>
+                                    <span className="text-2xl">→</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Step 3: Title */}
+                {currentStep === 'title' && (
+                    <div className="animate-fade-in space-y-6 pb-20">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-white">제목 생성 중 ({Math.round(stepProgress)}%)</h2>
+                            <span className="animate-pulse text-indigo-400 font-bold">AI가 최적화된 제목을 생성하고 있습니다...</span>
+                        </div>
+                        <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center text-2xl">📝</div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">최적화 제목 생성</h3>
+                                    <p className="text-slate-400 text-sm">주제와 키워드가 강조된 제목을 제안합니다.</p>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                {titleOptions.length > 0 ? (
+                                    titleOptions.map((t, idx) => (
+                                        <div key={idx} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700 text-emerald-100 font-medium text-xl">
+                                            {t}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="h-12 bg-slate-700 rounded-xl w-full animate-pulse"></div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        {isStepComplete && (
+                            <div className="flex justify-center gap-4 pt-4">
+                                <button 
+                                    onClick={handleBackStep}
+                                    className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
+                                >
+                                    <span className="text-2xl">←</span>
+                                    <span>이전 단계</span>
+                                </button>
+                                <button 
+                                    onClick={handleNextStep}
+                                    className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-emerald-500/30 flex items-center gap-3 animate-bounce"
+                                >
+                                    <span>다음 단계로 이동</span>
+                                    <span className="text-2xl">→</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Step 4: Script */}
                 {currentStep === 'script' && (
                     <div className="animate-fade-in space-y-6 pb-20">
                         <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold text-white">대본 편집</h2>
+                            <h2 className="text-2xl font-bold text-white">원고 작성 중 ({Math.round(stepProgress)}%)</h2>
                             {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold">AI가 대본을 작성 중입니다... (자동 진행 중)</span>}
                         </div>
-                        
-                        {/* Title Options */}
-                        {titleOptions.length > 0 && (
-                            <div className="flex flex-col gap-2 mb-3">
-                                <label className="text-xs text-slate-400">추천 제목 (클릭하여 선택)</label>
-                                <div className="flex flex-col gap-2">
-                                    {titleOptions.map((t, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setTitle(t)}
-                                            className={`text-left px-3 py-2 rounded-lg text-sm transition-colors ${title === t ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
-                                        >
-                                            {t}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                         
                         <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-b border-slate-700 p-2 text-white" />
                         <div className="grid grid-cols-2 gap-6 h-[600px]">
                             <textarea value={outline} onChange={(e) => setOutline(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700" />
                             <textarea value={content} onChange={(e) => setContent(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700" />
                         </div>
+                        {isStepComplete && (
+                            <div className="flex justify-center gap-4 pt-4">
+                                <button 
+                                    onClick={handleBackStep}
+                                    className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
+                                >
+                                    <span className="text-2xl">←</span>
+                                    <span>이전 단계</span>
+                                </button>
+                                <button 
+                                    onClick={handleNextStep}
+                                    className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-blue-500/30 flex items-center gap-3 animate-bounce"
+                                >
+                                    <span>다음 단계로 이동</span>
+                                    <span className="text-2xl">→</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1182,13 +1356,13 @@ export const ContentWriter: React.FC = () => {
                 {currentStep === 'images' && (
                     <div className="animate-fade-in space-y-6 pb-20">
                         <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold text-white">이미지 생성</h2>
+                            <h2 className="text-2xl font-bold text-white">이미지 생성 중 ({Math.round(stepProgress)}%)</h2>
                             {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold">이미지 렌더링 중... (자동 진행 중)</span>}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                              {generatedImages.map((img, idx) => (
-                                 <div key={idx} className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
-                                     <div className="aspect-video bg-slate-900 relative">
+                                 <div key={idx} className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 mx-auto" style={{ width: '100%', maxWidth: '880px', height: 'auto', aspectRatio: '880/495' }}>
+                                     <div className="bg-slate-900 relative w-full h-full">
                                          {img.isLoading ? (
                                              <div className="absolute inset-0 flex items-center justify-center text-indigo-500">생성 중...</div>
                                          ) : img.error ? (
@@ -1203,13 +1377,31 @@ export const ContentWriter: React.FC = () => {
                                  </div>
                              ))}
                         </div>
+                        {isStepComplete && (
+                            <div className="flex justify-center gap-4 pt-4">
+                                <button 
+                                    onClick={handleBackStep}
+                                    className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
+                                >
+                                    <span className="text-2xl">←</span>
+                                    <span>이전 단계</span>
+                                </button>
+                                <button 
+                                    onClick={handleNextStep}
+                                    className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-indigo-500/30 flex items-center gap-3 animate-bounce"
+                                >
+                                    <span>다음 단계로 이동</span>
+                                    <span className="text-2xl">→</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 
                 {/* Step 4: Thumbnail */}
                 {currentStep === 'thumbnail' && (
                     <div className="animate-fade-in space-y-6 flex flex-col items-center pb-20">
-                        <h2 className="text-2xl font-bold text-white">썸네일</h2>
+                        <h2 className="text-2xl font-bold text-white">썸네일 생성 중 ({Math.round(stepProgress)}%)</h2>
                         {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold mb-4">1:1 고해상도 썸네일 제작 중... (자동 진행 중)</span>}
                         <div className="w-96 h-96 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden relative shadow-2xl">
                               {thumbnail?.isLoading ? (
@@ -1222,6 +1414,24 @@ export const ContentWriter: React.FC = () => {
                                   <div className="absolute inset-0 flex items-center justify-center text-slate-500">대기</div>
                               )}
                         </div>
+                        {isStepComplete && (
+                            <div className="flex justify-center gap-4 pt-8">
+                                <button 
+                                    onClick={handleBackStep}
+                                    className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
+                                >
+                                    <span className="text-2xl">←</span>
+                                    <span>이전 단계</span>
+                                </button>
+                                <button 
+                                    onClick={handleNextStep}
+                                    className="px-8 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-amber-500/30 flex items-center gap-3 animate-bounce"
+                                >
+                                    <span>최종 결과 확인하기</span>
+                                    <span className="text-2xl">✨</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1312,9 +1522,9 @@ export const ContentWriter: React.FC = () => {
                                 <h3 className="text-white font-bold text-lg flex items-center gap-2">
                                     <span>🖼️</span> 본문 삽입 이미지 ({generatedImages.filter(i => i.url).length}장)
                                 </h3>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-8">
                                     {generatedImages.map((img, idx) => (
-                                        <div key={idx} className="aspect-video rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group">
+                                        <div key={idx} className="rounded-xl overflow-hidden border border-slate-700 bg-slate-800 relative group mx-auto shadow-2xl" style={{ width: '880px', height: '495px' }}>
                                             {img.url ? (
                                                 <>
                                                     <img src={img.url} className="w-full h-full object-cover" alt={`Blog Image ${idx}`} />
@@ -1481,6 +1691,17 @@ export const ContentWriter: React.FC = () => {
                                 </button>
                             </div>
                         </div>
+                        {isStepComplete && (
+                            <div className="flex justify-center pt-4">
+                                <button 
+                                    onClick={handleNextStep}
+                                    className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-blue-500/30 flex items-center gap-3 animate-bounce"
+                                >
+                                    <span>다음 단계로 이동</span>
+                                    <span className="text-2xl">→</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 

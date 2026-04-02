@@ -130,12 +130,14 @@ export const generateBlogIdeas = async (niche: string): Promise<string> => {
   }
 };
 
-export const generateUSP = async (
+export const generateUSPStream = async (
   topic: string,
+  onChunk: (chunk: string) => void,
   storeName?: string,
   salesService?: string,
   blogCategory?: string,
-  blogPlatform?: string
+  blogPlatform?: string,
+  suggestedKeywords?: string[]
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -143,12 +145,75 @@ export const generateUSP = async (
     const prompt = `
       You are a top-tier Marketing Strategist and Copywriter.
       
-      Analyze the following information:
+      Analyze the following information to derive a powerful **Unique Selling Proposition (USP)** or **Posting Goal** for a blog post.
+      The USP should be derived referring to all contents of the keyword discovery stage, including the suggested keywords.
+
+      **INPUT DATA**:
       - Blog Topic: "${topic}"
       ${blogCategory ? `- Blog Category: "${blogCategory}"` : ""}
       ${blogPlatform ? `- Blog Platform: "${blogPlatform}"` : ""}
       ${storeName ? `- Brand/Store Name: "${storeName}"` : ""}
       ${salesService ? `- Sales Service/Product: "${salesService}"` : ""}
+      ${suggestedKeywords && suggestedKeywords.length > 0 ? `- Suggested Keywords: ${suggestedKeywords.join(', ')}` : ""}
+
+      **Task**:
+      Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
+      1. **Customer Inquiries** (Lead Generation)
+      2. **Brand Trust** (Authority)
+      3. **Search Visibility** (SEO/GEO)
+
+      **Output Requirements**:
+      - Identify the core pain point of the target audience related to the topic.
+      ${storeName || salesService ? '- Explain how this specific brand/service solves it better than others.' : '- If brand/service information is missing, focus on the core value of the topic and the reader\'s needs.'}
+      - Use the suggested keywords to refine the USP's focus and relevance.
+      - Return ONLY the USP text (1-2 sentences). No labels or explanations.
+      - Korean language.
+    `;
+
+    const response = await withRetry(() => ai.models.generateContentStream({
+      model: TEXT_MODEL,
+      contents: prompt,
+    }));
+
+    let fullText = '';
+    for await (const chunk of response) {
+      const text = chunk.text;
+      if (text) {
+        fullText += text;
+        onChunk(text);
+      }
+    }
+    return fullText;
+  } catch (error) {
+    console.error("Error generating USP stream:", error);
+    return "Error generating USP.";
+  }
+};
+
+export const generateUSP = async (
+  topic: string,
+  storeName?: string,
+  salesService?: string,
+  blogCategory?: string,
+  blogPlatform?: string,
+  suggestedKeywords?: string[]
+): Promise<string> => {
+  try {
+    const ai = getClient();
+
+    const prompt = `
+      You are a top-tier Marketing Strategist and Copywriter.
+      
+      Analyze the following information to derive a powerful **Unique Selling Proposition (USP)** or **Posting Goal** for a blog post.
+      The USP should be derived referring to all contents of the keyword discovery stage, including the suggested keywords.
+
+      **INPUT DATA**:
+      - Blog Topic: "${topic}"
+      ${blogCategory ? `- Blog Category: "${blogCategory}"` : ""}
+      ${blogPlatform ? `- Blog Platform: "${blogPlatform}"` : ""}
+      ${storeName ? `- Brand/Store Name: "${storeName}"` : ""}
+      ${salesService ? `- Sales Service/Product: "${salesService}"` : ""}
+      ${suggestedKeywords && suggestedKeywords.length > 0 ? `- Suggested Keywords: ${suggestedKeywords.join(', ')}` : ""}
 
       **Task**:
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
@@ -249,6 +314,62 @@ export const suggestRelatedKeywords = async (
     if (error.message?.includes("503") || error.message?.includes("overloaded")) {
       throw new Error(handleApiError(error, "키워드 추천 실패"));
     }
+    return [];
+  }
+};
+
+export const generateTitleStream = async (
+  keyword: string,
+  topic: string,
+  onTitlesUpdate: (titles: string[]) => void,
+  postGoal?: string,
+  referenceNote?: string,
+  blogCategory?: string,
+  blogPlatform?: string,
+  storeName?: string
+): Promise<string[]> => {
+  try {
+    const ai = getClient();
+    const prompt = `
+      Create ONE high-performing, **GEO (Generative Engine Optimization)** and **SEO (Search Engine Optimization)** ready blog post title.
+      
+      Context:
+      Topic: ${topic}
+      ${blogCategory ? `Blog Category: ${blogCategory}` : ""}
+      ${blogPlatform ? `Blog Platform: ${blogPlatform}` : ""}
+      ${postGoal ? `Goal: ${postGoal}` : ""}
+      ${referenceNote ? `Reference Note: ${referenceNote}` : ""}
+      ${storeName ? `Store Name: ${storeName}` : ""}
+      
+      **GEO & SEO GUIDELINES**:
+      1. **Keyword & Topic Placement (CRITICAL)**: The blog topic "${topic}" and target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "[Topic] [Keyword] ...")
+      2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks.
+      3. **AI Search Optimization**: Use clear, authoritative phrasing.
+      4. **Click-Worthy**: Use powerful words or specific benefits.
+      5. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
+      6. **Length**: Concise but descriptive (under 40 characters).
+      
+      Output: Return ONLY the single optimized title. No numbers, no markdown, no explanations.
+      Language: Korean.
+    `;
+
+    const response = await withRetry(() => ai.models.generateContentStream({
+      model: TEXT_MODEL,
+      contents: prompt,
+    }));
+
+    let fullText = '';
+    for await (const chunk of response) {
+      const text = chunk.text;
+      if (text) {
+        fullText += text;
+        onTitlesUpdate([fullText.trim()]);
+      }
+    }
+    
+    return [fullText.trim()];
+  } catch (error) {
+    console.error("Error generating titles stream:", error);
     return [];
   }
 };
@@ -775,11 +896,22 @@ export interface ImagePromptRequest {
   prompt: string;
 }
 
-export const generateImagePromptsForPost = async (content: string, hasFaceReference: boolean = false, numberOfImages: number = 4, hasReferenceImages: boolean = false, modelName: string = 'gemini-3.1-flash-image-preview'): Promise<ImagePromptRequest[]> => {
+export const generateImagePromptsForPost = async (
+  content: string, 
+  hasFaceReference: boolean = false, 
+  numberOfImages: number = 4, 
+  hasReferenceImages: boolean = false, 
+  modelName: string = 'gemini-3.1-flash-image-preview',
+  style: string = '기본 스타일'
+): Promise<ImagePromptRequest[]> => {
   try {
     const ai = getClient();
     const isAuto = numberOfImages === 0;
     const supportsText = modelName === 'gemini-3.1-flash-image-preview';
+
+    const styleInstruction = style === '기본 스타일' 
+      ? '"Modern Professional Infographic" with a clean, high-end aesthetic. Theme: Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".'
+      : `Apply the following specific visual style: "${style}". Ensure all images in the set maintain this consistent style.`;
 
     const textRules = supportsText ? `
     **STRICT TEXT RULES (KOREAN ONLY - CRITICAL)**:
@@ -814,8 +946,7 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
     - **Last Image (Action/Conclusion)**: Summarizes and encourages action.
 
     **VISUAL DESIGN STYLE**:
-    - **Style**: "Modern Professional Infographic" with a clean, high-end aesthetic.
-    - **Theme**: Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".
+    - **Style**: ${styleInstruction}
     - **Quality**: Clean, no AI distortion, no excessive glaze.
     - **Layout**: Mobile-optimized, central or Z-pattern. Use clear visual hierarchy.
     - **Constraint**: DO NOT put image numbers on the image.
@@ -858,22 +989,33 @@ export const generateImagePromptsForPost = async (content: string, hasFaceRefere
   }
 };
 
-export const generateThumbnailPrompt = async (keyword: string, content: string, modelName: string = 'gemini-3.1-flash-image-preview'): Promise<string> => {
+export const generateThumbnailPrompt = async (
+  keyword: string, 
+  content: string, 
+  modelName: string = 'gemini-3.1-flash-image-preview',
+  style: string = '기본 스타일'
+): Promise<string> => {
   try {
     const ai = getClient();
     const supportsText = modelName === 'gemini-3.1-flash-image-preview';
     
+    const styleInstruction = style === '기본 스타일'
+      ? '"Viral YouTube Thumbnail", "Netflix Poster", "High-End Brand Identity".'
+      : `Apply the following specific visual style: "${style}".`;
+
     const textRequirements = supportsText ? `
       **TEXT REQUIREMENTS (CRITICAL)**:
       - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**.
       - **Main Text**: The blog topic or keyword "${keyword}" MUST be the prominent, central text in the image.
-      - **Subtitle**: Add a short, catchy subtitle below the main text (e.g., "필독 가이드", "최신 정보"). **Total text must be at least 2 lines.**
+      - **Formatting**: The text MUST be limited to a MAXIMUM of 3 lines.
+      - **Visual Prominence**: The text MUST be visually striking, large, and the absolute focal point of the image. Use high-contrast colors and bold typography.
+      - **Subtitle**: Add a short, catchy subtitle below the main text (e.g., "필독 가이드", "최신 정보").
       - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. To prevent corruption, **KEEP ALL TEXT EXTREMELY SHORT (1-3 words per line)**.
       - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
       - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
       
       The output prompt must be in English.
-      Example: "A cinematic 3D render of [Subject]. Center stage: The Korean text '${keyword}' in massive, glowing gold characters. Below it, a smaller white Korean text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles."
+      Example: "A cinematic 3D render of [Subject]. Center stage: The Korean text '${keyword}' in massive, glowing gold characters, split into 2-3 lines for maximum impact. Below it, a smaller white Korean text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles."
     ` : `
       **TEXT REQUIREMENTS**:
       - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
@@ -886,7 +1028,7 @@ export const generateThumbnailPrompt = async (keyword: string, content: string, 
       Create a prompt for a **World-Class Blog Thumbnail** (1:1 ratio).
       
       **DESIGN VISION**:
-      - **Vibe**: "Viral YouTube Thumbnail", "Netflix Poster", "High-End Brand Identity".
+      - **Vibe**: ${styleInstruction}
       - **Composition**: Central focus, dynamic background, depth of field.
       
       ${textRequirements}

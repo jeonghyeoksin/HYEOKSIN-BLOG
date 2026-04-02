@@ -184,6 +184,40 @@
         border-radius: 2px;
       }
 
+      /* Custom Animations */
+      @keyframes shine {
+        0% { transform: translateX(-100%) skewX(-15deg); }
+        40% { transform: translateX(100%) skewX(-15deg); }
+        100% { transform: translateX(100%) skewX(-15deg); }
+      }
+      .animate-shine {
+        position: relative;
+        overflow: hidden;
+      }
+      .animate-shine::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(
+          to right,
+          transparent,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        );
+        animation: shine 3s infinite;
+      }
+
+      @keyframes pulse-subtle {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+      }
+      .animate-pulse-subtle {
+        animation: pulse-subtle 2s infinite ease-in-out;
+      }
+
       /* Markdown Image Styles */
       .markdown-body img {
         width: 100%;
