@@ -46,7 +46,7 @@ const App: React.FC = () => {
       case 'studio':
         return <ContentWriter />;
       case 'manual':
-        return <Manual />;
+        return <Manual onClose={() => setCurrentView('dashboard')} />;
       default:
         return <Dashboard onChangeView={setCurrentView} />;
     }

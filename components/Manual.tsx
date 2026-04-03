@@ -1,8 +1,18 @@
 import React from 'react';
 
-const Manual: React.FC = () => {
+interface ManualProps {
+  onClose: () => void;
+}
+
+const Manual: React.FC<ManualProps> = ({ onClose }) => {
   return (
-    <div className="max-w-4xl mx-auto bg-slate-900 rounded-2xl border border-slate-800 p-8 shadow-xl animate-fade-in mb-20">
+    <div className="max-w-4xl mx-auto bg-slate-900 rounded-2xl border border-slate-800 p-8 shadow-xl animate-fade-in mb-20 relative">
+      <button 
+        onClick={onClose}
+        className="absolute top-8 right-8 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-all border border-slate-700"
+      >
+        닫기
+      </button>
       <h1 className="text-3xl font-bold text-white mb-8 flex items-center gap-3">
         <span className="text-4xl">📖</span> 혁신 블로그 AI 상세 사용 가이드
       </h1>
@@ -51,10 +61,37 @@ const Manual: React.FC = () => {
           </div>
         </section>
 
-        {/* Step 3 */}
+        {/* Step 3: Automation */}
         <section className="space-y-4">
           <h2 className="text-2xl font-bold text-indigo-400 flex items-center gap-2">
             <span className="bg-indigo-500/20 text-indigo-400 w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
+            자동화 모드 선택
+          </h2>
+          <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 space-y-4">
+            <p className="text-sm text-slate-300 leading-relaxed">
+              원고 작성 방식을 선택하여 효율적으로 작업할 수 있습니다.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                <h4 className="text-emerald-400 font-bold mb-2">🚀 수동 모드</h4>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  키워드 발굴부터 원고, 이미지 생성까지 각 단계별로 AI의 결과물을 확인하고 수정하며 진행합니다.
+                </p>
+              </div>
+              <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                <h4 className="text-amber-400 font-bold mb-2">⚡ 원클릭 자동화</h4>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  주제만 입력하면 AI가 끝까지 자동으로 모든 과정을 수행하여 최종 결과물까지 한 번에 생성합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Step 4 */}
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold text-indigo-400 flex items-center gap-2">
+            <span className="bg-indigo-500/20 text-indigo-400 w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
             이미지 모델 선택 및 에셋 활용
           </h2>
           <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 space-y-6">
@@ -83,41 +120,6 @@ const Manual: React.FC = () => {
                   기존 이미지를 그대로 사용하고 싶지만 '유사 이미지' 판독이 걱정될 때 사용하세요. 
                   <strong>이미지 변형 없이</strong> 데이터 값만 미세하게 변경하여 새로운 이미지로 인식되게끔 처리합니다.
                 </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Step 4 */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-indigo-400 flex items-center gap-2">
-            <span className="bg-indigo-500/20 text-indigo-400 w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
-            자동화 프로세스 및 결과물
-          </h2>
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="bg-indigo-500 text-white w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-1">1</div>
-              <div>
-                <h4 className="text-white font-bold">키워드 분석 및 선택</h4>
-                <p className="text-sm text-slate-400">주제를 바탕으로 AI가 추천 키워드를 제안하며, 사용자가 직접 선택하거나 수정할 수 있습니다.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="bg-indigo-500 text-white w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-1">2</div>
-              <div>
-                <h4 className="text-white font-bold">이미지 생성 개수 설정</h4>
-                <p className="text-sm text-slate-400">AI 추천 방식 외에도 3개, 5개, 10개, 15개 등 원하는 이미지 개수를 직접 지정할 수 있습니다.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="bg-indigo-500 text-white w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-1">3</div>
-              <div>
-                <h4 className="text-white font-bold">고도화된 원고 생성</h4>
-                <ul className="list-disc pl-5 text-sm text-slate-400 space-y-1 mt-1">
-                  <li><span className="text-slate-200">SEO 최적화 도입부:</span> 지루한 Q&A 대신 독자의 시선을 끄는 강력한 훅(Hook)으로 시작합니다.</li>
-                  <li><span className="text-slate-200">가독성 극대화:</span> 모든 문단은 2줄 단위로 구성되어 모바일에서도 읽기 편합니다.</li>
-                  <li><span className="text-slate-200">전문적인 서식:</span> 소제목은 인용구(Blockquote) 스타일로, 표의 첫 행은 강조 색상이 적용됩니다.</li>
-                </ul>
               </div>
             </div>
           </div>
