@@ -78,6 +78,14 @@ const App: React.FC = () => {
                 <span>💰</span> <span className="hidden xs:inline sm:inline">API 비용 안내</span>
               </button>
 
+              {/* New API Apply Button */}
+              <button 
+                onClick={() => setIsApiKeyModalOpen(true)}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] sm:text-sm font-bold transition-all px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg shadow-lg shadow-indigo-500/20 flex items-center gap-1 sm:gap-2"
+              >
+                <span>🔑</span> API 적용하기
+              </button>
+
               <div className="hidden md:flex items-center space-x-4">
                 {/* API Status Indicator */}
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all duration-500 ${
@@ -108,13 +116,6 @@ const App: React.FC = () => {
                    className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'manual' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                 >
                   사용방법
-                </button>
-
-                <button 
-                  onClick={() => setIsApiKeyModalOpen(true)}
-                  className="text-sm font-medium transition-colors px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2 border border-slate-700/50"
-                >
-                  <span>🔑</span> API Key 설정
                 </button>
               </div>
             </div>
