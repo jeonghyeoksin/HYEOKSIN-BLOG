@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { marked } from 'marked';
+import * as mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist';
 import { 
   suggestRelatedKeywords, 
   generateOutline, 
@@ -16,6 +18,9 @@ import {
   ImagePromptRequest
 } from '../services/geminiService';
 import { StudioStep, GeneratedImage, KeywordSuggestion } from '../types';
+
+// PDF worker setup
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 const steps: { id: StudioStep; label: string; icon: string }[] = [
   { id: 'keyword', label: '키워드 발굴', icon: '🔍' },
@@ -138,6 +143,37 @@ export const ContentWriter: React.FC = () => {
         nextStepResolver.current = null;
         setIsStepComplete(false);
     }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      try {
+          if (file.type === 'text/plain') {
+              const text = await file.text();
+              setBenchmarkingText(text);
+          } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+              const arrayBuffer = await file.arrayBuffer();
+              const result = await mammoth.extractRawText({ arrayBuffer });
+              setBenchmarkingText(result.value);
+          } else if (file.type === 'application/pdf') {
+              const arrayBuffer = await file.arrayBuffer();
+              const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+              let text = '';
+              for (let i = 1; i <= pdf.numPages; i++) {
+                  const page = await pdf.getPage(i);
+                  const content = await page.getTextContent();
+                  text += content.items.map((item: any) => item.str).join(' ');
+              }
+              setBenchmarkingText(text);
+          } else {
+              alert('지원하지 않는 파일 형식입니다. (PDF, TXT, DOCX만 가능)');
+          }
+      } catch (e) {
+          console.error(e);
+          alert('파일 읽기 중 오류가 발생했습니다.');
+      }
   };
 
   const checkAndRequireApiKey = async (): Promise<boolean> => {
@@ -925,14 +961,29 @@ export const ContentWriter: React.FC = () => {
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-bold text-slate-300 ml-1">벤치마킹 원고 (선택)</label>
-                                <a 
-                                    href="https://docs.google.com/document/d/1UUi9NaY9NUY585E5lt-Hx9Sjz9YWlVFhwX-yrDcGAoM/edit?usp=sharing" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium flex items-center gap-1"
-                                >
-                                    드래그프리 설치 및 사용 매뉴얼
-                                </a>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="file" 
+                                        accept=".pdf,.txt,.docx" 
+                                        onChange={handleFileUpload} 
+                                        className="hidden" 
+                                        id="benchmarking-file-upload"
+                                    />
+                                    <label 
+                                        htmlFor="benchmarking-file-upload"
+                                        className="cursor-pointer text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium flex items-center gap-1"
+                                    >
+                                        파일 첨부
+                                    </label>
+                                    <a 
+                                        href="https://docs.google.com/document/d/1UUi9NaY9NUY585E5lt-Hx9Sjz9YWlVFhwX-yrDcGAoM/edit?usp=sharing" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium flex items-center gap-1"
+                                    >
+                                        드래그프리 설치 및 사용 매뉴얼
+                                    </a>
+                                </div>
                             </div>
                             <p className="text-xs text-slate-400 ml-1 mb-2">
                                 벤치마킹 원고는 내가 카피하고 싶은 원고를 선택한 블로그 분류, 주제, 상호명 / 브랜드명, 판매 제품 / 서비스, USP에 맞게끔 수정하여 블로그 원고 작성시 참고하는 기능입니다.
