@@ -1000,7 +1000,7 @@ export const generateThumbnailPrompt = async (
     const supportsText = modelName === 'gemini-3.1-flash-image-preview';
     
     const styleInstruction = style === '기본 스타일'
-      ? '"Viral YouTube Thumbnail", "Netflix Poster", "High-End Brand Identity".'
+      ? '"Viral YouTube Thumbnail", "High-End Brand Identity".'
       : `Apply the following specific visual style: "${style}".`;
 
     const textRequirements = supportsText ? `
@@ -1078,6 +1078,8 @@ export const generateBlogImage = async (
           parts.push({ text: "REFERENCE ID: PERSON_IMAGE. The image(s) above are the Reference Person(s). You must generate an image where these exact people are included without any distortion or modification. \n\n**CRITICAL REQUIREMENT**:\n1. **Zero Distortion**: The person(s) must be 100% identical to the reference. Do not deform, caricature, or alter the person in any way. \n2. **Integration**: Incorporate the person(s) naturally into the scene while keeping their appearance completely unmodified." });
         }
         
+        // Add Korean text handling instruction
+        parts.push({ text: "\n\n**CRITICAL KOREAN TEXT REQUIREMENT**: If you include any Korean text in the image, you MUST ensure it is rendered perfectly and clearly. Do not break, distort, or garble the Korean characters. Please take extra care to render Korean text accurately." });
         // 2. Handle other reference images (Logo, Context)
         if (referenceImages && referenceImages.length > 0) {
           referenceImages.forEach(img => {

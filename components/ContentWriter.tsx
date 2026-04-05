@@ -90,6 +90,7 @@ export const ContentWriter: React.FC = () => {
   const IMAGE_MODELS = [
       { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', desc: '표준 이미지 생성' },
       { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2 (Gemini 3.1 Flash Image)', desc: '한국어 텍스트 이미지 생성' },
+      { id: 'gemini-3.1-flash-image-preview-no-text', name: 'Nano Banana 2 (이미지 위주, 텍스트 없음)', desc: '한국어 텍스트 깨짐 방지' },
       { id: 'imagen-4.0-generate-001', name: 'Imagen 4.0', desc: '사실적인 이미지 생성' },
   ];
 
@@ -396,7 +397,9 @@ export const ContentWriter: React.FC = () => {
         // Run image generation
         for (const [index, item] of placeholders.entries()) {
             try {
-                const url = await generateBlogImage(item.prompt, "16:9", refParts, faceParts, selectedImageModel);
+                const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
+                const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${item.prompt}, no text, no words` : item.prompt;
+                const url = await generateBlogImage(promptToUse, "16:9", refParts, faceParts, modelToUse);
                 setGeneratedImages(prev => {
                     const newArr = [...prev];
                     newArr[index] = { ...newArr[index], url, isLoading: false };
@@ -425,7 +428,9 @@ export const ContentWriter: React.FC = () => {
         setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: true });
         
         try {
-            const thumbUrl = await generateBlogImage(thumbPrompt, "1:1", refParts, faceParts, selectedImageModel);
+            const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
+            const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${thumbPrompt}, no text, no words` : thumbPrompt;
+            const thumbUrl = await generateBlogImage(promptToUse, "1:1", refParts, faceParts, modelToUse);
             setThumbnail({ prompt: thumbPrompt, context: '', url: thumbUrl, isLoading: false });
             setStepProgress(100);
         } catch (e) {
@@ -499,8 +504,10 @@ export const ContentWriter: React.FC = () => {
         const faceParts = await getFaceRefs();
         const refParts = await getImageRefs();
         const ratio = editingImageIndex === -1 ? "1:1" : "16:9";
+        const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
+        const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${editPrompt}, no text, no words` : editPrompt;
         
-        const newUrl = await generateBlogImage(editPrompt, ratio, refParts, faceParts, selectedImageModel);
+        const newUrl = await generateBlogImage(promptToUse, ratio, refParts, faceParts, modelToUse);
         
         if (editingImageIndex === -1) {
             setThumbnail({ prompt: editPrompt, context: '', url: newUrl, isLoading: false });
@@ -750,22 +757,6 @@ export const ContentWriter: React.FC = () => {
                                 <option value="미디엄">미디엄</option>
                                 <option value="기타">기타</option>
                             </select>
-                        </div>
-
-                        {/* Optional Inputs */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">상호명 / 브랜드명 (선택)</label>
-                                <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white" placeholder="예: 코레일 면접학원" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">판매 제품/서비스 (선택)</label>
-                                <input type="text" value={salesService} onChange={(e) => setSalesService(e.target.value)} className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white" placeholder="예: 최종 합격 가이드" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">서비스 금액표 (선택)</label>
-                                <input type="text" value={servicePriceText} onChange={(e) => setServicePriceText(e.target.value)} className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white" placeholder="예: 50만원" />
-                            </div>
                         </div>
 
                         {/* Category Input */}
@@ -1458,15 +1449,18 @@ export const ContentWriter: React.FC = () => {
                                                     onClick={async () => {
                                                         setThumbnail(prev => prev ? {...prev, isLoading: true} : null);
                                                         try {
-                                                            const thumbUrl = await generateBlogImage(thumbnailPrompt, "1:1", await getImageRefs(), await getFaceRefs(), selectedImageModel);
+                                                            const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
+                                                            const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${thumbnailPrompt}, no text, no words` : thumbnailPrompt;
+                                                            const thumbUrl = await generateBlogImage(promptToUse, "1:1", await getImageRefs(), await getFaceRefs(), modelToUse);
                                                             setThumbnail({ prompt: thumbnailPrompt, context: '', url: thumbUrl, isLoading: false });
                                                         } catch (e) {
                                                             setThumbnail(prev => prev ? {...prev, isLoading: false, error: String(e)} : null);
                                                         }
                                                     }}
                                                     className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-500 transition-colors w-32"
+                                                    disabled={thumbnail?.isLoading}
                                                 >
-                                                    다시 만들기
+                                                    {thumbnail?.isLoading ? '이미지 다시 생성중입니다.' : '다시 만들기'}
                                                 </button>
                                             </div>
                                         </>
@@ -1627,7 +1621,9 @@ export const ContentWriter: React.FC = () => {
                                                                         return newArr;
                                                                     });
                                                                     try {
-                                                                        const url = await generateBlogImage(img.prompt, "16:9", await getImageRefs(), await getFaceRefs(), selectedImageModel);
+                                                                        const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
+                                                                        const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${img.prompt}, no text, no words` : img.prompt;
+                                                                        const url = await generateBlogImage(promptToUse, "16:9", await getImageRefs(), await getFaceRefs(), modelToUse);
                                                                         setGeneratedImages(prev => {
                                                                             const newArr = [...prev];
                                                                             newArr[idx] = { ...newArr[idx], url, isLoading: false };
@@ -1642,8 +1638,9 @@ export const ContentWriter: React.FC = () => {
                                                                     }
                                                                 }}
                                                                 className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-emerald-500 transition-colors w-24"
+                                                                disabled={img.isLoading}
                                                             >
-                                                                다시 만들기
+                                                                {img.isLoading ? '이미지 다시 생성중입니다.' : '다시 만들기'}
                                                             </button>
                                                         </div>
                                                     </>

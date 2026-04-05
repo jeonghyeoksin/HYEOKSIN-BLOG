@@ -48,9 +48,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onChangeView }) => {
            <div className="flex-shrink-0">
              <button 
                onClick={() => onChangeView('studio')}
-               className="px-10 py-5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-2xl font-bold text-lg hover:from-emerald-500 hover:to-emerald-400 transition-all shadow-xl shadow-emerald-900/30 hover:-translate-y-1 flex items-center justify-center gap-3 border border-emerald-400/20"
+               className="group relative px-10 py-5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl font-black text-lg hover:from-emerald-400 hover:to-emerald-500 transition-all shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)] hover:shadow-[0_0_50px_-5px_rgba(16,185,129,0.7)] hover:-translate-y-1 flex items-center justify-center gap-3 border border-emerald-400/30 overflow-hidden"
              >
-               새 포스팅 작성하기 ⚡️
+               <span className="relative z-10 flex items-center gap-3">새 포스팅 작성하기 ⚡️</span>
+               <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
              </button>
            </div>
         </div>
