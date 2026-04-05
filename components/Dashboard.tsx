@@ -9,38 +9,46 @@ const Dashboard: React.FC<DashboardProps> = ({ onChangeView }) => {
   return (
     <div className="animate-fade-in space-y-12 py-10">
       {/* Top 16:9 Banner Image */}
-      <div className="w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 relative group bg-emerald-950">
+      <div className="w-full aspect-[21/9] rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/20 relative group bg-slate-950">
         <img 
-          src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1920&q=80" 
+          src="https://images.unsplash.com/photo-1639322537228-f710d846310a?auto=format&fit=crop&w=1920&q=80" 
           alt="혁신 블로그 AI" 
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-80 mix-blend-overlay"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[2000ms] ease-out opacity-60"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-900/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/60 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
         
         {/* Massive BLOG Text Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-           <span className="text-[12rem] md:text-[20rem] font-black text-emerald-500/10 tracking-tighter select-none transform -rotate-2">
+        <div className="absolute inset-0 flex items-center justify-end pointer-events-none overflow-hidden pr-20">
+           <span className="text-[15rem] font-black text-emerald-500/5 tracking-tighter select-none transform rotate-12">
              BLOG
            </span>
         </div>
 
         <div className="absolute bottom-0 left-0 p-10 md:p-16 w-full flex flex-col md:flex-row md:items-end justify-between gap-8 z-10">
-           <div>
-             <span className="inline-block py-1 px-3 rounded-full bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-md text-emerald-300 text-xs font-bold uppercase tracking-widest mb-4">
-               Hyeoksin Blog AI
+           <div className="max-w-2xl">
+             <span className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-widest mb-6">
+               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+               Hyeoksin Blog AI Platform
              </span>
-             <h2 className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-2xl mb-4 tracking-tight">
-               혁신 블로그 AI
+             <h2 className="text-5xl md:text-7xl font-black text-white mb-6 tracking-tighter leading-tight">
+               혁신적인<br/>
+               블로그 포스팅<br/>
+               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">AI로 자동화 하세요!</span>
              </h2>
-             <p className="text-emerald-50 text-lg md:text-2xl font-light max-w-2xl drop-shadow-lg">
-               혁신 블로그 AI로 SEO와 AI 최적화된 혁신적인 수익화 포스팅을 자동화하세요!
+             <p className="text-slate-300 text-lg md:text-xl font-medium max-w-xl leading-relaxed">
+               검색엔진 최적화 (SEO)<br/>
+               생성형 AI 엔진 최적화 (GEO)<br/>
+               기반의 블로그 글과 이미지를<br/>
+               단, 한 번의 클릭으로 전문가 수준의<br/>
+               블로그 콘텐츠를 완성합니다!
              </p>
            </div>
            <div className="flex-shrink-0">
              <button 
                onClick={() => onChangeView('studio')}
-               className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg hover:bg-emerald-500 transition-all shadow-xl hover:shadow-emerald-900/50 hover:-translate-y-1 flex items-center justify-center gap-2 backdrop-blur-md border border-emerald-500/50"
+               className="px-10 py-5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-2xl font-bold text-lg hover:from-emerald-500 hover:to-emerald-400 transition-all shadow-xl shadow-emerald-900/30 hover:-translate-y-1 flex items-center justify-center gap-3 border border-emerald-400/20"
              >
                새 포스팅 작성하기 ⚡️
              </button>

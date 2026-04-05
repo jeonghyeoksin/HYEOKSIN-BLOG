@@ -752,6 +752,22 @@ export const ContentWriter: React.FC = () => {
                             </select>
                         </div>
 
+                        {/* Optional Inputs */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">상호명 / 브랜드명 (선택)</label>
+                                <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white" placeholder="예: 코레일 면접학원" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">판매 제품/서비스 (선택)</label>
+                                <input type="text" value={salesService} onChange={(e) => setSalesService(e.target.value)} className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white" placeholder="예: 최종 합격 가이드" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">서비스 금액표 (선택)</label>
+                                <input type="text" value={servicePriceText} onChange={(e) => setServicePriceText(e.target.value)} className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 text-white" placeholder="예: 50만원" />
+                            </div>
+                        </div>
+
                         {/* Category Input */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">블로그 분류 <span className="text-red-500">*</span></label>
@@ -1423,16 +1439,60 @@ export const ContentWriter: React.FC = () => {
                     <div className="animate-fade-in space-y-6 flex flex-col items-center pb-20">
                         <h2 className="text-2xl font-bold text-white">썸네일 생성 중 ({Math.round(stepProgress)}%)</h2>
                         {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold mb-4">1:1 고해상도 썸네일 제작 중... (자동 진행 중)</span>}
-                        <div className="w-96 h-96 bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden relative shadow-2xl">
-                              {thumbnail?.isLoading ? (
-                                  <div className="absolute inset-0 flex items-center justify-center text-indigo-500">생성 중...</div>
-                              ) : thumbnail?.error ? (
-                                  <div className="absolute inset-0 flex items-center justify-center text-red-500 text-sm p-4 text-center">{thumbnail.error}</div>
-                              ) : thumbnail?.url ? (
-                                  <img src={thumbnail.url} className="w-full h-full object-cover" />
-                              ) : (
-                                  <div className="absolute inset-0 flex items-center justify-center text-slate-500">대기</div>
-                              )}
+                        <div className="aspect-square rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl bg-slate-800 relative group w-96">
+                                    {thumbnail?.url ? (
+                                        <>
+                                            <img src={thumbnail.url} className="w-full h-full object-cover" alt="Thumbnail" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                                <a href={thumbnail.url} download="thumbnail.png" className="bg-white text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors w-32 text-center">다운로드</a>
+                                                <button 
+                                                    onClick={() => {
+                                                        setEditingImageIndex(-1);
+                                                        setEditPrompt(thumbnailPrompt);
+                                                    }}
+                                                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-500 transition-colors w-32"
+                                                >
+                                                    수정하기
+                                                </button>
+                                                <button 
+                                                    onClick={async () => {
+                                                        setThumbnail(prev => prev ? {...prev, isLoading: true} : null);
+                                                        try {
+                                                            const thumbUrl = await generateBlogImage(thumbnailPrompt, "1:1", await getImageRefs(), await getFaceRefs(), selectedImageModel);
+                                                            setThumbnail({ prompt: thumbnailPrompt, context: '', url: thumbUrl, isLoading: false });
+                                                        } catch (e) {
+                                                            setThumbnail(prev => prev ? {...prev, isLoading: false, error: String(e)} : null);
+                                                        }
+                                                    }}
+                                                    className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-500 transition-colors w-32"
+                                                >
+                                                    다시 만들기
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : thumbnail?.error ? (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-red-500 text-sm p-4 text-center gap-2">
+                                            <span>{thumbnail.error}</span>
+                                            <button 
+                                                onClick={async () => {
+                                                    setThumbnail(prev => prev ? {...prev, isLoading: true} : null);
+                                                    try {
+                                                        const thumbUrl = await generateBlogImage(thumbnailPrompt, "1:1", await getImageRefs(), await getFaceRefs(), selectedImageModel);
+                                                        setThumbnail({ prompt: thumbnailPrompt, context: '', url: thumbUrl, isLoading: false });
+                                                    } catch (e) {
+                                                        setThumbnail(prev => prev ? {...prev, isLoading: false, error: String(e)} : null);
+                                                    }
+                                                }}
+                                                className="bg-indigo-600 text-white px-3 py-1.5 rounded font-bold hover:bg-indigo-500 transition-colors"
+                                            >
+                                                다시 생성
+                                            </button>
+                                        </div>
+                                    ) : thumbnail?.isLoading ? (
+                                        <div className="w-full h-full flex items-center justify-center text-indigo-500">생성 중...</div>
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-500">대기</div>
+                                    )}
                         </div>
                         {isStepComplete && (
                             <div className="flex justify-center gap-4 pt-8">
@@ -1558,6 +1618,32 @@ export const ContentWriter: React.FC = () => {
                                                                 className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-indigo-500 transition-colors w-24"
                                                             >
                                                                 수정하기
+                                                            </button>
+                                                            <button 
+                                                                onClick={async () => {
+                                                                    setGeneratedImages(prev => {
+                                                                        const newArr = [...prev];
+                                                                        newArr[idx] = { ...newArr[idx], isLoading: true, error: undefined };
+                                                                        return newArr;
+                                                                    });
+                                                                    try {
+                                                                        const url = await generateBlogImage(img.prompt, "16:9", await getImageRefs(), await getFaceRefs(), selectedImageModel);
+                                                                        setGeneratedImages(prev => {
+                                                                            const newArr = [...prev];
+                                                                            newArr[idx] = { ...newArr[idx], url, isLoading: false };
+                                                                            return newArr;
+                                                                        });
+                                                                    } catch (e) {
+                                                                        setGeneratedImages(prev => {
+                                                                            const newArr = [...prev];
+                                                                            newArr[idx] = { ...newArr[idx], isLoading: false, error: String(e) };
+                                                                            return newArr;
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-emerald-500 transition-colors w-24"
+                                                            >
+                                                                다시 만들기
                                                             </button>
                                                         </div>
                                                     </>
