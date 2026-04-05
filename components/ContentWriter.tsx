@@ -1371,7 +1371,17 @@ export const ContentWriter: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                              {generatedImages.map((img, idx) => (
-                                 <div key={idx} className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 mx-auto" style={{ width: '100%', maxWidth: '880px', height: 'auto', aspectRatio: '880/495' }}>
+                                 <div key={idx} className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 mx-auto relative" style={{ width: '100%', maxWidth: '880px', height: 'auto', aspectRatio: '880/495' }}>
+                                     <button
+                                         onClick={() => {
+                                             setEditingImageIndex(idx);
+                                             setEditPrompt(img.prompt);
+                                         }}
+                                         className="absolute top-2 right-2 bg-indigo-600/80 hover:bg-indigo-600 text-white p-2 rounded-full shadow-lg backdrop-blur-sm transition-all z-10"
+                                         title="이미지 수정"
+                                     >
+                                         ✏️
+                                     </button>
                                      <div className="bg-slate-900 relative w-full h-full">
                                          {img.isLoading ? (
                                              <div className="absolute inset-0 flex items-center justify-center text-indigo-500">생성 중...</div>

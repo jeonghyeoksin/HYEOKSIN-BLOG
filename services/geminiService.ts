@@ -1007,6 +1007,8 @@ export const generateThumbnailPrompt = async (
       **TEXT REQUIREMENTS (CRITICAL)**:
       - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**.
       - **Main Text**: The blog topic or keyword "${keyword}" MUST be the prominent, central text in the image.
+      - **Positioning**: The text MUST be **perfectly centered** in the image.
+      - **Font**: You MUST use the **Pretendard** font for all Korean text.
       - **Formatting**: The text MUST be limited to a MAXIMUM of 3 lines.
       - **Visual Prominence**: The text MUST be visually striking, large, and the absolute focal point of the image. Use high-contrast colors and bold typography.
       - **Subtitle**: Add a short, catchy subtitle below the main text (e.g., "필독 가이드", "최신 정보").
@@ -1015,7 +1017,7 @@ export const generateThumbnailPrompt = async (
       - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
       
       The output prompt must be in English.
-      Example: "A cinematic 3D render of [Subject]. Center stage: The Korean text '${keyword}' in massive, glowing gold characters, split into 2-3 lines for maximum impact. Below it, a smaller white Korean text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles."
+      Example: "A cinematic 3D render of [Subject]. Center stage: The Korean text '${keyword}' in massive, glowing gold characters using the Pretendard font, perfectly centered, split into 2-3 lines for maximum impact. Below it, a smaller white Korean text reading '[Subtitle]' adds context. Background is a deep, rich gradient with floating particles."
     ` : `
       **TEXT REQUIREMENTS**:
       - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
@@ -1097,7 +1099,7 @@ Constraints: NO placeholder text, NO tool calls, NO JSON.
 CRITICAL: You must output the image part directly. Do not talk about generating it. Do not return JSON.`;
 
         if (supportsText) {
-            safePrompt += `\n\n**TEXT REQUIREMENTS**: Perfectly spelled Korean text (bold sans-serif), integrated into design. NO ENGLISH.
+            safePrompt += `\n\n**TEXT REQUIREMENTS**: Perfectly spelled Korean text using the **Pretendard** font, integrated into design. NO ENGLISH.
 **CRITICAL TEXT CONSTRAINT FOR THIS MODEL**: To absolutely prevent Korean text corruption or breaking, keep any generated Korean text EXTREMELY short (maximum 1-3 words). If the requested text is long, summarize it to the most impactful 1-3 words. Perfect spelling is mandatory.`;
         } else {
             safePrompt += `\n\n**TEXT REQUIREMENTS**: NO TEXT ALLOWED. Do not generate any text, typography, or labels in the image.`;
