@@ -161,6 +161,8 @@ export const generateUSPStream = async (
       1. **Customer Inquiries** (Lead Generation)
       2. **Brand Trust** (Authority)
       3. **Search Visibility** (SEO/GEO)
+      
+      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026.
 
       **Output Requirements**:
       - Identify the core pain point of the target audience related to the topic.
@@ -219,6 +221,8 @@ export const generateUSP = async (
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
       1. **Customer Inquiries** (Lead Generation)
       2. **Sales Conversion** (Purchase)
+      
+      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026.
 
       **Output Requirements**:
       - Identify the core pain point of the target audience related to the topic.

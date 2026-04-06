@@ -1312,7 +1312,16 @@ export const ContentWriter: React.FC = () => {
                                 </div>
                             </div>
                             <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-700 min-h-[100px] text-lg text-indigo-100 leading-relaxed whitespace-pre-wrap">
-                                {postGoal || <span className="text-slate-600 italic">USP를 작성 중입니다...</span>}
+                                {isStepComplete ? (
+                                    <textarea
+                                        value={postGoal}
+                                        onChange={(e) => setPostGoal(e.target.value)}
+                                        className="w-full bg-transparent border-none outline-none text-indigo-100 resize-none h-32"
+                                        placeholder="USP를 수정할 수 있습니다."
+                                    />
+                                ) : (
+                                    postGoal || <span className="text-slate-600 italic">USP를 작성 중입니다...</span>
+                                )}
                             </div>
                         </div>
                         {isStepComplete && (
