@@ -1017,6 +1017,8 @@ export const generateThumbnailPrompt = async (
       - **Visual Prominence**: The text MUST be visually striking, large, and the absolute focal point of the image. Use high-contrast colors and bold typography.
       - **Subtitle**: Add a short, catchy subtitle below the main text (e.g., "필독 가이드", "최신 정보").
       - **Accuracy**: **ABSOLUTELY NO KOREAN TEXT CORRUPTION (깨짐)**. To prevent corruption, **KEEP ALL TEXT EXTREMELY SHORT (1-3 words per line)**.
+      - **Rendering Strategy**: You MUST prioritize the structural integrity of Korean characters over aesthetic complexity. If the model struggles to render a complex character, simplify the text or choose a more robust font style.
+      - **Final Verification**: Double-check that every Korean character is legible, correctly formed, and not distorted or garbled.
       - **Style**: 3D Glossy Text, Neon Light, or Bold Typography with heavy drop shadows.
       - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1", or any image labels.
       
@@ -1083,7 +1085,7 @@ export const generateBlogImage = async (
         }
         
         // Add Korean text handling instruction
-        parts.push({ text: "\n\n**CRITICAL KOREAN TEXT REQUIREMENT**: If you include any Korean text in the image, you MUST ensure it is rendered perfectly and clearly. Do not break, distort, or garble the Korean characters. Please take extra care to render Korean text accurately." });
+        parts.push({ text: "\n\n**CRITICAL KOREAN TEXT REQUIREMENT**: If you include any Korean text in the image, you MUST ensure it is rendered perfectly, clearly, and completely. Do not break, distort, garble, or omit any Korean characters. \n\n**RENDERING STRATEGY**: Prioritize the structural integrity of Korean characters over aesthetic complexity. If the model struggles to render a complex character, simplify the text. \n\n**FINAL VERIFICATION**: Double-check that every Korean character is legible, correctly formed, and not distorted or garbled." });
         // 2. Handle other reference images (Logo, Context)
         if (referenceImages && referenceImages.length > 0) {
           referenceImages.forEach(img => {
