@@ -345,13 +345,14 @@ export const generateTitleStream = async (
       ${referenceNote ? `Reference Note: ${referenceNote}` : ""}
       ${storeName ? `Store Name: ${storeName}` : ""}
       
-      **GEO & SEO GUIDELINES**:
-      1. **Keyword & Topic Placement (CRITICAL)**: The blog topic "${topic}" and target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "[Topic] [Keyword] ...")
-      2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks.
-      3. **AI Search Optimization**: Use clear, authoritative phrasing.
-      4. **Click-Worthy**: Use powerful words or specific benefits.
-      5. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
-      6. **Length**: Concise but descriptive (under 40 characters).
+      **GEO & SEO GUIDELINES (STRICT)**:
+      1. **MANDATORY KEYWORD PLACEMENT**: The target keyword "${keyword}" MUST be the **absolute first word** of the title. DO NOT put anything before it. (e.g., "${keyword}: ...", "${keyword} ...")
+      2. **SEARCH ENGINE OPTIMIZATION (SEO)**: The title must be highly optimized for search engines (Naver, Google). Use high-intent phrasing that matches what users actually search for.
+      3. **GEO (Generative Engine Optimization)**: Use clear, authoritative, and structured phrasing that AI search engines (like Gemini, Perplexity) can easily index and cite.
+      4. **HOME FEED STRATEGY**: The title must be emotionally stimulating and highly engaging to attract clicks from home feeds and discovery sections.
+      5. **CLICK-WORTHY**: Use powerful "hook" words or specific, quantifiable benefits (e.g., "3가지 비법", "완벽 가이드").
+      6. **GOAL ALIGNMENT**: The title should perfectly align with the goal: "${postGoal || topic}".
+      7. **LENGTH**: Concise but descriptive (under 40 characters).
       
       Output: Return ONLY the single optimized title. No numbers, no markdown, no explanations.
       Language: Korean.

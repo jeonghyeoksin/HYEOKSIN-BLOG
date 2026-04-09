@@ -706,32 +706,32 @@ export const ContentWriter: React.FC = () => {
 
   // --- Render Helpers ---
   const renderStepIndicator = () => (
-    <div className="flex items-center justify-between mb-8 px-4 max-w-5xl mx-auto">
+    <div className="flex items-center justify-between mb-8 px-2 sm:px-4 max-w-5xl mx-auto overflow-x-auto no-scrollbar">
       {steps.map((s, idx) => {
         const isActive = s.id === currentStep;
         const isPast = steps.findIndex(x => x.id === currentStep) > idx;
         const isProcessing = isAutoRunning && isActive;
 
         return (
-          <div key={s.id} className="flex flex-col items-center relative z-10 flex-1">
+          <div key={s.id} className="flex flex-col items-center relative z-10 flex-1 min-w-[60px]">
             <div 
-              className={`w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all duration-300 border-2 
+              className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm sm:text-xl transition-all duration-300 border-2 
                 ${isActive ? 'bg-indigo-600 text-white border-indigo-500 scale-110 shadow-lg shadow-indigo-500/30' : 
                   isPast ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-500 border-slate-700'}`}
             >
               {isProcessing ? (
-                  <span className="animate-spin text-xl">⚡️</span>
+                  <span className="animate-spin text-sm sm:text-xl">⚡️</span>
               ) : isPast ? (
                   '✓' 
               ) : (
                   s.icon
               )}
             </div>
-            <span className={`mt-2 text-xs font-medium ${isActive ? 'text-indigo-400' : isPast ? 'text-emerald-400' : 'text-slate-500'} ${isProcessing ? 'animate-pulse' : ''}`}>
+            <span className={`mt-2 text-[8px] sm:text-xs font-medium text-center ${isActive ? 'text-indigo-400' : isPast ? 'text-emerald-400' : 'text-slate-500'} ${isProcessing ? 'animate-pulse' : ''}`}>
               {s.label}
             </span>
             {idx < steps.length - 1 && (
-                <div className={`absolute top-6 left-[60%] w-[80%] h-0.5 -z-10 ${isPast ? 'bg-emerald-600' : 'bg-slate-700'}`} />
+                <div className={`absolute top-4 sm:top-6 left-[60%] w-[80%] h-0.5 -z-10 ${isPast ? 'bg-emerald-600' : 'bg-slate-700'}`} />
             )}
           </div>
         );
@@ -744,20 +744,20 @@ export const ContentWriter: React.FC = () => {
         {/* Step Header */}
         <div className="bg-slate-900 border-b border-slate-800 pt-8 pb-4 shadow-sm z-20 flex-none relative">
             {currentStep !== 'keyword' && !isAutoRunning && (
-                <div className="absolute left-8 top-8 flex gap-2">
+                <div className="absolute left-4 sm:left-8 top-4 sm:top-8 flex gap-2 z-30">
                     <button 
                         onClick={handleBackStep}
-                        className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+                        className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-medium bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 transition-colors"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                         이전
                     </button>
                     <button 
                         onClick={handleForwardStep}
-                        className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors"
+                        className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-medium bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 transition-colors"
                     >
                         다음
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     </button>
                 </div>
             )}
@@ -1463,9 +1463,9 @@ export const ContentWriter: React.FC = () => {
                         </div>
                         
                         <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-b border-slate-700 p-2 text-white" />
-                        <div className="grid grid-cols-2 gap-6 h-[600px]">
-                            <textarea value={outline} onChange={(e) => setOutline(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700" />
-                            <textarea value={content} onChange={(e) => setContent(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 h-auto sm:h-[600px]">
+                            <textarea value={outline} onChange={(e) => setOutline(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700 min-h-[200px] sm:min-h-0" />
+                            <textarea value={content} onChange={(e) => setContent(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700 min-h-[300px] sm:min-h-0" />
                         </div>
                         {isStepComplete && (
                             <div className="flex justify-center gap-4 pt-4">
