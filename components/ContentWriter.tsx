@@ -87,6 +87,8 @@ export const ContentWriter: React.FC = () => {
   const [uspProgress, setUspProgress] = useState(0);
   const [stepProgress, setStepProgress] = useState(0);
   const [isStepComplete, setIsStepComplete] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [imageCount, setImageCount] = useState<number>(4);
   const [isAutoImageCount, setIsAutoImageCount] = useState<boolean>(true);
   const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview');
@@ -143,6 +145,10 @@ export const ContentWriter: React.FC = () => {
         nextStepResolver.current = null;
         setIsStepComplete(false);
     }
+  };
+
+  const handleRetryStep = () => {
+      runAutomationSequence(selectedKeyword, isFullAuto, currentStep);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,7 +274,7 @@ export const ContentWriter: React.FC = () => {
   };
 
   // --- Automatic Workflow ---
-  const runAutomationSequence = async (keyword: string, fullAuto: boolean = false) => {
+  const runAutomationSequence = async (keyword: string, fullAuto: boolean = false, startFromStep?: StudioStep) => {
     if (!keyword) return;
     if (!blogPlatform || !blogCategory) {
         alert('블로그 플랫폼과 블로그 분류를 선택해주세요.');
@@ -281,6 +287,8 @@ export const ContentWriter: React.FC = () => {
     setIsAutoRunning(true);
     setIsFullAuto(fullAuto);
     setSelectedKeyword(keyword);
+    setIsError(false);
+    setErrorMessage('');
 
     try {
         // --- Step 0: API Key Check ---
@@ -291,197 +299,215 @@ export const ContentWriter: React.FC = () => {
             return;
         }
 
+        const stepOrder: StudioStep[] = ['keyword', 'usp', 'title', 'script', 'images', 'thumbnail', 'result'];
+        const startIndex = startFromStep ? stepOrder.indexOf(startFromStep) : 1; // Default to 'usp' (index 1)
+
         // --- Step 1: USP ---
-        setCurrentStep('usp');
-        setStepProgress(0);
-        const suggestedKeywordStrings = keywords.map(k => k.keyword);
-        setPostGoal(''); // Clear before streaming
-        const uspRes = await generateUSPStream(
-            topic, 
-            (chunk) => {
-                setPostGoal(prev => prev + chunk);
-                setStepProgress(prev => Math.min(prev + 0.5, 95));
-            },
-            storeName || undefined, 
-            salesService || undefined, 
-            blogCategory || undefined, 
-            blogPlatform || undefined, 
-            suggestedKeywordStrings
-        );
-        setStepProgress(100);
-        await waitForNextStep(fullAuto);
+        let uspRes = postGoal;
+        if (startIndex <= 1) {
+            setCurrentStep('usp');
+            setStepProgress(0);
+            const suggestedKeywordStrings = keywords.map(k => k.keyword);
+            setPostGoal(''); // Clear before streaming
+            uspRes = await generateUSPStream(
+                topic, 
+                (chunk) => {
+                    setPostGoal(prev => prev + chunk);
+                    setStepProgress(prev => Math.min(prev + 0.5, 95));
+                },
+                storeName || undefined, 
+                salesService || undefined, 
+                blogCategory || undefined, 
+                blogPlatform || undefined, 
+                suggestedKeywordStrings
+            );
+            setStepProgress(100);
+            await waitForNextStep(fullAuto);
+        }
 
         // --- Step 2: Title ---
-        setCurrentStep('title');
-        setStepProgress(0);
-        setTitleOptions([]); // Clear before streaming
-        const generatedTitles = await generateTitleStream(
-            keyword, 
-            topic || keyword, 
-            (titles) => {
-                setTitleOptions(titles);
-                setStepProgress(prev => Math.min(prev + 5, 95));
-            },
-            uspRes, 
-            referenceNote, 
-            blogCategory, 
-            blogPlatform, 
-            storeName
-        );
-        setTitle(generatedTitles[0] || '');
-        setStepProgress(100);
-        await waitForNextStep(fullAuto);
+        let generatedTitles = titleOptions;
+        if (startIndex <= 2) {
+            setCurrentStep('title');
+            setStepProgress(0);
+            setTitleOptions([]); // Clear before streaming
+            generatedTitles = await generateTitleStream(
+                keyword, 
+                topic || keyword, 
+                (titles) => {
+                    setTitleOptions(titles);
+                    setStepProgress(prev => Math.min(prev + 5, 95));
+                },
+                uspRes, 
+                referenceNote, 
+                blogCategory, 
+                blogPlatform, 
+                storeName
+            );
+            setTitle(generatedTitles[0] || '');
+            setStepProgress(100);
+            await waitForNextStep(fullAuto);
+        }
 
         // --- Step 3: Script ---
-        setCurrentStep('script');
-        setStepProgress(0);
-        
-        let filePart = referenceFile ? await convertFileToBase64(referenceFile) : undefined;
+        let accumulatedContent = content + (hashtags ? `\n\n[HASHTAGS]\n${hashtags}` : '');
+        if (startIndex <= 3) {
+            setCurrentStep('script');
+            setStepProgress(0);
+            
+            let filePart = referenceFile ? await convertFileToBase64(referenceFile) : undefined;
 
-        const servicePriceImageParts = [];
-        for (const file of servicePriceFiles) {
-             servicePriceImageParts.push(await convertFileToBase64(file));
+            const servicePriceImageParts = [];
+            for (const file of servicePriceFiles) {
+                 servicePriceImageParts.push(await convertFileToBase64(file));
+            }
+
+            // Generate Outline
+            const scriptImageParts = [];
+            for (const file of contextImageFiles) {
+                 scriptImageParts.push(await convertFileToBase64(file));
+            }
+            for (const file of blogImageFiles) {
+                 scriptImageParts.push(await convertFileToBase64(file));
+            }
+
+            const combinedReferenceNote = blogImageDescription 
+                ? `${referenceNote}\n\n[이미지 설명]: ${blogImageDescription}` 
+                : referenceNote;
+
+            const outlineRes = await generateOutline(
+                keyword, storeName, salesService, uspRes, filePart, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
+            );
+            setOutline(outlineRes);
+
+            // Generate Content
+            accumulatedContent = '';
+            setContent('');
+            setHashtags('');
+            const hashtagMarker = "[HASHTAGS]";
+            let hasReachedHashtags = false;
+
+            await generateFullPostStream(
+                keyword, outlineRes, storeName, salesService, uspRes, 
+                (chunk) => {
+                    accumulatedContent += chunk;
+                    setStepProgress(prev => Math.min(prev + 0.1, 95));
+                    if (accumulatedContent.includes(hashtagMarker)) {
+                        hasReachedHashtags = true;
+                        const parts = accumulatedContent.split(hashtagMarker);
+                        setContent(parts[0].trim());
+                        setHashtags(parts[1].trim());
+                    } else if (!hasReachedHashtags) {
+                        setContent(prev => prev + chunk);
+                    } else {
+                        const parts = accumulatedContent.split(hashtagMarker);
+                        setHashtags(parts[1].trim());
+                    }
+                }, 
+                () => {
+                    accumulatedContent = '';
+                    setContent('');
+                    setHashtags('');
+                    hasReachedHashtags = false;
+                },
+                undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
+            );
+            setStepProgress(100);
+            await waitForNextStep(fullAuto);
         }
 
-        // Generate Outline
-        const scriptImageParts = [];
-        for (const file of contextImageFiles) {
-             scriptImageParts.push(await convertFileToBase64(file));
-        }
-        for (const file of blogImageFiles) {
-             scriptImageParts.push(await convertFileToBase64(file));
-        }
-
-        const combinedReferenceNote = blogImageDescription 
-            ? `${referenceNote}\n\n[이미지 설명]: ${blogImageDescription}` 
-            : referenceNote;
-
-        const outlineRes = await generateOutline(
-            keyword, storeName, salesService, uspRes, filePart, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
-        );
-        setOutline(outlineRes);
-
-        // Generate Content
-        let accumulatedContent = '';
-        setContent('');
-        setHashtags('');
-        const hashtagMarker = "[HASHTAGS]";
-        let hasReachedHashtags = false;
-
-        await generateFullPostStream(
-            keyword, outlineRes, storeName, salesService, uspRes, 
-            (chunk) => {
-                accumulatedContent += chunk;
-                setStepProgress(prev => Math.min(prev + 0.1, 95));
-                if (accumulatedContent.includes(hashtagMarker)) {
-                    hasReachedHashtags = true;
-                    const parts = accumulatedContent.split(hashtagMarker);
-                    setContent(parts[0].trim());
-                    setHashtags(parts[1].trim());
-                } else if (!hasReachedHashtags) {
-                    setContent(prev => prev + chunk);
-                } else {
-                    const parts = accumulatedContent.split(hashtagMarker);
-                    setHashtags(parts[1].trim());
-                }
-            }, 
-            () => {
-                accumulatedContent = '';
-                setContent('');
-                setHashtags('');
-                hasReachedHashtags = false;
-            },
-            undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
-        );
-        setStepProgress(100);
-        await waitForNextStep(fullAuto);
-
-        // --- Step 2: Images ---
-        const processedLaundered = [];
-        for (const file of launderedImageFiles) {
-            processedLaundered.push(await launderImage(file));
-        }
-        setLaunderedImages(processedLaundered);
-
-        if (skipImageGeneration) {
-            // Skip AI image generation
-            setGeneratedImages([]);
-            setThumbnail(null);
-            setThumbnailPrompt('');
-            setCurrentStep('result');
-            setIsAutoRunning(false);
-            return;
-        }
-
-        setCurrentStep('images');
-        setStepProgress(0);
-        
+        // --- Step 4: Images ---
         const faceParts = await getFaceRefs();
         const refParts = await getImageRefs();
 
-        const finalImageCount = isAutoImageCount ? 5 : imageCount;
-        const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0, selectedImageModel, selectedImageStyle);
-        
-        const placeholders: GeneratedImage[] = prompts.map(p => ({
-            prompt: p.prompt,
-            context: p.context,
-            url: null,
-            isLoading: true
-        }));
-        setGeneratedImages(placeholders);
+        if (startIndex <= 4) {
+            const processedLaundered = [];
+            for (const file of launderedImageFiles) {
+                processedLaundered.push(await launderImage(file));
+            }
+            setLaunderedImages(processedLaundered);
 
-        // Run image generation
-        for (const [index, item] of placeholders.entries()) {
+            if (skipImageGeneration) {
+                // Skip AI image generation
+                setGeneratedImages([]);
+                setThumbnail(null);
+                setThumbnailPrompt('');
+                setCurrentStep('result');
+                setIsAutoRunning(false);
+                return;
+            }
+
+            setCurrentStep('images');
+            setStepProgress(0);
+            
+            const finalImageCount = isAutoImageCount ? 5 : imageCount;
+            const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0, selectedImageModel, selectedImageStyle);
+            
+            const placeholders: GeneratedImage[] = prompts.map(p => ({
+                prompt: p.prompt,
+                context: p.context,
+                url: null,
+                isLoading: true
+            }));
+            setGeneratedImages(placeholders);
+
+            // Run image generation
+            for (const [index, item] of placeholders.entries()) {
+                try {
+                    const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
+                    const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${item.prompt}, no text, no words` : item.prompt;
+                    const url = await generateBlogImage(promptToUse, "16:9", refParts, faceParts, modelToUse);
+                    setGeneratedImages(prev => {
+                        const newArr = [...prev];
+                        newArr[index] = { ...newArr[index], url, isLoading: false };
+                        return newArr;
+                    });
+                    setStepProgress(((index + 1) / placeholders.length) * 100);
+                } catch (e) {
+                    console.error(`Image ${index} failed`, e);
+                    const errorMessage = e instanceof Error ? e.message : String(e);
+                    setGeneratedImages(prev => {
+                        const newArr = [...prev];
+                        newArr[index] = { ...newArr[index], isLoading: false, error: errorMessage };
+                        return newArr;
+                    });
+                }
+            }
+            setStepProgress(100);
+            await waitForNextStep(fullAuto);
+        }
+
+        // --- Step 5: Thumbnail ---
+        if (startIndex <= 5) {
+            setCurrentStep('thumbnail');
+            setStepProgress(0);
+            const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle);
+            setThumbnailPrompt(thumbPrompt);
+            
+            setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: true });
+            
             try {
                 const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
-                const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${item.prompt}, no text, no words` : item.prompt;
-                const url = await generateBlogImage(promptToUse, "16:9", refParts, faceParts, modelToUse);
-                setGeneratedImages(prev => {
-                    const newArr = [...prev];
-                    newArr[index] = { ...newArr[index], url, isLoading: false };
-                    return newArr;
-                });
-                setStepProgress(((index + 1) / placeholders.length) * 100);
+                const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${thumbPrompt}, no text, no words` : thumbPrompt;
+                const thumbUrl = await generateBlogImage(promptToUse, "1:1", refParts, faceParts, modelToUse);
+                setThumbnail({ prompt: thumbPrompt, context: '', url: thumbUrl, isLoading: false });
+                setStepProgress(100);
             } catch (e) {
-                console.error(`Image ${index} failed`, e);
+                console.error("Thumbnail generation failed", e);
                 const errorMessage = e instanceof Error ? e.message : String(e);
-                setGeneratedImages(prev => {
-                    const newArr = [...prev];
-                    newArr[index] = { ...newArr[index], isLoading: false, error: errorMessage };
-                    return newArr;
-                });
+                setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: false, error: errorMessage });
             }
+            await waitForNextStep(fullAuto);
         }
-        setStepProgress(100);
-        await waitForNextStep(fullAuto);
 
-        // --- Step 3: Thumbnail ---
-        setCurrentStep('thumbnail');
-        setStepProgress(0);
-        const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle);
-        setThumbnailPrompt(thumbPrompt);
-        
-        setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: true });
-        
-        try {
-            const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
-            const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${thumbPrompt}, no text, no words` : thumbPrompt;
-            const thumbUrl = await generateBlogImage(promptToUse, "1:1", refParts, faceParts, modelToUse);
-            setThumbnail({ prompt: thumbPrompt, context: '', url: thumbUrl, isLoading: false });
-            setStepProgress(100);
-        } catch (e) {
-            console.error("Thumbnail generation failed", e);
-            const errorMessage = e instanceof Error ? e.message : String(e);
-            setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: false, error: errorMessage });
-        }
-        await waitForNextStep(fullAuto);
-
-        // --- Step 4: Result ---
+        // --- Step 6: Result ---
         setCurrentStep('result');
 
     } catch (e) {
         console.error("Automation Error", e);
         const errorMessage = e instanceof Error ? e.message : String(e);
+        setIsError(true);
+        setErrorMessage(errorMessage);
         alert(`작업 중 오류가 발생했습니다: ${errorMessage}`);
     } finally {
         setIsAutoRunning(false);
@@ -1304,12 +1330,23 @@ export const ContentWriter: React.FC = () => {
                             <span className="animate-pulse text-indigo-400 font-bold">AI가 최적의 USP를 도출하고 있습니다...</span>
                         </div>
                         <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl">
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-2xl">🎯</div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">전략적 USP 도출</h3>
-                                    <p className="text-slate-400 text-sm">키워드 분석 결과를 바탕으로 차별화된 소구점을 찾습니다.</p>
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-2xl">🎯</div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">전략적 USP 도출</h3>
+                                        <p className="text-slate-400 text-sm">키워드 분석 결과를 바탕으로 차별화된 소구점을 찾습니다.</p>
+                                    </div>
                                 </div>
+                                {!isAutoRunning && (
+                                    <button 
+                                        onClick={handleRetryStep}
+                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                                    >
+                                        <span>🔄</span>
+                                        <span>다시 시작</span>
+                                    </button>
+                                )}
                             </div>
                             <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-700 min-h-[100px] text-lg text-indigo-100 leading-relaxed whitespace-pre-wrap">
                                 {isStepComplete ? (
@@ -1353,12 +1390,23 @@ export const ContentWriter: React.FC = () => {
                             <span className="animate-pulse text-indigo-400 font-bold">AI가 최적화된 제목을 생성하고 있습니다...</span>
                         </div>
                         <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl">
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center text-2xl">📝</div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">최적화 제목 생성</h3>
-                                    <p className="text-slate-400 text-sm">주제와 키워드가 강조된 제목을 제안합니다.</p>
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center text-2xl">📝</div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">최적화 제목 생성</h3>
+                                        <p className="text-slate-400 text-sm">주제와 키워드가 강조된 제목을 제안합니다.</p>
+                                    </div>
                                 </div>
+                                {!isAutoRunning && (
+                                    <button 
+                                        onClick={handleRetryStep}
+                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                                    >
+                                        <span>🔄</span>
+                                        <span>다시 시작</span>
+                                    </button>
+                                )}
                             </div>
                             <div className="space-y-4">
                                 {titleOptions.length > 0 ? (
@@ -1400,7 +1448,18 @@ export const ContentWriter: React.FC = () => {
                     <div className="animate-fade-in space-y-6 pb-20">
                         <div className="flex justify-between items-center">
                             <h2 className="text-2xl font-bold text-white">원고 작성 중 ({Math.round(stepProgress)}%)</h2>
-                            {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold">AI가 대본을 작성 중입니다... (자동 진행 중)</span>}
+                            <div className="flex items-center gap-4">
+                                {!isAutoRunning && (
+                                    <button 
+                                        onClick={handleRetryStep}
+                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                                    >
+                                        <span>🔄</span>
+                                        <span>다시 시작</span>
+                                    </button>
+                                )}
+                                {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold">AI가 대본을 작성 중입니다... (자동 진행 중)</span>}
+                            </div>
                         </div>
                         
                         <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-b border-slate-700 p-2 text-white" />
@@ -1434,7 +1493,18 @@ export const ContentWriter: React.FC = () => {
                     <div className="animate-fade-in space-y-6 pb-20">
                         <div className="flex justify-between items-center">
                             <h2 className="text-2xl font-bold text-white">이미지 생성 중 ({Math.round(stepProgress)}%)</h2>
-                            {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold">이미지 렌더링 중... (자동 진행 중)</span>}
+                            <div className="flex items-center gap-4">
+                                {!isAutoRunning && (
+                                    <button 
+                                        onClick={handleRetryStep}
+                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                                    >
+                                        <span>🔄</span>
+                                        <span>다시 시작</span>
+                                    </button>
+                                )}
+                                {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold">이미지 렌더링 중... (자동 진행 중)</span>}
+                            </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                              {generatedImages.map((img, idx) => (
@@ -1488,7 +1558,18 @@ export const ContentWriter: React.FC = () => {
                 {/* Step 4: Thumbnail */}
                 {currentStep === 'thumbnail' && (
                     <div className="animate-fade-in space-y-6 flex flex-col items-center pb-20">
-                        <h2 className="text-2xl font-bold text-white">썸네일 생성 중 ({Math.round(stepProgress)}%)</h2>
+                        <div className="w-full flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-white">썸네일 생성 중 ({Math.round(stepProgress)}%)</h2>
+                            {!isAutoRunning && (
+                                <button 
+                                    onClick={handleRetryStep}
+                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                                >
+                                    <span>🔄</span>
+                                    <span>다시 시작</span>
+                                </button>
+                            )}
+                        </div>
                         {isAutoRunning && <span className="animate-pulse text-indigo-400 font-bold mb-4">1:1 고해상도 썸네일 제작 중... (자동 진행 중)</span>}
                         <div className="aspect-square rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl bg-slate-800 relative group w-96">
                                     {thumbnail?.url ? (
