@@ -344,7 +344,14 @@ export const ContentWriter: React.FC = () => {
                 blogPlatform, 
                 storeName
             );
-            setTitle(generatedTitles[0] || '');
+            if (generatedTitles && generatedTitles.length > 0) {
+                setTitle(generatedTitles[0]);
+            } else {
+                // Fallback if streaming failed or returned empty
+                const fallbackTitle = `${keyword} ${topic}`.trim();
+                setTitle(fallbackTitle);
+                setTitleOptions([fallbackTitle]);
+            }
             setStepProgress(100);
             await waitForNextStep(fullAuto);
         }
@@ -1657,6 +1664,12 @@ export const ContentWriter: React.FC = () => {
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl sticky top-0 z-50">
                             <h1 className="text-2xl font-bold text-white">✨ 최종 결과물</h1>
                             <div className="flex flex-wrap gap-3">
+                                <button 
+                                    onClick={handleBackStep}
+                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors border border-slate-700"
+                                >
+                                    ← 이전 단계
+                                </button>
                                 <button 
                                     onClick={() => copyToClipboard(title)}
                                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors border border-slate-700"
