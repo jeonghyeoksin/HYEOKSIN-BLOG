@@ -551,7 +551,9 @@ export const ContentWriter: React.FC = () => {
   };
 
   const handleBackStep = () => {
-      if (isAutoRunning) return;
+      if (isAutoRunning) {
+          setIsAutoRunning(false);
+      }
       const stepOrder: StudioStep[] = ['keyword', 'usp', 'title', 'script', 'images', 'thumbnail', 'result'];
       const currentIdx = stepOrder.indexOf(currentStep);
       if (currentIdx > 0) {
@@ -756,26 +758,24 @@ export const ContentWriter: React.FC = () => {
     <div className="flex flex-col h-full bg-slate-950 overflow-hidden">
         {/* Step Header */}
         <div className="bg-slate-900 border-b border-slate-800 pt-8 pb-4 shadow-sm z-20 flex-none relative">
-            {!isAutoRunning && (
-                <div className="absolute left-4 sm:left-8 top-4 sm:top-8 flex gap-2 z-30">
-                    {currentStep !== 'keyword' && (
-                        <button 
-                            onClick={handleBackStep}
-                            className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-medium bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 transition-colors"
-                        >
-                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                            이전
-                        </button>
-                    )}
+            <div className="absolute left-4 sm:left-8 top-4 sm:top-8 flex gap-2 z-30">
+                {currentStep !== 'keyword' && (
                     <button 
-                        onClick={handleForwardStep}
+                        onClick={handleBackStep}
                         className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-medium bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 transition-colors"
                     >
-                        다음
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        이전
                     </button>
-                </div>
-            )}
+                )}
+                <button 
+                    onClick={handleForwardStep}
+                    className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-medium bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 transition-colors"
+                >
+                    다음
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </button>
+            </div>
             {renderStepIndicator()}
         </div>
 
@@ -1449,7 +1449,7 @@ export const ContentWriter: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex justify-center gap-4 pt-4">
-                            {currentStep !== 'keyword' && (
+                            {(currentStep as string) !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
@@ -1496,7 +1496,7 @@ export const ContentWriter: React.FC = () => {
                             <textarea value={content} onChange={(e) => setContent(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700 min-h-[300px] sm:min-h-0" />
                         </div>
                         <div className="flex justify-center gap-4 pt-4">
-                            {currentStep !== 'keyword' && (
+                            {(currentStep as string) !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
@@ -1565,7 +1565,7 @@ export const ContentWriter: React.FC = () => {
                              ))}
                         </div>
                         <div className="flex justify-center gap-4 pt-4">
-                            {currentStep !== 'keyword' && (
+                            {(currentStep as string) !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
@@ -1662,7 +1662,7 @@ export const ContentWriter: React.FC = () => {
                                     )}
                         </div>
                         <div className="flex justify-center gap-4 pt-8">
-                            {currentStep !== 'keyword' && (
+                            {(currentStep as string) !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
