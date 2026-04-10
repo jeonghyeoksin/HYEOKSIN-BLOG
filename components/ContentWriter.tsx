@@ -86,7 +86,7 @@ export const ContentWriter: React.FC = () => {
   const [isGeneratingUSP, setIsGeneratingUSP] = useState(false);
   const [uspProgress, setUspProgress] = useState(0);
   const [stepProgress, setStepProgress] = useState(0);
-  const [isStepComplete, setIsStepComplete] = useState(false);
+  const [isStepComplete, setIsStepComplete] = useState(true);
   const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [imageCount, setImageCount] = useState<number>(4);
@@ -139,16 +139,18 @@ export const ContentWriter: React.FC = () => {
     });
   };
 
+  const handleRetryStep = () => {
+      runAutomationSequence(selectedKeyword, isFullAuto, currentStep);
+  };
+
   const handleNextStep = () => {
     if (nextStepResolver.current) {
         nextStepResolver.current();
         nextStepResolver.current = null;
         setIsStepComplete(false);
+    } else {
+        handleForwardStep();
     }
-  };
-
-  const handleRetryStep = () => {
-      runAutomationSequence(selectedKeyword, isFullAuto, currentStep);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -552,7 +554,11 @@ export const ContentWriter: React.FC = () => {
       if (isAutoRunning) return;
       const stepOrder: StudioStep[] = ['keyword', 'usp', 'title', 'script', 'images', 'thumbnail', 'result'];
       const currentIdx = stepOrder.indexOf(currentStep);
-      if (currentIdx > 0) setCurrentStep(stepOrder[currentIdx - 1]);
+      if (currentIdx > 0) {
+          setCurrentStep(stepOrder[currentIdx - 1]);
+      } else {
+          setCurrentStep('result');
+      }
   };
 
   const handleForwardStep = () => {
@@ -750,15 +756,17 @@ export const ContentWriter: React.FC = () => {
     <div className="flex flex-col h-full bg-slate-950 overflow-hidden">
         {/* Step Header */}
         <div className="bg-slate-900 border-b border-slate-800 pt-8 pb-4 shadow-sm z-20 flex-none relative">
-            {currentStep !== 'keyword' && !isAutoRunning && (
+            {!isAutoRunning && (
                 <div className="absolute left-4 sm:left-8 top-4 sm:top-8 flex gap-2 z-30">
-                    <button 
-                        onClick={handleBackStep}
-                        className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-medium bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 transition-colors"
-                    >
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        이전
-                    </button>
+                    {currentStep !== 'keyword' && (
+                        <button 
+                            onClick={handleBackStep}
+                            className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-medium bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 transition-colors"
+                        >
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                            이전
+                        </button>
+                    )}
                     <button 
                         onClick={handleForwardStep}
                         className="text-slate-400 hover:text-white flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm font-medium bg-slate-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-700 transition-colors"
@@ -1326,6 +1334,17 @@ export const ContentWriter: React.FC = () => {
                           ))}
                         </div>
                     )}
+                    {isStepComplete && (
+                        <div className="flex justify-center gap-4 pt-8">
+                            <button 
+                                onClick={handleNextStep}
+                                className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-indigo-500/30 flex items-center gap-3 animate-bounce"
+                            >
+                                <span>다음 단계로 이동</span>
+                                <span className="text-2xl">→</span>
+                            </button>
+                        </div>
+                    )}
                   </div>
                 )}
 
@@ -1429,8 +1448,8 @@ export const ContentWriter: React.FC = () => {
                                 )}
                             </div>
                         </div>
-                        {isStepComplete && (
-                            <div className="flex justify-center gap-4 pt-4">
+                        <div className="flex justify-center gap-4 pt-4">
+                            {currentStep !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
@@ -1438,6 +1457,8 @@ export const ContentWriter: React.FC = () => {
                                     <span className="text-2xl">←</span>
                                     <span>이전 단계</span>
                                 </button>
+                            )}
+                            {isStepComplete && (
                                 <button 
                                     onClick={handleNextStep}
                                     className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-emerald-500/30 flex items-center gap-3 animate-bounce"
@@ -1445,8 +1466,8 @@ export const ContentWriter: React.FC = () => {
                                     <span>다음 단계로 이동</span>
                                     <span className="text-2xl">→</span>
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -1474,8 +1495,8 @@ export const ContentWriter: React.FC = () => {
                             <textarea value={outline} onChange={(e) => setOutline(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700 min-h-[200px] sm:min-h-0" />
                             <textarea value={content} onChange={(e) => setContent(e.target.value)} className="bg-slate-800 p-4 rounded-xl text-slate-300 resize-none border border-slate-700 min-h-[300px] sm:min-h-0" />
                         </div>
-                        {isStepComplete && (
-                            <div className="flex justify-center gap-4 pt-4">
+                        <div className="flex justify-center gap-4 pt-4">
+                            {currentStep !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
@@ -1483,6 +1504,8 @@ export const ContentWriter: React.FC = () => {
                                     <span className="text-2xl">←</span>
                                     <span>이전 단계</span>
                                 </button>
+                            )}
+                            {isStepComplete && (
                                 <button 
                                     onClick={handleNextStep}
                                     className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-blue-500/30 flex items-center gap-3 animate-bounce"
@@ -1490,8 +1513,8 @@ export const ContentWriter: React.FC = () => {
                                     <span>다음 단계로 이동</span>
                                     <span className="text-2xl">→</span>
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -1541,8 +1564,8 @@ export const ContentWriter: React.FC = () => {
                                  </div>
                              ))}
                         </div>
-                        {isStepComplete && (
-                            <div className="flex justify-center gap-4 pt-4">
+                        <div className="flex justify-center gap-4 pt-4">
+                            {currentStep !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
@@ -1550,6 +1573,8 @@ export const ContentWriter: React.FC = () => {
                                     <span className="text-2xl">←</span>
                                     <span>이전 단계</span>
                                 </button>
+                            )}
+                            {isStepComplete && (
                                 <button 
                                     onClick={handleNextStep}
                                     className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-indigo-500/30 flex items-center gap-3 animate-bounce"
@@ -1557,8 +1582,8 @@ export const ContentWriter: React.FC = () => {
                                     <span>다음 단계로 이동</span>
                                     <span className="text-2xl">→</span>
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -1636,8 +1661,8 @@ export const ContentWriter: React.FC = () => {
                                         <div className="w-full h-full flex items-center justify-center text-slate-500">대기</div>
                                     )}
                         </div>
-                        {isStepComplete && (
-                            <div className="flex justify-center gap-4 pt-8">
+                        <div className="flex justify-center gap-4 pt-8">
+                            {currentStep !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
@@ -1645,6 +1670,8 @@ export const ContentWriter: React.FC = () => {
                                     <span className="text-2xl">←</span>
                                     <span>이전 단계</span>
                                 </button>
+                            )}
+                            {isStepComplete && (
                                 <button 
                                     onClick={handleNextStep}
                                     className="px-8 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-amber-500/30 flex items-center gap-3 animate-bounce"
@@ -1652,8 +1679,8 @@ export const ContentWriter: React.FC = () => {
                                     <span>최종 결과 확인하기</span>
                                     <span className="text-2xl">✨</span>
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -1948,8 +1975,17 @@ export const ContentWriter: React.FC = () => {
                                 </button>
                             </div>
                         </div>
-                        {isStepComplete && (
-                            <div className="flex justify-center pt-4">
+                        <div className="flex justify-center pt-4 gap-4">
+                            {currentStep !== 'keyword' && (
+                                <button 
+                                    onClick={handleBackStep}
+                                    className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
+                                >
+                                    <span className="text-2xl">←</span>
+                                    <span>이전 단계</span>
+                                </button>
+                            )}
+                            {isStepComplete && (
                                 <button 
                                     onClick={handleNextStep}
                                     className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-blue-500/30 flex items-center gap-3 animate-bounce"
@@ -1957,8 +1993,8 @@ export const ContentWriter: React.FC = () => {
                                     <span>다음 단계로 이동</span>
                                     <span className="text-2xl">→</span>
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
 
