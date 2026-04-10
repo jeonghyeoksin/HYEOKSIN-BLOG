@@ -48,14 +48,19 @@ export const ContentWriter: React.FC = () => {
   const [benchmarkingText, setBenchmarkingText] = useState('');
   const [servicePriceText, setServicePriceText] = useState('');
   
+  // --- State: Advanced Inputs ---
+  const [targetAudience, setTargetAudience] = useState('');
+  const [coreUsp, setCoreUsp] = useState('');
+  const [secondaryKeywords, setSecondaryKeywords] = useState('');
+  const [cta, setCta] = useState('');
+  const [faq, setFaq] = useState('');
+
   // --- State: Files ---
   const [referenceFile, setReferenceFile] = useState<File | null>(null); // Text context file
   const [servicePriceFiles, setServicePriceFiles] = useState<File[]>([]);
   const [logoFiles, setLogoFiles] = useState<File[]>([]);
   const [faceImageFiles, setFaceImageFiles] = useState<File[]>([]);
   const [contextImageFiles, setContextImageFiles] = useState<File[]>([]); // General references
-  const [blogImageFiles, setBlogImageFiles] = useState<File[]>([]); // Image-based blog generation
-  const [blogImageDescription, setBlogImageDescription] = useState(''); // Description for images
   const [launderedImageFiles, setLaunderedImageFiles] = useState<File[]>([]); // Laundered images
   const [skipImageGeneration, setSkipImageGeneration] = useState<boolean>(false); // Skip image generation
 
@@ -225,10 +230,10 @@ export const ContentWriter: React.FC = () => {
   const getImageRefs = async () => {
     const refs: { data: string, mimeType: string }[] = [];
     for (const file of logoFiles) {
-        refs.push(await convertFileToBase64(file));
+        if (isSupportedImage(file)) refs.push(await convertFileToBase64(file));
     }
     for (const file of contextImageFiles) {
-        refs.push(await convertFileToBase64(file));
+        if (isSupportedImage(file)) refs.push(await convertFileToBase64(file));
     }
     return refs;
   };
@@ -236,7 +241,7 @@ export const ContentWriter: React.FC = () => {
   const getFaceRefs = async () => {
       const refs: { data: string, mimeType: string }[] = [];
       for (const file of faceImageFiles) {
-          refs.push(await convertFileToBase64(file));
+          if (isSupportedImage(file)) refs.push(await convertFileToBase64(file));
       }
       return refs;
   };
@@ -248,24 +253,41 @@ export const ContentWriter: React.FC = () => {
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
+                
+                // 1. Slightly crop the image (1-3 pixels) to change dimensions and perceptual hash
+                const cropX = Math.floor(Math.random() * 3) + 1;
+                const cropY = Math.floor(Math.random() * 3) + 1;
+                
+                canvas.width = img.width - (cropX * 2);
+                canvas.height = img.height - (cropY * 2);
+                
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
                     reject(new Error('Failed to get canvas context'));
                     return;
                 }
-                ctx.drawImage(img, 0, 0);
                 
-                // Image Laundering: Slightly modify pixel data to change file hash
-                // without changing visual appearance.
-                const imageData = ctx.getImageData(0, 0, 1, 1);
-                // Change the first pixel's red value by 1 (imperceptible)
-                imageData.data[0] = imageData.data[0] > 128 ? imageData.data[0] - 1 : imageData.data[0] + 1;
+                // Draw image shifted to apply crop
+                ctx.drawImage(img, -cropX, -cropY);
+                
+                // 2. Add very faint random noise to change pixel values globally
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    // Add random noise between -1 and 1 to RGB channels
+                    const noise = Math.floor(Math.random() * 3) - 1;
+                    data[i] = Math.max(0, Math.min(255, data[i] + noise));     // R
+                    data[i+1] = Math.max(0, Math.min(255, data[i+1] + noise)); // G
+                    data[i+2] = Math.max(0, Math.min(255, data[i+2] + noise)); // B
+                }
                 ctx.putImageData(imageData, 0, 0);
                 
-                // Export as high quality PNG to preserve visual fidelity
-                resolve(canvas.toDataURL('image/png', 1.0));
+                // 3. Export with slightly randomized quality (for JPEG)
+                const isPng = file.type === 'image/png';
+                const mimeType = isPng ? 'image/png' : 'image/jpeg';
+                const quality = isPng ? undefined : 0.90 + (Math.random() * 0.09); // 0.90 to 0.99
+                
+                resolve(canvas.toDataURL(mimeType, quality));
             };
             img.onerror = reject;
             img.src = e.target?.result as string;
@@ -376,13 +398,16 @@ export const ContentWriter: React.FC = () => {
             for (const file of contextImageFiles) {
                  scriptImageParts.push(await convertFileToBase64(file));
             }
-            for (const file of blogImageFiles) {
-                 scriptImageParts.push(await convertFileToBase64(file));
-            }
 
-            const combinedReferenceNote = blogImageDescription 
-                ? `${referenceNote}\n\n[이미지 설명]: ${blogImageDescription}` 
-                : referenceNote;
+            const advancedOptions = [];
+            if (targetAudience) advancedOptions.push(`타겟 고객층: ${targetAudience}`);
+            if (coreUsp) advancedOptions.push(`핵심 차별점(USP): ${coreUsp}`);
+            if (secondaryKeywords) advancedOptions.push(`서브 키워드: ${secondaryKeywords}`);
+            if (cta) advancedOptions.push(`행동 유도(CTA) 및 연락처/링크: ${cta}`);
+            if (faq) advancedOptions.push(`자주 묻는 질문(FAQ): ${faq}`);
+            
+            const advancedOptionsText = advancedOptions.length > 0 ? `\n\n[고급 설정 정보]\n${advancedOptions.join('\n')}` : '';
+            const combinedReferenceNote = referenceNote + advancedOptionsText;
 
             const outlineRes = await generateOutline(
                 keyword, storeName, salesService, uspRes, filePart, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
@@ -615,17 +640,23 @@ export const ContentWriter: React.FC = () => {
     }
   };
 
+  const isSupportedImage = (file: File) => {
+      const supportedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+      if (supportedTypes.includes(file.type)) return true;
+      
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const supportedExts = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
+      return supportedExts.includes(ext || '');
+  };
+
   const handleContextImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
         const filesArray = Array.from(e.target.files);
-        setContextImageFiles(prev => [...prev, ...filesArray]);
-    }
-  };
-
-  const handleBlogImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-        const filesArray = Array.from(e.target.files);
-        setBlogImageFiles(prev => [...prev, ...filesArray]);
+        const validFiles = filesArray.filter(isSupportedImage);
+        if (validFiles.length < filesArray.length) {
+            alert('지원하지 않는 이미지 형식이 포함되어 있습니다. JPEG, PNG, WEBP, HEIC, HEIF만 가능합니다.');
+        }
+        setContextImageFiles(prev => [...prev, ...validFiles]);
     }
   };
 
@@ -792,28 +823,8 @@ export const ContentWriter: React.FC = () => {
                     </div>
 
                     <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl backdrop-blur-sm">
-                        {/* Image Upload Section */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-bold text-slate-300 ml-1">이미지 기반 블로그 생성 (선택)</label>
-                          <input 
-                            type="file" 
-                            multiple 
-                            onChange={handleBlogImagesChange} 
-                            className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500"
-                          />
-                          <p className="text-xs text-slate-500 mt-2">이미지를 첨부하면 해당 이미지의 내용을 분석하여 블로그 글을 생성합니다.</p>
-                          {blogImageFiles.length > 0 && (
-                              <div className="mt-2 text-xs text-emerald-400">
-                                  {blogImageFiles.length}개의 이미지가 선택되었습니다.
-                              </div>
-                          )}
-                          <textarea
-                            value={blogImageDescription}
-                            onChange={(e) => setBlogImageDescription(e.target.value)}
-                            placeholder="이미지에 대한 설명을 입력해주세요 (예: 이 사진은 강남역 1번 출구 앞 맛집의 입구 모습입니다.)"
-                            className="w-full mt-4 bg-slate-900 border border-slate-700 rounded-2xl p-4 text-white placeholder-slate-600 focus:border-indigo-500 outline-none transition-all"
-                            rows={3}
-                          />
+                        <div className="text-right text-xs text-slate-400">
+                            <span className="text-red-500">*</span> 은 필수항목입니다.
                         </div>
                         
                         {/* Platform Input */}
@@ -943,9 +954,66 @@ export const ContentWriter: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* Advanced Inputs */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">타겟 고객층</label>
+                                <input 
+                                    type="text" 
+                                    value={targetAudience}
+                                    onChange={(e) => setTargetAudience(e.target.value)}
+                                    placeholder="예: 2030 직장인, 30대 육아맘"
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">핵심 차별점 (USP)</label>
+                                <input 
+                                    type="text" 
+                                    value={coreUsp}
+                                    onChange={(e) => setCoreUsp(e.target.value)}
+                                    placeholder="예: 10년 경력 원장 직접 시술, 24시간 연중무휴"
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">서브 키워드</label>
+                                <input 
+                                    type="text" 
+                                    value={secondaryKeywords}
+                                    onChange={(e) => setSecondaryKeywords(e.target.value)}
+                                    placeholder="예: 강남역 맛집, 데이트 코스 추천"
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">행동 유도 (CTA) 및 연락처/링크</label>
+                                <input 
+                                    type="text" 
+                                    value={cta}
+                                    onChange={(e) => setCta(e.target.value)}
+                                    placeholder="예: 네이버 예약하기 (링크), 010-1234-5678"
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-300 ml-1">자주 묻는 질문 (FAQ)</label>
+                            <textarea 
+                                value={faq}
+                                onChange={(e) => setFaq(e.target.value)}
+                                placeholder="고객들이 평소에 가장 많이 묻는 질문 1~2가지를 입력하세요."
+                                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
+                            />
+                        </div>
+
                         {/* Reference Note */}
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">참고 노트 (선택)</label>
+                            <label className="text-sm font-bold text-slate-300 ml-1">참고 노트</label>
                             <textarea 
                                 value={referenceNote}
                                 onChange={(e) => setReferenceNote(e.target.value)}
@@ -956,7 +1024,7 @@ export const ContentWriter: React.FC = () => {
 
                         {/* Must Include Content */}
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">꼭 들어가야 할 내용 (선택)</label>
+                            <label className="text-sm font-bold text-slate-300 ml-1">꼭 들어가야 할 내용</label>
                             <textarea 
                                 value={mustIncludeContent}
                                 onChange={(e) => setMustIncludeContent(e.target.value)}
@@ -987,7 +1055,7 @@ export const ContentWriter: React.FC = () => {
                                 )}
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">서비스 금액 작성 (선택)</label>
+                                <label className="text-sm font-bold text-slate-300 ml-1">서비스 금액 작성</label>
                                 <input 
                                     type="text" 
                                     value={servicePriceText}
@@ -1001,7 +1069,7 @@ export const ContentWriter: React.FC = () => {
                         {/* Benchmarking Text (New) */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-slate-300 ml-1">벤치마킹 원고 (선택)</label>
+                                <label className="text-sm font-bold text-slate-300 ml-1">벤치마킹 원고</label>
                                 <div className="flex gap-2">
                                     <input 
                                         type="file" 
