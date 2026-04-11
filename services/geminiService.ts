@@ -137,7 +137,15 @@ export const generateUSPStream = async (
   salesService?: string,
   blogCategory?: string,
   blogPlatform?: string,
-  suggestedKeywords?: string[]
+  suggestedKeywords?: string[],
+  advancedInputs?: {
+    targetAudience?: string;
+    secondaryKeywords?: string;
+    cta?: string;
+    faq?: string;
+    referenceNote?: string;
+    mustIncludeContent?: string;
+  }
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -146,7 +154,7 @@ export const generateUSPStream = async (
       You are a top-tier Marketing Strategist and Copywriter.
       
       Analyze the following information to derive a powerful **Unique Selling Proposition (USP)** or **Posting Goal** for a blog post.
-      The USP should be derived referring to all contents of the keyword discovery stage, including the suggested keywords.
+      The USP should be derived referring to all contents of the keyword discovery stage, including the suggested keywords and advanced inputs.
 
       **INPUT DATA**:
       - Blog Topic: "${topic}"
@@ -155,6 +163,12 @@ export const generateUSPStream = async (
       ${storeName ? `- Brand/Store Name: "${storeName}"` : ""}
       ${salesService ? `- Sales Service/Product: "${salesService}"` : ""}
       ${suggestedKeywords && suggestedKeywords.length > 0 ? `- Suggested Keywords: ${suggestedKeywords.join(', ')}` : ""}
+      ${advancedInputs?.targetAudience ? `- Target Audience: "${advancedInputs.targetAudience}"` : ""}
+      ${advancedInputs?.secondaryKeywords ? `- Secondary Keywords: "${advancedInputs.secondaryKeywords}"` : ""}
+      ${advancedInputs?.cta ? `- CTA / Contact: "${advancedInputs.cta}"` : ""}
+      ${advancedInputs?.faq ? `- FAQ: "${advancedInputs.faq}"` : ""}
+      ${advancedInputs?.referenceNote ? `- Reference Note: "${advancedInputs.referenceNote}"` : ""}
+      ${advancedInputs?.mustIncludeContent ? `- Must Include Content: "${advancedInputs.mustIncludeContent}"` : ""}
 
       **Task**:
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
@@ -198,7 +212,15 @@ export const generateUSP = async (
   salesService?: string,
   blogCategory?: string,
   blogPlatform?: string,
-  suggestedKeywords?: string[]
+  suggestedKeywords?: string[],
+  advancedInputs?: {
+    targetAudience?: string;
+    secondaryKeywords?: string;
+    cta?: string;
+    faq?: string;
+    referenceNote?: string;
+    mustIncludeContent?: string;
+  }
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -207,7 +229,7 @@ export const generateUSP = async (
       You are a top-tier Marketing Strategist and Copywriter.
       
       Analyze the following information to derive a powerful **Unique Selling Proposition (USP)** or **Posting Goal** for a blog post.
-      The USP should be derived referring to all contents of the keyword discovery stage, including the suggested keywords.
+      The USP should be derived referring to all contents of the keyword discovery stage, including the suggested keywords and advanced inputs.
 
       **INPUT DATA**:
       - Blog Topic: "${topic}"
@@ -216,6 +238,12 @@ export const generateUSP = async (
       ${storeName ? `- Brand/Store Name: "${storeName}"` : ""}
       ${salesService ? `- Sales Service/Product: "${salesService}"` : ""}
       ${suggestedKeywords && suggestedKeywords.length > 0 ? `- Suggested Keywords: ${suggestedKeywords.join(', ')}` : ""}
+      ${advancedInputs?.targetAudience ? `- Target Audience: "${advancedInputs.targetAudience}"` : ""}
+      ${advancedInputs?.secondaryKeywords ? `- Secondary Keywords: "${advancedInputs.secondaryKeywords}"` : ""}
+      ${advancedInputs?.cta ? `- CTA / Contact: "${advancedInputs.cta}"` : ""}
+      ${advancedInputs?.faq ? `- FAQ: "${advancedInputs.faq}"` : ""}
+      ${advancedInputs?.referenceNote ? `- Reference Note: "${advancedInputs.referenceNote}"` : ""}
+      ${advancedInputs?.mustIncludeContent ? `- Must Include Content: "${advancedInputs.mustIncludeContent}"` : ""}
 
       **Task**:
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
@@ -402,7 +430,7 @@ export const generateTitle = async (
       ${storeName ? `Store Name: ${storeName}` : ""}
       
       **GEO & SEO GUIDELINES**:
-      ${blogCategory === '맛집 리뷰' ? `1. **Keyword & Store Name Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title, and the store name "${storeName || ''}" MUST be placed at the very end of the title. (e.g., "${keyword} ... ${storeName || ''}")` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
+      ${blogCategory?.includes('리뷰') ? `1. **Keyword & Store Name Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title, and the store name "${storeName || ''}" MUST be placed at the very end of the title. (e.g., "${keyword} ... ${storeName || ''}")` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
       2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).
       3. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
       4. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
@@ -552,13 +580,13 @@ export const generateOutline = async (
       ${excludedFilePart ? "**CRITICAL CONSTRAINT**: The attached 'EXCLUDED FILE' contains information that MUST NOT appear in the outline. Do not mention or reference its specific contents." : ""}
       ${servicePriceText ? `**SERVICE PRICE INFO**: The user provided the following pricing information: "${servicePriceText}". You MUST plan to include a Markdown table in the body detailing these services and prices.` : ""}
       ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST plan to extract and include the relevant prices in a Markdown table in the body.` : ""}
-      ${blogCategory === '맛집 리뷰' && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Restaurant Review and no specific price information was provided, DO NOT invent or include any prices in the outline or table.` : ""}
+      ${blogCategory?.includes('리뷰') && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the outline or table.` : ""}
       ${naverDataText}
       
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
       2. **Experience-Based Content**: Structure the outline to reflect a first-hand, authentic experience with honest opinions. Avoid sounding like a generic AI.
-      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory === '맛집 리뷰' ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust."}
+      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust."}
       4. **Curiosity Resolution**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
       5. **Readability & Formatting**: **CRITICAL**: You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
@@ -575,9 +603,9 @@ export const generateOutline = async (
       2. **Adapt Content**: Create an outline that uses the benchmark's flow as a reference, but completely changes the subject matter to promote our specific brand, product, and USP.
       ` : ""}
       
-      ${blogCategory === '맛집 리뷰' ? `
-      **CRITICAL STRUCTURE REQUIREMENT FOR RESTAURANT REVIEW**:
-      Since the category is "맛집 리뷰" (Restaurant Review), you MUST 100% include the following 6 mandatory sections/information in the outline without fail:
+      ${blogCategory?.includes('리뷰') ? `
+      **CRITICAL STRUCTURE REQUIREMENT FOR REVIEW**:
+      Since the category is a Review, you MUST 100% include the following 6 mandatory sections/information in the outline without fail:
       1. 🏪 업체명 (Store name)
       2. 📍 주소 (Address) - You MUST research the actual address.
       3. ⏰ 영업시간 (Business hours) - You MUST use the Google Search tool to deeply research the latest, most accurate business hours for "${storeName || topic}".
@@ -598,7 +626,7 @@ export const generateOutline = async (
       ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and explicitly incorporate this real data into the outline.` : ""}
       ` : `
       **CRITICAL RESTRICTION**:
-      Since the category is NOT "맛집 리뷰" (Restaurant Review), you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated outline. Do not write about locations or website links.
+      Since the category is NOT a Review, you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated outline. Do not write about locations or website links.
       `}
       ${naverDataText}
       
@@ -728,13 +756,13 @@ export const generateFullPostStream = async (
       ${mustIncludeContent ? `**MUST INCLUDE CONTENT**: "${mustIncludeContent}". You MUST explicitly include this exact content or information naturally within the blog post.` : ""}
       ${servicePriceText ? `**SERVICE PRICE INFO**: The user provided the following pricing information: "${servicePriceText}". You MUST include a Markdown table in the body detailing these services and prices.` : ""}
       ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST extract and include the relevant prices in a Markdown table in the body.` : ""}
-      ${blogCategory === '맛집 리뷰' && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Restaurant Review and no specific price information was provided, DO NOT invent or include any prices in the text or table.` : ""}
+      ${blogCategory?.includes('리뷰') && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the text or table.` : ""}
       ${naverDataText}
       
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
       2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI.
-      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory === '맛집 리뷰' ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI."}
+      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI."}
       4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
       5. **Readability & Formatting**: **CRITICAL**: You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
@@ -758,9 +786,9 @@ export const generateFullPostStream = async (
          - **Sentence Transformation**: Invert sentence structures, use different vocabulary, and change the tone slightly if needed.
       ` : ""}
 
-      ${blogCategory === '맛집 리뷰' ? `
-      **CRITICAL STRUCTURE REQUIREMENT FOR RESTAURANT REVIEW**:
-      Since the category is "맛집 리뷰" (Restaurant Review), you MUST 100% ensure the following mandatory sections/information are clearly written and included in the final post without fail:
+      ${blogCategory?.includes('리뷰') ? `
+      **CRITICAL STRUCTURE REQUIREMENT FOR REVIEW**:
+      Since the category is a Review, you MUST 100% ensure the following mandatory sections/information are clearly written and included in the final post without fail:
       1. 🏪 업체명 (Store name)
       2. 📍 주소 (Address) - You MUST research and include the actual address.
       3. ⏰ 영업시간 (Business hours) - You MUST use the Google Search tool to deeply research the latest, most accurate business hours for "${storeName || topic}" and write them accurately.
@@ -779,15 +807,33 @@ export const generateFullPostStream = async (
       **PERSPECTIVE & TONE**: You MUST write from the first-person perspective of a customer who actually visited the restaurant. Use an authentic, experiential tone (e.g., "I visited...", "The taste was...").
       Make sure these points are naturally integrated into the blog post flow.
 
-      **RESTAURANT REVIEW ENTITY & LINE RULES**:
-      1. **Entity Reference**: NEVER use the generic word '이것' (this) to refer to the restaurant or its products. ALWAYS use the actual Store/Brand Name ("${storeName || topic}") instead.
-      2. **Strict Line Length**: EVERY single line in the blog post body MUST be 20 characters or less. You MUST manually insert a newline (\n) to ensure no line exceeds 20 characters. This is a hard constraint for readability on specific mobile layouts.
+      ${blogCategory === '맛집 리뷰' ? `
+      **CRITICAL RESTRICTION FOR RESTAURANT REVIEWS**:
+      You MUST NOT mention anything related to AI (Artificial Intelligence), ChatGPT, Gemini, automated generation, or any AI tools. The review must sound 100% human, authentic, and based on real personal experience.
+      ` : ""}
+
+      **REVIEW ENTITY & LINE RULES**:
+      1. **Entity Reference**: NEVER use the generic word '이것' (this) to refer to the subject or its products. ALWAYS use the actual Store/Brand Name ("${storeName || topic}") instead.
+      2. **Strict Line Length (SEO OPTIMIZED)**: 
+         - **The VERY FIRST line of the blog post MUST NOT exceed 10 characters.** This is a critical SEO optimization rule.
+         - For all other lines, EVERY single line in the blog post body MUST be 20 characters or less. 
+         - You MUST manually insert a newline (\n) to ensure these line length constraints are strictly met. This is a hard constraint for readability on specific mobile layouts and SEO.
       3. **Content Length**: The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length.
+      4. **No Bullet Points**: DO NOT use markdown bullet points (e.g., "- item") in the body text. Write in full paragraphs.
+      5. **SEO Optimization**: Write the most SEO-optimized post possible. Naturally integrate the main keyword and secondary keywords throughout the text, especially in the first paragraph, subheadings, and conclusion.
+
+      **TEXT FORMATTING & HIGHLIGHTS (CRITICAL)**:
+      You MUST use the following markdown formatting to highlight important keywords, benefits, or emotional phrases. Use them harmoniously and frequently throughout the body text:
+      - \`***text***\` : Red text with Yellow background (Use for the most critical points)
+      - \`**text**\` : Red text (Use for emphasis)
+      - \`*text*\` : Blue text (Use for positive points or trust-building facts)
+      - \`~~text~~\` : Brown text (Use for warm, emotional, or atmospheric descriptions)
+      - \`\` \`text\` \`\` : Blue text with Yellow background (Use for special features or tips)
       
       ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and write the review based entirely on this real data. Do not invent menu items or hours; use the actual data.` : ""}
       ` : `
       **CRITICAL RESTRICTION**:
-      Since the category is NOT "맛집 리뷰" (Restaurant Review), you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated post. Do not write about locations or website links.
+      Since the category is NOT a Review, you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated post. Do not write about locations or website links.
       `}
       ${naverDataText}
 

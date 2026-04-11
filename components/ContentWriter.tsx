@@ -50,7 +50,6 @@ export const ContentWriter: React.FC = () => {
   
   // --- State: Advanced Inputs ---
   const [targetAudience, setTargetAudience] = useState('');
-  const [coreUsp, setCoreUsp] = useState('');
   const [secondaryKeywords, setSecondaryKeywords] = useState('');
   const [cta, setCta] = useState('');
   const [faq, setFaq] = useState('');
@@ -343,7 +342,15 @@ export const ContentWriter: React.FC = () => {
                 salesService || undefined, 
                 blogCategory || undefined, 
                 blogPlatform || undefined, 
-                suggestedKeywordStrings
+                suggestedKeywordStrings,
+                {
+                    targetAudience,
+                    secondaryKeywords,
+                    cta,
+                    faq,
+                    referenceNote,
+                    mustIncludeContent
+                }
             );
             setStepProgress(100);
             await waitForNextStep(fullAuto);
@@ -401,7 +408,6 @@ export const ContentWriter: React.FC = () => {
 
             const advancedOptions = [];
             if (targetAudience) advancedOptions.push(`타겟 고객층: ${targetAudience}`);
-            if (coreUsp) advancedOptions.push(`핵심 차별점(USP): ${coreUsp}`);
             if (secondaryKeywords) advancedOptions.push(`서브 키워드: ${secondaryKeywords}`);
             if (cta) advancedOptions.push(`행동 유도(CTA) 및 연락처/링크: ${cta}`);
             if (faq) advancedOptions.push(`자주 묻는 질문(FAQ): ${faq}`);
@@ -671,11 +677,17 @@ export const ContentWriter: React.FC = () => {
 
     let processed = content;
 
+    if (blogCategory.includes('리뷰')) {
+        // Remove '- ' at the start of lines to prevent bullets/hyphens when copying
+        processed = processed.replace(/^-\s+/gm, '');
+    }
+
     // Custom formatting rule application BEFORE marked processing
-    processed = processed.replace(/\*\*\*(.*?)\*\*\*/g, '<span style="background-color: #fef08a; color: #dc2626;">$1</span>');
-    processed = processed.replace(/\*\*(.*?)\*\*/g, '<span style="color: #dc2626;">$1</span>');
-    processed = processed.replace(/`(.*?)`/g, '<span style="background-color: #fef08a; color: #2563eb;">$1</span>');
-    processed = processed.replace(/\*(.*?)\*/g, '<span style="color: #2563eb;">$1</span>');
+    processed = processed.replace(/\*\*\*(.*?)\*\*\*/g, '<span style="background-color: #fef08a; color: #dc2626; font-weight: bold;">$1</span>');
+    processed = processed.replace(/\*\*(.*?)\*\*/g, '<span style="color: #dc2626; font-weight: bold;">$1</span>');
+    processed = processed.replace(/~~(.*?)~~/g, '<span style="color: #8B4513; font-weight: bold;">$1</span>'); // Brown
+    processed = processed.replace(/`(.*?)`/g, '<span style="background-color: #fef08a; color: #2563eb; font-weight: bold;">$1</span>');
+    processed = processed.replace(/\*(.*?)\*/g, '<span style="color: #2563eb; font-weight: bold;">$1</span>');
 
     // Parse markdown to HTML (handles tables, lists, etc.)
     const htmlContent = marked.parse(processed, { breaks: true }) as string;
@@ -689,11 +701,11 @@ export const ContentWriter: React.FC = () => {
         // Blockquote (Citation) Styles - Blue bar on left, light blue background
         .replace(/<blockquote>/g, '<blockquote style="border-left: 8px solid #2563eb; background-color: #eff6ff; padding: 20px; margin: 30px 0; border-top-right-radius: 12px; border-bottom-right-radius: 12px; color: #1e40af; font-weight: 800; font-size: 1.2em; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.05);">')
         // Paragraph Styles: Force explicit margin/spacing for "double line break" visual effect
-        .replace(/<p>/g, `<p style="margin-bottom: 32px; line-height: 1.8;${blogCategory === '맛집 리뷰' ? ' color: #000000; margin-bottom: 16px;' : ''}">`)
+        .replace(/<p>/g, `<p style="margin-bottom: 32px; line-height: 1.8;${blogCategory.includes('리뷰') ? ' color: #000000; margin-bottom: 16px;' : ''}">`)
         // Ensure a physical blank line is preserved in rich text editors by adding an empty paragraph
         .replace(/<\/p>/g, '</p><p><br></p>');
 
-    if (blogCategory === '맛집 리뷰') {
+    if (blogCategory.includes('리뷰')) {
         styledHtml = `<div style="text-align: center; word-break: keep-all; color: #000000; font-family: sans-serif;">${styledHtml}</div>`;
     }
 
@@ -852,7 +864,13 @@ export const ContentWriter: React.FC = () => {
                             <label className="text-sm font-bold text-slate-300 ml-1">블로그 분류 <span className="text-red-500">*</span></label>
                             <select
                                 value={blogCategory}
-                                onChange={(e) => setBlogCategory(e.target.value)}
+                                onChange={(e) => {
+                                    const newCat = e.target.value;
+                                    setBlogCategory(newCat);
+                                    if (newCat.includes('리뷰')) {
+                                        setSkipImageGeneration(true);
+                                    }
+                                }}
                                 className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner"
                             >
                                 <option value="">분류를 선택해주세요 (필수)</option>
@@ -864,6 +882,7 @@ export const ContentWriter: React.FC = () => {
                                     <option value="도서/영화 리뷰">도서/영화 리뷰</option>
                                     <option value="IT/테크 기기 리뷰">IT/테크 기기 리뷰</option>
                                     <option value="자동차/바이크 리뷰">자동차/바이크 리뷰</option>
+                                    <option value="기타 리뷰">기타 리뷰</option>
                                 </optgroup>
                                 <optgroup label="홍보/비즈니스">
                                     <option value="브랜드 홍보">브랜드 홍보</option>
@@ -967,19 +986,6 @@ export const ContentWriter: React.FC = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">핵심 차별점 (USP)</label>
-                                <input 
-                                    type="text" 
-                                    value={coreUsp}
-                                    onChange={(e) => setCoreUsp(e.target.value)}
-                                    placeholder="예: 10년 경력 원장 직접 시술, 24시간 연중무휴"
-                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
                                 <label className="text-sm font-bold text-slate-300 ml-1">서브 키워드</label>
                                 <input 
                                     type="text" 
@@ -989,6 +995,9 @@ export const ContentWriter: React.FC = () => {
                                     className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
                                 />
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-slate-300 ml-1">행동 유도 (CTA) 및 연락처/링크</label>
                                 <input 
@@ -1938,7 +1947,7 @@ export const ContentWriter: React.FC = () => {
 
                         {/* Main Content */}
                         <div className="space-y-6">
-                            {blogCategory === '맛집 리뷰' && (
+                            {blogCategory.includes('리뷰') && (
                                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-r-2xl shadow-md">
                                     <div className="flex items-start">
                                         <div className="flex-shrink-0 mt-0.5">
@@ -1971,9 +1980,14 @@ export const ContentWriter: React.FC = () => {
     
                                     .colored-content h1, .colored-content h2, .colored-content h3 { color: #0f172a !important; }
 
-                                    .black-content p, .black-content li { color: #000000 !important; white-space: pre-wrap !important; }
+                                    .review-content p, .review-content li { color: #000000 !important; white-space: pre-wrap !important; }
+                                    .review-content strong { color: #dc2626 !important; font-weight: bold !important; }
+                                    .review-content em { color: #2563eb !important; font-style: normal !important; font-weight: bold !important; }
+                                    .review-content strong em, .review-content em strong { background-color: #fef08a !important; color: #dc2626 !important; font-style: normal !important; font-weight: bold !important; }
+                                    .review-content code { background-color: #fef08a !important; color: #2563eb !important; font-weight: bold !important; padding: 2px 4px; border-radius: 4px; }
+                                    .review-content del { color: #8B4513 !important; text-decoration: none !important; font-weight: bold !important; }
                                  `}</style>
-                                 <div className={`prose prose-lg max-w-none ${blogCategory === '맛집 리뷰' ? 'text-center break-keep black-content' : 'colored-content'}`} ref={resultContentRef}>
+                                 <div className={`prose prose-lg max-w-none ${blogCategory.includes('리뷰') ? 'text-center break-keep review-content' : 'colored-content'}`} ref={resultContentRef}>
                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
                                  </div>
                             </div>
