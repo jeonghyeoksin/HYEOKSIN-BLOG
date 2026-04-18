@@ -145,7 +145,8 @@ export const generateUSPStream = async (
     faq?: string;
     referenceNote?: string;
     mustIncludeContent?: string;
-  }
+  },
+  fileParts?: { data: string, mimeType: string }[]
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -169,6 +170,7 @@ export const generateUSPStream = async (
       ${advancedInputs?.faq ? `- FAQ: "${advancedInputs.faq}"` : ""}
       ${advancedInputs?.referenceNote ? `- Reference Note: "${advancedInputs.referenceNote}"` : ""}
       ${advancedInputs?.mustIncludeContent ? `- Must Include Content: "${advancedInputs.mustIncludeContent}"` : ""}
+      ${fileParts && fileParts.length > 0 ? "- Attached Reference Files: Provided (PDF, DOCX). These are the PRIMARY SOURCE of information for this blog post." : ""}
 
       **Task**:
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
@@ -176,19 +178,25 @@ export const generateUSPStream = async (
       2. **Brand Trust** (Authority)
       3. **Search Visibility** (SEO/GEO)
       
-      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026.
+      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026. ${fileParts && fileParts.length > 0 ? "If reference files are provided, the USP must be deeply rooted in their content and facts." : ""}
 
       **Output Requirements**:
       - Identify the core pain point of the target audience related to the topic.
       ${storeName || salesService ? '- Explain how this specific brand/service solves it better than others.' : '- If brand/service information is missing, focus on the core value of the topic and the reader\'s needs.'}
       - Use the suggested keywords to refine the USP's focus and relevance.
+      - **Tone Alignment**: The USP and strategy must be consistent with the professional and stylistic expectations of the "${blogCategory}" and "${topic}".
       - Return ONLY the USP text (1-2 sentences). No labels or explanations.
       - Korean language.
     `;
 
+    const parts: Part[] = [{ text: prompt }];
+    if (fileParts && fileParts.length > 0) {
+        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+    }
+
     const response = await withRetry(() => ai.models.generateContentStream({
       model: TEXT_MODEL,
-      contents: prompt,
+      contents: { parts },
     }));
 
     let fullText = '';
@@ -220,7 +228,8 @@ export const generateUSP = async (
     faq?: string;
     referenceNote?: string;
     mustIncludeContent?: string;
-  }
+  },
+  fileParts?: { data: string, mimeType: string }[]
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -244,13 +253,14 @@ export const generateUSP = async (
       ${advancedInputs?.faq ? `- FAQ: "${advancedInputs.faq}"` : ""}
       ${advancedInputs?.referenceNote ? `- Reference Note: "${advancedInputs.referenceNote}"` : ""}
       ${advancedInputs?.mustIncludeContent ? `- Must Include Content: "${advancedInputs.mustIncludeContent}"` : ""}
+      ${fileParts && fileParts.length > 0 ? "- Attached Reference Files: Provided (PDF, DOCX). These are the PRIMARY SOURCE of information for this blog post." : ""}
 
       **Task**:
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
       1. **Customer Inquiries** (Lead Generation)
       2. **Sales Conversion** (Purchase)
       
-      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026.
+      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026. ${fileParts && fileParts.length > 0 ? "If reference files are provided, the USP must be deeply rooted in their content and facts." : ""}
 
       **Output Requirements**:
       - Identify the core pain point of the target audience related to the topic.
@@ -260,9 +270,14 @@ export const generateUSP = async (
       - **Language**: Korean.
     `;
 
+    const parts: Part[] = [{ text: prompt }];
+    if (fileParts && fileParts.length > 0) {
+        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+    }
+
     const response = await withRetry(() => ai.models.generateContent({
       model: TEXT_MODEL,
-      contents: prompt,
+      contents: { parts },
       config: {
         temperature: 0.7,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
@@ -280,7 +295,7 @@ export const suggestRelatedKeywords = async (
   storeName?: string,
   salesService?: string,
   postGoal?: string,
-  filePart?: { data: string, mimeType: string },
+  fileParts?: { data: string, mimeType: string }[],
   referenceNote?: string,
   blogCategory?: string,
   blogPlatform?: string
@@ -297,7 +312,7 @@ export const suggestRelatedKeywords = async (
       ${postGoal ? `**Goal of the Post**: "${postGoal}"` : ""}
       ${referenceNote ? `**Reference Note**: "${referenceNote}"` : ""}
 
-      Based on the topic ${filePart ? "and the provided reference file content" : ""}, 
+      Based on the topic ${fileParts && fileParts.length > 0 ? "and the provided reference files (PDF, DOCX, etc.)" : ""}, 
       suggest 5 high-traffic, low-competition SEO keywords relevant to current trends.
       
       ${storeName || salesService ? `Consider the Store Name and Sales Service provided.` : ""}
@@ -313,8 +328,8 @@ export const suggestRelatedKeywords = async (
     `;
 
     const parts: Part[] = [{ text: promptText }];
-    if (filePart) {
-        parts.unshift({ inlineData: filePart });
+    if (fileParts && fileParts.length > 0) {
+        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
     }
 
     const response = await withRetry(() => ai.models.generateContent({
@@ -358,7 +373,8 @@ export const generateTitleStream = async (
   referenceNote?: string,
   blogCategory?: string,
   blogPlatform?: string,
-  storeName?: string
+  storeName?: string,
+  fileParts?: { data: string, mimeType: string }[]
 ): Promise<string[]> => {
   try {
     const ai = getClient();
@@ -372,6 +388,7 @@ export const generateTitleStream = async (
       ${postGoal ? `Goal: ${postGoal}` : ""}
       ${referenceNote ? `Reference Note: ${referenceNote}` : ""}
       ${storeName ? `Store Name: ${storeName}` : ""}
+      ${fileParts && fileParts.length > 0 ? "Use the information from the attached reference files to create a highly relevant and grounded title." : ""}
       
       **GEO & SEO GUIDELINES (STRICT)**:
       1. **MANDATORY KEYWORD PLACEMENT**: The target keyword "${keyword}" MUST be the **absolute first word** of the title. DO NOT put anything before it. (e.g., "${keyword}: ...", "${keyword} ...")
@@ -381,14 +398,20 @@ export const generateTitleStream = async (
       5. **CLICK-WORTHY**: Use powerful "hook" words or specific, quantifiable benefits (e.g., "3가지 비법", "완벽 가이드").
       6. **GOAL ALIGNMENT**: The title should perfectly align with the goal: "${postGoal || topic}".
       7. **LENGTH**: Concise but descriptive (under 40 characters).
+      8. **Topic Sensitivity**: The title style and tone must reflect the nature of the "${blogCategory}" and "${topic}". (e.g., Law-related titles should be objective and trustworthy).
       
       Output: Return ONLY the single optimized title. No numbers, no markdown, no explanations.
       Language: Korean.
     `;
 
+    const parts: Part[] = [{ text: prompt }];
+    if (fileParts && fileParts.length > 0) {
+        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+    }
+
     const response = await withRetry(() => ai.models.generateContentStream({
       model: TEXT_MODEL,
-      contents: prompt,
+      contents: { parts },
     }));
 
     let fullText = '';
@@ -414,7 +437,8 @@ export const generateTitle = async (
   referenceNote?: string,
   blogCategory?: string,
   blogPlatform?: string,
-  storeName?: string
+  storeName?: string,
+  fileParts?: { data: string, mimeType: string }[]
 ): Promise<string[]> => {
   try {
     const ai = getClient();
@@ -428,6 +452,7 @@ export const generateTitle = async (
       ${postGoal ? `Goal: ${postGoal}` : ""}
       ${referenceNote ? `Reference Note: ${referenceNote}` : ""}
       ${storeName ? `Store Name: ${storeName}` : ""}
+      ${fileParts && fileParts.length > 0 ? "Use the information from the attached reference files to create highly relevant and grounded titles." : ""}
       
       **GEO & SEO GUIDELINES**:
       ${blogCategory?.includes('리뷰') ? `1. **Keyword & Store Name Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title, and the store name "${storeName || ''}" MUST be placed at the very end of the title. (e.g., "${keyword} ... ${storeName || ''}")` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
@@ -442,9 +467,14 @@ export const generateTitle = async (
       Language: Korean.
     `;
 
+    const parts: Part[] = [{ text: prompt }];
+    if (fileParts && fileParts.length > 0) {
+        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+    }
+
     const response = await withRetry(() => ai.models.generateContent({
       model: TEXT_MODEL,
-      contents: prompt,
+      contents: { parts },
       config: {
         temperature: 0.8,
         responseMimeType: "application/json",
@@ -542,7 +572,7 @@ export const generateOutline = async (
   storeName?: string,
   salesService?: string,
   postGoal?: string,
-  filePart?: { data: string, mimeType: string },
+  fileParts?: { data: string, mimeType: string }[],
   excludedFilePart?: { data: string, mimeType: string },
   benchmarkingText?: string,
   referenceNote?: string,
@@ -552,7 +582,10 @@ export const generateOutline = async (
   blogPlatform?: string,
   servicePriceText?: string,
   servicePriceImageParts?: { data: string, mimeType: string }[],
-  blogStyle?: string
+  blogStyle?: string,
+  wordCount?: string,
+  faq?: string,
+  includeFaq?: boolean
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -575,7 +608,7 @@ export const generateOutline = async (
       ${postGoal ? `**Primary Goal**: "${postGoal}"` : ""}
       ${referenceNote ? `**User Reference Note**: "${referenceNote}". Incorporate these specific instructions or details into the outline.` : ""}
       ${mustIncludeContent ? `**MUST INCLUDE CONTENT**: "${mustIncludeContent}". You MUST explicitly include this content or information in the outline.` : ""}
-      ${filePart ? "Analyze the attached reference file and incorporate its key points into the structure." : ""}
+      ${fileParts && fileParts.length > 0 ? "Analyze the attached reference files (PDF, DOCX, etc.) carefully and incorporate their key points, facts, and structure into the outline. The blog post should be based on the information in these files." : ""}
       ${scriptImageParts && scriptImageParts.length > 0 ? "**VISUAL ANALYSIS**: I have attached 'Script Reference Images'. Analyze these images to understand the atmosphere and context, but do not explicitly describe them in the outline." : ""}
       ${excludedFilePart ? "**CRITICAL CONSTRAINT**: The attached 'EXCLUDED FILE' contains information that MUST NOT appear in the outline. Do not mention or reference its specific contents." : ""}
       ${servicePriceText ? `**SERVICE PRICE INFO**: The user provided the following pricing information: "${servicePriceText}". You MUST plan to include a Markdown table in the body detailing these services and prices.` : ""}
@@ -583,17 +616,21 @@ export const generateOutline = async (
       ${blogCategory?.includes('리뷰') && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the outline or table.` : ""}
       ${naverDataText}
       
+      ${wordCount && wordCount !== 'AI 추천 (자동)' ? `**WORD COUNT CONSTRAINT**: The planned blog post length should be approximately ${wordCount}. Structure the outline to support this depth.` : ""}
+
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
       2. **Experience-Based Content**: Structure the outline to reflect a first-hand, authentic experience with honest opinions. Avoid sounding like a generic AI.
       3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust."}
       4. **Curiosity Resolution**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: **CRITICAL**: You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.
+      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability."}
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
-      10. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
+      10. **Topic-Category Synergy (Tone Match)**: The content MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured. In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards.
+      11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
+      12. **NO AI MENTION**: NEVER mention that the content is written by AI or use phrases like "AI 첨단 기기로 확인해 드립니다". All content must sound 100% natural, as if written by a person from direct first-hand experience.
 
       ${benchmarkingText ? `
       **BENCHMARKING MASTER INSTRUCTION**: 
@@ -603,7 +640,7 @@ export const generateOutline = async (
       2. **Adapt Content**: Create an outline that uses the benchmark's flow as a reference, but completely changes the subject matter to promote our specific brand, product, and USP.
       ` : ""}
       
-      ${blogCategory?.includes('리뷰') ? `
+      ${blogCategory?.includes('리뷰') && !blogCategory.includes('제품') ? `
       **CRITICAL STRUCTURE REQUIREMENT FOR REVIEW**:
       Since the category is a Review, you MUST 100% include the following 6 mandatory sections/information in the outline without fail:
       1. 🏪 업체명 (Store name)
@@ -624,10 +661,23 @@ export const generateOutline = async (
       **PERSPECTIVE**: The outline must be structured from the first-person perspective of a customer who actually visited the restaurant (experiential tone).
       
       ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and explicitly incorporate this real data into the outline.` : ""}
+      ` : (blogCategory?.includes('제품') ? `
+      **CRITICAL STRUCTURE REQUIREMENT FOR PRODUCT REVIEW**:
+      Since this is a Product Review, focus deeply on the product experience.
+      1. **Authentic Detail**: Describe the product's features, performance, and usability based on personal experience.
+      2. **Pros & Cons**: Provide an honest evaluation including both strengths and weaknesses.
+      3. **NO Location Info**: DO NOT include any physical addresses, business hours, or store locations.
+      ${blogCategory === '제품리뷰(서술형)' ? "4. **Alignment**: The text must be conceptually Left-Aligned." : ""}
       ` : `
       **CRITICAL RESTRICTION**:
       Since the category is NOT a Review, you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated outline. Do not write about locations or website links.
-      `}
+      `)}
+      
+      ${includeFaq ? `
+      **FAQ REQUIREMENT**:
+      You MUST include a "자주 묻는 질문 (FAQ)" section at the VERY END of the outline.
+      ${faq ? `Use this provided FAQ content as a basis: "${faq}"` : "Generate 2-3 relevant frequency asked questions and answers based on the topic."}
+      ` : ""}
       ${naverDataText}
       
       ${blogStyle === '현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)' ? `
@@ -682,10 +732,10 @@ export const generateOutline = async (
         parts.push({ text: "These are the Service Price Table Images. Extract the relevant prices to use in the outline." });
     }
 
-    if (filePart) {
-        parts.unshift({ inlineData: filePart });
+    if (fileParts && fileParts.length > 0) {
+        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
     }
-    
+
     if (benchmarkingText) {
         // Pass benchmarking content as text part
         parts.push({ text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]\n\nUse the structure of the text above as a template.` });
@@ -720,6 +770,7 @@ export const generateFullPostStream = async (
   postGoal: string | undefined,
   onChunk: (text: string) => void,
   onReset?: () => void,
+  fileParts?: { data: string, mimeType: string }[],
   excludedFilePart?: { data: string, mimeType: string },
   benchmarkingText?: string,
   referenceNote?: string,
@@ -729,7 +780,10 @@ export const generateFullPostStream = async (
   blogPlatform?: string,
   servicePriceText?: string,
   servicePriceImageParts?: { data: string, mimeType: string }[],
-  blogStyle?: string
+  blogStyle?: string,
+  wordCount?: string,
+  faq?: string,
+  includeFaq?: boolean
 ): Promise<void> => {
   try {
     const ai = getClient();
@@ -754,23 +808,34 @@ export const generateFullPostStream = async (
       ${postGoal ? `**ULTIMATE GOAL**: The content must achieve this goal: "${postGoal}"` : ""}
       ${referenceNote ? `**USER REFERENCE NOTE**: "${referenceNote}". This is a specific instruction from the user. You MUST reflect this note in the content.` : ""}
       ${mustIncludeContent ? `**MUST INCLUDE CONTENT**: "${mustIncludeContent}". You MUST explicitly include this exact content or information naturally within the blog post.` : ""}
+      ${fileParts && fileParts.length > 0 ? "Analyze the attached reference files (PDF, DOCX, etc.) carefully and use their information as the primary source for the blog post content. The blog post must be written based on the content of these files." : ""}
       ${servicePriceText ? `**SERVICE PRICE INFO**: The user provided the following pricing information: "${servicePriceText}". You MUST include a Markdown table in the body detailing these services and prices.` : ""}
       ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST extract and include the relevant prices in a Markdown table in the body.` : ""}
       ${blogCategory?.includes('리뷰') && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the text or table.` : ""}
       ${naverDataText}
       
+      ${wordCount && wordCount !== 'AI 추천 (자동)' ? `**WORD COUNT CONSTRAINT**: The blog post length (excluding hashtags) should be approximately ${wordCount}.` : ""}
+      
+      ${includeFaq ? `
+      **FAQ REQUIREMENT**:
+      You MUST include a "자주 묻는 질문 (FAQ)" section at the VERY END of the blog post, just before the hashtags.
+      ${faq ? `Use this provided FAQ content as a basis: "${faq}"` : "Generate 2-3 relevant frequency asked questions and answers based on the topic."}
+      ` : ""}
+
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
       2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI.
       3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI."}
       4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: **CRITICAL**: You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.
+      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability."}
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
-      10. **Hashtags**: At the very end of the post, provide exactly 5 highly relevant hashtags. Separate them from the main content with the marker "[HASHTAGS]". Format them as a single line of space-separated hashtags starting with #.
+      10. **Topic-Category Synergy (Tone Match)**: The blog post MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured (e.g., using legal terms correctly, citing potential regulations if applicable). In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards.
+      11. **Hashtags**: At the very end of the post, provide exactly 5 highly relevant hashtags. Separate them from the main content with the marker "[HASHTAGS]". Format them as a single line of space-separated hashtags starting with #.
       11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
+      12. **NO AI MENTION**: NEVER mention that the content is written by AI or use phrases like "AI 첨단 기기로 확인해 드립니다". All content must sound 100% natural, as if written by a person from direct first-hand experience.
 
       ${benchmarkingText ? `
       **BENCHMARKING & ADAPTATION MODE ACTIVATED**:
@@ -787,6 +852,7 @@ export const generateFullPostStream = async (
       ` : ""}
 
       ${blogCategory?.includes('리뷰') ? `
+      ${!blogCategory.includes('제품') ? `
       **CRITICAL STRUCTURE REQUIREMENT FOR REVIEW**:
       Since the category is a Review, you MUST 100% ensure the following mandatory sections/information are clearly written and included in the final post without fail:
       1. 🏪 업체명 (Store name)
@@ -806,6 +872,14 @@ export const generateFullPostStream = async (
       
       **PERSPECTIVE & TONE**: You MUST write from the first-person perspective of a customer who actually visited the restaurant. Use an authentic, experiential tone (e.g., "I visited...", "The taste was...").
       Make sure these points are naturally integrated into the blog post flow.
+      ` : `
+      **CRITICAL STRUCTURE REQUIREMENT FOR PRODUCT REVIEW**:
+      Since the category is a Product Review, focus deeply on the product itself.
+      1. **Authentic Experience**: Write from the perspective of someone who has actually used the product in their daily life.
+      2. **Detail focus**: Describe the design, functionality, performance, and value for money. Include both pros and cons based on your usage.
+      3. **NO Location Info**: DO NOT include any physical addresses, business hours, or store locations in the text.
+      ${blogCategory === '제품리뷰(서술형)' ? "4. **Alignment**: The text must be conceptually Left-Aligned." : ""}
+      `}
 
       ${blogCategory === '맛집 리뷰' ? `
       **CRITICAL RESTRICTION FOR RESTAURANT REVIEWS**:
@@ -893,6 +967,11 @@ export const generateFullPostStream = async (
     `;
 
     const parts: Part[] = [{ text: prompt }];
+    
+    // Add all types of file/image data to the prompt parts
+    if (fileParts && fileParts.length > 0) {
+        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+    }
 
     // Add Script Reference Images
     if (scriptImageParts && scriptImageParts.length > 0) {

@@ -53,9 +53,10 @@ export const ContentWriter: React.FC = () => {
   const [secondaryKeywords, setSecondaryKeywords] = useState('');
   const [cta, setCta] = useState('');
   const [faq, setFaq] = useState('');
+  const [includeFaq, setIncludeFaq] = useState(false);
 
   // --- State: Files ---
-  const [referenceFile, setReferenceFile] = useState<File | null>(null); // Text context file
+  const [referenceFiles, setReferenceFiles] = useState<File[]>([]); // Text context files
   const [servicePriceFiles, setServicePriceFiles] = useState<File[]>([]);
   const [logoFiles, setLogoFiles] = useState<File[]>([]);
   const [faceImageFiles, setFaceImageFiles] = useState<File[]>([]);
@@ -97,6 +98,7 @@ export const ContentWriter: React.FC = () => {
   const [isAutoImageCount, setIsAutoImageCount] = useState<boolean>(true);
   const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview');
   const [selectedImageStyle, setSelectedImageStyle] = useState<string>('기본 스타일');
+  const [wordCount, setWordCount] = useState<string>('AI 추천 (자동)');
 
   const IMAGE_MODELS = [
       { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', desc: '표준 이미지 생성' },
@@ -131,6 +133,7 @@ export const ContentWriter: React.FC = () => {
   // --- Refs ---
   const resultContentRef = useRef<HTMLDivElement>(null);
   const nextStepResolver = useRef<(() => void) | null>(null);
+  const automationKilled = useRef(false);
 
   // --- Helpers ---
   const waitForNextStep = (forceAuto?: boolean) => {
@@ -312,8 +315,15 @@ export const ContentWriter: React.FC = () => {
     setSelectedKeyword(keyword);
     setIsError(false);
     setErrorMessage('');
+    automationKilled.current = false;
 
     try {
+        // --- Pre-process Files ---
+        const fileParts = [];
+        for (const file of referenceFiles) {
+            fileParts.push(await convertFileToBase64(file));
+        }
+
         // --- Step 0: API Key Check ---
         const hasKey = await checkAndRequireApiKey();
         if (!hasKey) {
@@ -328,6 +338,7 @@ export const ContentWriter: React.FC = () => {
         // --- Step 1: USP ---
         let uspRes = postGoal;
         if (startIndex <= 1) {
+            if (automationKilled.current) return;
             setCurrentStep('usp');
             setStepProgress(0);
             const suggestedKeywordStrings = keywords.map(k => k.keyword);
@@ -350,7 +361,8 @@ export const ContentWriter: React.FC = () => {
                     faq,
                     referenceNote,
                     mustIncludeContent
-                }
+                },
+                fileParts
             );
             setStepProgress(100);
             await waitForNextStep(fullAuto);
@@ -359,6 +371,7 @@ export const ContentWriter: React.FC = () => {
         // --- Step 2: Title ---
         let generatedTitles = titleOptions;
         if (startIndex <= 2) {
+            if (automationKilled.current) return;
             setCurrentStep('title');
             setStepProgress(0);
             setTitleOptions([]); // Clear before streaming
@@ -373,7 +386,8 @@ export const ContentWriter: React.FC = () => {
                 referenceNote, 
                 blogCategory, 
                 blogPlatform, 
-                storeName
+                storeName,
+                fileParts
             );
             if (generatedTitles && generatedTitles.length > 0) {
                 setTitle(generatedTitles[0]);
@@ -390,11 +404,10 @@ export const ContentWriter: React.FC = () => {
         // --- Step 3: Script ---
         let accumulatedContent = content + (hashtags ? `\n\n[HASHTAGS]\n${hashtags}` : '');
         if (startIndex <= 3) {
+            if (automationKilled.current) return;
             setCurrentStep('script');
             setStepProgress(0);
             
-            let filePart = referenceFile ? await convertFileToBase64(referenceFile) : undefined;
-
             const servicePriceImageParts = [];
             for (const file of servicePriceFiles) {
                  servicePriceImageParts.push(await convertFileToBase64(file));
@@ -416,7 +429,7 @@ export const ContentWriter: React.FC = () => {
             const combinedReferenceNote = referenceNote + advancedOptionsText;
 
             const outlineRes = await generateOutline(
-                keyword, storeName, salesService, uspRes, filePart, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
+                keyword, storeName, salesService, uspRes, fileParts, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle, wordCount, faq, includeFaq
             );
             setOutline(outlineRes);
 
@@ -430,6 +443,7 @@ export const ContentWriter: React.FC = () => {
             await generateFullPostStream(
                 keyword, outlineRes, storeName, salesService, uspRes, 
                 (chunk) => {
+                    if (automationKilled.current) return;
                     accumulatedContent += chunk;
                     setStepProgress(prev => Math.min(prev + 0.1, 95));
                     if (accumulatedContent.includes(hashtagMarker)) {
@@ -450,7 +464,7 @@ export const ContentWriter: React.FC = () => {
                     setHashtags('');
                     hasReachedHashtags = false;
                 },
-                undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle
+                fileParts, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle, wordCount, faq, includeFaq
             );
             setStepProgress(100);
             await waitForNextStep(fullAuto);
@@ -461,6 +475,7 @@ export const ContentWriter: React.FC = () => {
         const refParts = await getImageRefs();
 
         if (startIndex <= 4) {
+            if (automationKilled.current) return;
             const processedLaundered = [];
             for (const file of launderedImageFiles) {
                 processedLaundered.push(await launderImage(file));
@@ -493,6 +508,7 @@ export const ContentWriter: React.FC = () => {
 
             // Run image generation
             for (const [index, item] of placeholders.entries()) {
+                if (automationKilled.current) return;
                 try {
                     const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
                     const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${item.prompt}, no text, no words` : item.prompt;
@@ -519,6 +535,7 @@ export const ContentWriter: React.FC = () => {
 
         // --- Step 5: Thumbnail ---
         if (startIndex <= 5) {
+            if (automationKilled.current) return;
             setCurrentStep('thumbnail');
             setStepProgress(0);
             const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle);
@@ -541,6 +558,7 @@ export const ContentWriter: React.FC = () => {
         }
 
         // --- Step 6: Result ---
+        if (automationKilled.current) return;
         setCurrentStep('result');
 
     } catch (e) {
@@ -564,8 +582,11 @@ export const ContentWriter: React.FC = () => {
     if (!topic) return;
     setIsGenerating(true);
     try {
-      let filePart = referenceFile ? await convertFileToBase64(referenceFile) : undefined;
-      const results = await suggestRelatedKeywords(topic, storeName, salesService, postGoal, filePart, referenceNote, blogCategory, blogPlatform);
+      const fileParts = [];
+      for (const file of referenceFiles) {
+          fileParts.push(await convertFileToBase64(file));
+      }
+      const results = await suggestRelatedKeywords(topic, storeName, salesService, postGoal, fileParts, referenceNote, blogCategory, blogPlatform);
       setKeywords(results);
     } catch (error) {
       console.error(error);
@@ -584,6 +605,7 @@ export const ContentWriter: React.FC = () => {
   const handleBackStep = () => {
       if (isAutoRunning) {
           setIsAutoRunning(false);
+          automationKilled.current = true;
       }
       const stepOrder: StudioStep[] = ['keyword', 'usp', 'title', 'script', 'images', 'thumbnail', 'result'];
       const currentIdx = stepOrder.indexOf(currentStep);
@@ -876,10 +898,12 @@ export const ContentWriter: React.FC = () => {
                                 <option value="">분류를 선택해주세요 (필수)</option>
                                 <optgroup label="리뷰/후기">
                                     <option value="제품 리뷰">제품 리뷰</option>
+                                    <option value="제품리뷰(서술형)">제품리뷰(서술형)</option>
                                     <option value="맛집 리뷰">맛집 리뷰</option>
                                     <option value="뷰티 리뷰">뷰티 리뷰</option>
                                     <option value="여행 리뷰">여행 리뷰</option>
                                     <option value="도서/영화 리뷰">도서/영화 리뷰</option>
+                                    <option value="공연/전시">공연/전시</option>
                                     <option value="IT/테크 기기 리뷰">IT/테크 기기 리뷰</option>
                                     <option value="자동차/바이크 리뷰">자동차/바이크 리뷰</option>
                                     <option value="기타 리뷰">기타 리뷰</option>
@@ -900,14 +924,33 @@ export const ContentWriter: React.FC = () => {
                                     <option value="육아/결혼">육아/결혼</option>
                                     <option value="요리/레시피">요리/레시피</option>
                                     <option value="인테리어/DIY">인테리어/DIY</option>
+                                    <option value="디자인">디자인</option>
+                                    <option value="미술/디자인/예술">미술/디자인/예술</option>
+                                    <option value="예술/문화">예술/문화</option>
                                     <option value="패션/스타일">패션/스타일</option>
                                     <option value="건강/운동">건강/운동</option>
                                     <option value="금융/재테크">금융/재테크</option>
                                     <option value="주식/투자">주식/투자</option>
+                                    <option value="세금관련">세금관련</option>
+                                    <option value="법률">법률</option>
                                     <option value="어학/외국어">어학/외국어</option>
                                     <option value="취미/게임">취미/게임</option>
                                     <option value="반려동물">반려동물</option>
                                     <option value="자기계발">자기계발</option>
+                                    <option value="인문학">인문학</option>
+                                    <option value="정치/뉴스">정치/뉴스</option>
+                                    <option value="정부정책">정부정책</option>
+                                    <option value="종교관련">종교관련</option>
+                                    <option value="언어 및 맞춤법">언어 및 맞춤법</option>
+                                    <option value="생활 및 살림">생활 및 살림</option>
+                                    <option value="경제 및 비즈니스">경제 및 비즈니스</option>
+                                    <option value="문화 및 에티켓">문화 및 에티켓</option>
+                                    <option value="잡학 및 과학">잡학 및 과학</option>
+                                    <option value="신조어 및 트렌드 리뷰">신조어 및 트렌드 리뷰</option>
+                                    <option value="지식 백과 및 용어 사전">지식 백과 및 용어 사전</option>
+                                    <option value="역사">역사</option>
+                                    <option value="인물 리뷰/위인전">인물 리뷰/위인전</option>
+                                    <option value="키워드 큐레이션">키워드 큐레이션</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -946,6 +989,22 @@ export const ContentWriter: React.FC = () => {
                                 <option value="일기/기록형 (솔직함, 개인적, 담백함)">일기/기록형 (솔직함, 개인적, 담백함)</option>
                                 <option value="비즈니스/격식형 (정중함, 공식적, 깔끔함)">비즈니스/격식형 (정중함, 공식적, 깔끔함)</option>
                                 <option value="비판적/분석형 (날카로움, 통찰력, 논쟁적)">비판적/분석형 (날카로움, 통찰력, 논쟁적)</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-300 ml-1">글자수</label>
+                            <select 
+                                value={wordCount}
+                                onChange={(e) => setWordCount(e.target.value)}
+                                className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner appearance-none"
+                            >
+                                <option value="AI 추천 (자동)">AI 추천 (자동)</option>
+                                <option value="500~1000자">500~1000자</option>
+                                <option value="1000자~1500자">1000자~1500자</option>
+                                <option value="1500자~2000자">1500자~2000자</option>
+                                <option value="2000자~2500자">2000자~2500자</option>
+                                <option value="2500자~3000자">2500자~3000자</option>
                             </select>
                         </div>
 
@@ -1011,7 +1070,16 @@ export const ContentWriter: React.FC = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">자주 묻는 질문 (FAQ)</label>
+                            <div className="flex items-center gap-2 mb-1">
+                                <input 
+                                    type="checkbox" 
+                                    id="includeFaq"
+                                    checked={includeFaq}
+                                    onChange={(e) => setIncludeFaq(e.target.checked)}
+                                    className="w-4 h-4 text-indigo-600 bg-slate-800 border-slate-700 rounded focus:ring-indigo-500 cursor-pointer"
+                                />
+                                <label htmlFor="includeFaq" className="text-sm font-bold text-slate-300 cursor-pointer">자주 묻는 질문 (FAQ) 추가</label>
+                            </div>
                             <textarea 
                                 value={faq}
                                 onChange={(e) => setFaq(e.target.value)}
@@ -1040,6 +1108,27 @@ export const ContentWriter: React.FC = () => {
                                 placeholder="블로그 본문에 반드시 포함되어야 하는 특정 문구, 정보, 이벤트 내용 등을 입력하세요."
                                 className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
                             />
+                        </div>
+
+                        {/* Reference Files (New Section) */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-300 ml-1">참고할 파일 (PDF, DOCX)</label>
+                            <input 
+                                type="file" 
+                                accept=".pdf,.docx"
+                                multiple
+                                onChange={(e) => {
+                                    if (e.target.files) {
+                                        setReferenceFiles(Array.from(e.target.files));
+                                    } else {
+                                        setReferenceFiles([]);
+                                    }
+                                }}
+                                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            />
+                            {referenceFiles.length > 0 && (
+                                <p className="text-xs text-slate-400 ml-1 mt-1">{referenceFiles.length}개의 파일이 선택되었습니다.</p>
+                            )}
                         </div>
 
                         {/* Service Price Inputs */}
