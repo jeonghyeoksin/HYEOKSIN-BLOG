@@ -922,6 +922,7 @@ export const ContentWriter: React.FC = () => {
                                     <option value="제품 리뷰">제품 리뷰</option>
                                     <option value="제품리뷰(서술형)">제품리뷰(서술형)</option>
                                     <option value="맛집 리뷰">맛집 리뷰</option>
+                                    <option value="카페 리뷰">카페 리뷰</option>
                                     <option value="뷰티 리뷰">뷰티 리뷰</option>
                                     <option value="여행 리뷰">여행 리뷰</option>
                                     <option value="도서/영화 리뷰">도서/영화 리뷰</option>

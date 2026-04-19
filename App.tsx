@@ -4,6 +4,7 @@ import { ContentWriter } from './components/ContentWriter';
 import Manual from './components/Manual';
 import ApiKeyModal from './components/ApiKeyModal';
 import { ApiCostGuideModal } from './components/ApiCostGuideModal';
+import PatchNotesModal from './components/PatchNotesModal';
 import { ViewState } from './types';
 import { useEffect } from 'react';
 
@@ -11,6 +12,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [isCostModalOpen, setIsCostModalOpen] = useState(false);
+  const [isPatchNotesModalOpen, setIsPatchNotesModalOpen] = useState(false);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [apiKeyStatus, setApiKeyStatus] = useState<'unset' | 'set'>('unset');
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
@@ -117,6 +119,12 @@ const App: React.FC = () => {
                 >
                   사용방법
                 </button>
+                <button 
+                   onClick={() => setIsPatchNotesModalOpen(true)}
+                   className="text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-lg flex items-center gap-2 group"
+                >
+                  <span className="group-hover:rotate-12 transition-transform">📜</span> 패치노트
+                </button>
               </div>
             </div>
           </div>
@@ -165,6 +173,11 @@ const App: React.FC = () => {
       <ApiCostGuideModal 
         isOpen={isCostModalOpen} 
         onClose={() => setIsCostModalOpen(false)} 
+      />
+
+      <PatchNotesModal 
+        isOpen={isPatchNotesModalOpen} 
+        onClose={() => setIsPatchNotesModalOpen(false)} 
       />
 
       {/* Floating Action Buttons */}

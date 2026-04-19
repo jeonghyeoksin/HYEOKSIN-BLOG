@@ -35,3 +35,13 @@ export interface WriterState {
   generatedImages: GeneratedImage[];
   thumbnail: GeneratedImage | null;
 }
+
+export type PatchNoteType = 'feature' | 'fix' | 'improvement';
+
+export interface PatchNote {
+  version: string;
+  date: string;
+  title: string;
+  changes: string[];
+  type: PatchNoteType;
+}

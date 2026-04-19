@@ -460,7 +460,7 @@ export const generateTitle = async (
       
       **GEO & SEO GUIDELINES**:
       ${blogCategory?.includes('리뷰') ? `1. **Keyword & Store Name Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title, and the store name "${storeName || ''}" MUST be placed at the very end of the title. (e.g., "${keyword} ... ${storeName || ''}")` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
-      2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).
+      ${(blogCategory === '맛집 리뷰' || blogCategory === '카페 리뷰') ? `2. **Enticing Titles**: For Restaurant/Cafe reviews, the titles MUST be exceptionally enticing, making readers feel a strong desire to visit. Use evocative adjectives and clear benefits.` : `2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).`}
       3. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
       4. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
       5. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
@@ -629,7 +629,7 @@ export const generateOutline = async (
       2. **Experience-Based Content**: Structure the outline to reflect a first-hand, authentic experience with honest opinions. Avoid sounding like a generic AI.
       3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust."}
       4. **Curiosity Resolution**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability."}
+      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory?.includes('리뷰') ? (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. However, ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews.") : (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.") }
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
@@ -835,7 +835,7 @@ export const generateFullPostStream = async (
       2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI.
       3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI."}
       4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability."}
+      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory?.includes('리뷰') ? (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. However, ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews.") : (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.") }
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
@@ -886,7 +886,7 @@ export const generateFullPostStream = async (
       1. **Authentic Experience**: Write from the perspective of someone who has actually used the product in their daily life.
       2. **Detail focus**: Describe the design, functionality, performance, and value for money. Include both pros and cons based on your usage.
       3. **NO Location Info**: DO NOT include any physical addresses, business hours, or store locations in the text.
-      ${blogCategory === '제품리뷰(서술형)' ? "4. **Alignment**: The text must be conceptually Left-Aligned." : ""}
+      ${blogCategory === '제품리뷰(서술형)' ? "4. **Alignment**: The text must be conceptually Center-Aligned (가운데 정렬)." : ""}
       `}
 
       ${blogCategory === '맛집 리뷰' ? `
@@ -898,7 +898,11 @@ export const generateFullPostStream = async (
       1. **Entity Reference**: NEVER use the generic word '이것' (this) to refer to the subject or its products. ALWAYS use the actual Store/Brand Name ("${storeName || topic}") instead.
       2. **Strict Line Length (SEO OPTIMIZED)**: 
          - **The VERY FIRST line of the blog post MUST NOT exceed 10 characters.** This is a critical SEO optimization rule.
-         - For all other lines, EVERY single line in the blog post body MUST be 20 characters or less. 
+         - For all other lines, EVERY single line in the blog post body MUST be ${
+           (blogCategory === '맛집 리뷰' || blogCategory === '카페 리뷰') 
+           ? 'between 15 and 20 characters' 
+           : (blogCategory?.includes('리뷰') ? '15 characters or less' : '20 characters or less')
+         }. 
          - You MUST manually insert a newline (\n) to ensure these line length constraints are strictly met. This is a hard constraint for readability on specific mobile layouts and SEO.
       3. **Content Length**: The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length.
       4. **No Bullet Points**: DO NOT use markdown bullet points (e.g., "- item") in the body text. Write in full paragraphs.
