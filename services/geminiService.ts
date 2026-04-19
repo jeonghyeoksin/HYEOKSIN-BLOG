@@ -146,7 +146,8 @@ export const generateUSPStream = async (
     referenceNote?: string;
     mustIncludeContent?: string;
   },
-  fileParts?: { data: string, mimeType: string }[]
+  fileParts?: { data: string, mimeType: string }[],
+  crawledText?: string
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -171,6 +172,7 @@ export const generateUSPStream = async (
       ${advancedInputs?.referenceNote ? `- Reference Note: "${advancedInputs.referenceNote}"` : ""}
       ${advancedInputs?.mustIncludeContent ? `- Must Include Content: "${advancedInputs.mustIncludeContent}"` : ""}
       ${fileParts && fileParts.length > 0 ? "- Attached Reference Files: Provided (PDF, DOCX). These are the PRIMARY SOURCE of information for this blog post." : ""}
+      ${crawledText ? `- Referenced Crawled Content: Provided (Web Crawled Content). Use this as a key reference for the USP strategy.\n--- START CRAWLED CONTENT ---\n${crawledText}\n--- END CRAWLED CONTENT ---\n` : ""}
 
       **Task**:
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
@@ -229,7 +231,8 @@ export const generateUSP = async (
     referenceNote?: string;
     mustIncludeContent?: string;
   },
-  fileParts?: { data: string, mimeType: string }[]
+  fileParts?: { data: string, mimeType: string }[],
+  crawledText?: string
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -254,6 +257,7 @@ export const generateUSP = async (
       ${advancedInputs?.referenceNote ? `- Reference Note: "${advancedInputs.referenceNote}"` : ""}
       ${advancedInputs?.mustIncludeContent ? `- Must Include Content: "${advancedInputs.mustIncludeContent}"` : ""}
       ${fileParts && fileParts.length > 0 ? "- Attached Reference Files: Provided (PDF, DOCX). These are the PRIMARY SOURCE of information for this blog post." : ""}
+      ${crawledText ? `- Referenced Crawled Content: Provided (Web Crawled Content). Use this as a key reference for the USP strategy.\n--- START CRAWLED CONTENT ---\n${crawledText}\n--- END CRAWLED CONTENT ---\n` : ""}
 
       **Task**:
       Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
@@ -585,7 +589,8 @@ export const generateOutline = async (
   blogStyle?: string,
   wordCount?: string,
   faq?: string,
-  includeFaq?: boolean
+  includeFaq?: boolean,
+  crawledText?: string
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -615,6 +620,7 @@ export const generateOutline = async (
       ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST plan to extract and include the relevant prices in a Markdown table in the body.` : ""}
       ${blogCategory?.includes('리뷰') && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the outline or table.` : ""}
       ${naverDataText}
+      ${crawledText ? `\n\n**REFERENCED CRAWLED WEB CONTENT**: The following content was crawled from a reference link provided by the user. You MUST analyze this content and use its key information, facts, and structure as a primary reference for creating the outline.\n--- START CRAWLED CONTENT ---\n${crawledText}\n--- END CRAWLED CONTENT ---\n` : ""}
       
       ${wordCount && wordCount !== 'AI 추천 (자동)' ? `**WORD COUNT CONSTRAINT**: The planned blog post length should be approximately ${wordCount}. Structure the outline to support this depth.` : ""}
 
@@ -628,7 +634,7 @@ export const generateOutline = async (
       7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
-      10. **Topic-Category Synergy (Tone Match)**: The content MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured. In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards.
+      10. **Topic-Category Synergy (Tone Match)**: The content MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured. In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards. ${blogCategory === '학원 홍보' ? "For '학원 홍보' category, specifically in the final section/conclusion of the post, avoid the word '친절하게' (kindly) and use '자세하게' (in detail) instead." : ""}
       11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
       12. **NO AI MENTION**: NEVER mention that the content is written by AI or use phrases like "AI 첨단 기기로 확인해 드립니다". All content must sound 100% natural, as if written by a person from direct first-hand experience.
 
@@ -783,7 +789,8 @@ export const generateFullPostStream = async (
   blogStyle?: string,
   wordCount?: string,
   faq?: string,
-  includeFaq?: boolean
+  includeFaq?: boolean,
+  crawledText?: string
 ): Promise<void> => {
   try {
     const ai = getClient();
@@ -813,6 +820,7 @@ export const generateFullPostStream = async (
       ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST extract and include the relevant prices in a Markdown table in the body.` : ""}
       ${blogCategory?.includes('리뷰') && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the text or table.` : ""}
       ${naverDataText}
+      ${crawledText ? `\n\n**REFERENCED CRAWLED WEB CONTENT**: The following content was crawled from a reference link provided by the user. You MUST analyze this content and use its key information, facts, and structure as a primary reference for writing the blog post. Ensure the content accurately reflects the information from this source while remaining natural and experiential.\n--- START CRAWLED CONTENT ---\n${crawledText}\n--- END CRAWLED CONTENT ---\n` : ""}
       
       ${wordCount && wordCount !== 'AI 추천 (자동)' ? `**WORD COUNT CONSTRAINT**: The blog post length (excluding hashtags) should be approximately ${wordCount}.` : ""}
       
@@ -832,7 +840,7 @@ export const generateFullPostStream = async (
       7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
-      10. **Topic-Category Synergy (Tone Match)**: The blog post MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured (e.g., using legal terms correctly, citing potential regulations if applicable). In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards.
+      10. **Topic-Category Synergy (Tone Match)**: The blog post MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured (e.g., using legal terms correctly, citing potential regulations if applicable). In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards. ${blogCategory === '학원 홍보' ? "For '학원 홍보' category, in the final paragraph of the post, you MUST NOT use the word '친절하게' (friendly/kindly). Instead, use the word '자세하게' (in detail/thoroughly) when describing how you will provide information or consult." : ""}
       11. **Hashtags**: At the very end of the post, provide exactly 5 highly relevant hashtags. Separate them from the main content with the marker "[HASHTAGS]". Format them as a single line of space-separated hashtags starting with #.
       11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
       12. **NO AI MENTION**: NEVER mention that the content is written by AI or use phrases like "AI 첨단 기기로 확인해 드립니다". All content must sound 100% natural, as if written by a person from direct first-hand experience.

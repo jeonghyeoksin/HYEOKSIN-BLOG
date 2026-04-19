@@ -47,6 +47,7 @@ export const ContentWriter: React.FC = () => {
   const [mustIncludeContent, setMustIncludeContent] = useState('');
   const [benchmarkingText, setBenchmarkingText] = useState('');
   const [servicePriceText, setServicePriceText] = useState('');
+  const [referenceUrl, setReferenceUrl] = useState('');
   
   // --- State: Advanced Inputs ---
   const [targetAudience, setTargetAudience] = useState('');
@@ -324,6 +325,20 @@ export const ContentWriter: React.FC = () => {
             fileParts.push(await convertFileToBase64(file));
         }
 
+        // --- Pre-process Crawling ---
+        let crawledText = "";
+        if (referenceUrl) {
+            try {
+                const crawlRes = await fetch(`/api/crawl?url=${encodeURIComponent(referenceUrl)}`);
+                if (crawlRes.ok) {
+                    const crawlData = await crawlRes.json();
+                    crawledText = crawlData.text;
+                }
+            } catch (err) {
+                console.error("Crawling failed:", err);
+            }
+        }
+
         // --- Step 0: API Key Check ---
         const hasKey = await checkAndRequireApiKey();
         if (!hasKey) {
@@ -362,7 +377,8 @@ export const ContentWriter: React.FC = () => {
                     referenceNote,
                     mustIncludeContent
                 },
-                fileParts
+                fileParts,
+                crawledText
             );
             setStepProgress(100);
             await waitForNextStep(fullAuto);
@@ -429,7 +445,7 @@ export const ContentWriter: React.FC = () => {
             const combinedReferenceNote = referenceNote + advancedOptionsText;
 
             const outlineRes = await generateOutline(
-                keyword, storeName, salesService, uspRes, fileParts, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle, wordCount, faq, includeFaq
+                keyword, storeName, salesService, uspRes, fileParts, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle, wordCount, faq, includeFaq, crawledText
             );
             setOutline(outlineRes);
 
@@ -464,7 +480,7 @@ export const ContentWriter: React.FC = () => {
                     setHashtags('');
                     hasReachedHashtags = false;
                 },
-                fileParts, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle, wordCount, faq, includeFaq
+                fileParts, undefined, benchmarkingText, combinedReferenceNote, scriptImageParts, mustIncludeContent, blogCategory, blogPlatform, servicePriceText, servicePriceImageParts, blogStyle, wordCount, faq, includeFaq, crawledText
             );
             setStepProgress(100);
             await waitForNextStep(fullAuto);
@@ -579,7 +595,10 @@ export const ContentWriter: React.FC = () => {
   };
 
   const handleDiscoverKeywords = async () => {
-    if (!topic) return;
+    if (!topic) {
+      alert("블로그 주제를 먼저 입력해주세요.");
+      return;
+    }
     setIsGenerating(true);
     try {
       const fileParts = [];
@@ -597,7 +616,10 @@ export const ContentWriter: React.FC = () => {
   };
 
   const handleManualStart = () => {
-    if (!manualKeyword.trim()) return;
+    if (!manualKeyword.trim()) {
+      alert("키워드를 입력해주세요.");
+      return;
+    }
     if (!topic) setTopic(manualKeyword);
     runAutomationSequence(manualKeyword);
   };
@@ -992,6 +1014,18 @@ export const ContentWriter: React.FC = () => {
                             </select>
                         </div>
 
+                        {/* Reference Link Input */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-300 ml-1">참고 링크 (해당 링크의 내용을 참고하여 작성합니다.)</label>
+                            <input 
+                                type="url" 
+                                value={referenceUrl}
+                                onChange={(e) => setReferenceUrl(e.target.value)}
+                                placeholder="https://example.com/article"
+                                className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner"
+                            />
+                        </div>
+
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">글자수</label>
                             <select 
@@ -1381,7 +1415,7 @@ export const ContentWriter: React.FC = () => {
                           {/* 1. Discover Keywords */}
                           <button 
                             onClick={handleDiscoverKeywords}
-                            disabled={isGenerating || !topic}
+                            disabled={isGenerating}
                             className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-6 rounded-3xl font-bold hover:shadow-2xl hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group text-left flex flex-col justify-between min-h-[180px] relative overflow-hidden border border-indigo-400/30 ring-1 ring-indigo-500/20"
                           >
                              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">

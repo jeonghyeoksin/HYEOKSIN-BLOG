@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import dotenv from "dotenv";
+import * as cheerio from "cheerio";
 
 dotenv.config();
 
@@ -14,6 +15,42 @@ async function startServer() {
   // API routes FIRST
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  app.get("/api/crawl", async (req, res) => {
+    const { url } = req.query;
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ error: "URL is required" });
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch URL: ${response.statusText}`);
+      }
+
+      const html = await response.text();
+      const $ = cheerio.load(html);
+
+      // Remove unwanted tags
+      $("script, style, nav, footer, header, ads, .ads, #ads").remove();
+
+      // Get body text
+      const text = $("body").text().replace(/\s+/g, " ").trim();
+      
+      // Limit text length to avoid token issues (e.g., 5000 chars)
+      const cleanText = text.slice(0, 5000);
+
+      res.json({ text: cleanText });
+    } catch (error: any) {
+      console.error("Crawl error:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.get("/api/naver/local", async (req, res) => {
