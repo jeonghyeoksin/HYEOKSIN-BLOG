@@ -99,7 +99,7 @@ export const ContentWriter: React.FC = () => {
   const [isAutoImageCount, setIsAutoImageCount] = useState<boolean>(true);
   const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview');
   const [selectedImageStyle, setSelectedImageStyle] = useState<string>('기본 스타일');
-  const [wordCount, setWordCount] = useState<string>('AI 추천 (자동)');
+  const [wordCount, setWordCount] = useState<string>('1500자~2000자 (추천)');
 
   const IMAGE_MODELS = [
       { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', desc: '표준 이미지 생성' },
@@ -305,6 +305,10 @@ export const ContentWriter: React.FC = () => {
     if (!keyword) return;
     if (!blogPlatform || !blogCategory) {
         alert('블로그 플랫폼과 블로그 분류를 선택해주세요.');
+        return;
+    }
+    if (blogCategory.includes('리뷰') && !referenceUrl) {
+        alert('리뷰 작성을 위해 참고 링크(장소 또는 제품 링크)를 반드시 입력해주세요.');
         return;
     }
     if (!blogStyle) {
@@ -597,6 +601,10 @@ export const ContentWriter: React.FC = () => {
   const handleDiscoverKeywords = async () => {
     if (!topic) {
       alert("블로그 주제를 먼저 입력해주세요.");
+      return;
+    }
+    if (blogCategory.includes('리뷰') && !referenceUrl) {
+      alert('리뷰 작성을 위해 참고 링크(장소 또는 제품 링크)를 반드시 입력해주세요.');
       return;
     }
     setIsGenerating(true);
@@ -911,8 +919,21 @@ export const ContentWriter: React.FC = () => {
                                 onChange={(e) => {
                                     const newCat = e.target.value;
                                     setBlogCategory(newCat);
+                                    
+                                    // Automatic style selection
                                     if (newCat.includes('리뷰')) {
+                                        setBlogStyle('리뷰/체험단형 (솔직함, 디테일, 경험 위주)');
                                         setSkipImageGeneration(true);
+                                    } else if (['전문직 홍보', '병원 홍보', '학원 홍보', '교육 홍보', '부동산/분양 홍보', '건강/운동', '금융/재테크', '주식/투자', '세금관련', '법률', '자기계발', '정치/뉴스', '정부정책'].includes(newCat)) {
+                                        setBlogStyle('전문가/정보전달형 (신뢰감, 논리적, 객관적)');
+                                    } else if (['소상공인 홍보', '육아/결혼', '요리/레시피', '인테리어/DIY', '반려동물'].includes(newCat)) {
+                                        setBlogStyle('친근한 이웃형 (공감, 부드러움, 소통형)');
+                                    } else if (['브랜드 홍보', 'B2B 기업 홍보'].includes(newCat)) {
+                                        setBlogStyle('비즈니스/격식형 (정중함, 공식적, 깔끔함)');
+                                    } else if (newCat === '일상/생각') {
+                                        setBlogStyle('일기/기록형 (솔직함, 개인적, 담백함)');
+                                    } else if (newCat === '인테리어/시공 홍보') {
+                                        setBlogStyle('현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)');
                                     }
                                 }}
                                 className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner"
@@ -1017,12 +1038,18 @@ export const ContentWriter: React.FC = () => {
 
                         {/* Reference Link Input */}
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">참고 링크 (해당 링크의 내용을 참고하여 작성합니다.)</label>
+                            <label className="text-sm font-bold text-slate-300 ml-1">
+                                참고 링크 {blogCategory?.includes('리뷰') ? (
+                                    <>
+                                        (리뷰 장소/제품 링크를 꼭 넣어주세요. 해당 링크를 참고하여 작성합니다.) <span className="text-red-500">*</span>
+                                    </>
+                                ) : "(해당 링크의 내용을 참고하여 작성합니다.)"}
+                            </label>
                             <input 
                                 type="url" 
                                 value={referenceUrl}
                                 onChange={(e) => setReferenceUrl(e.target.value)}
-                                placeholder="https://example.com/article"
+                                placeholder={blogCategory?.includes('리뷰') ? "리뷰할 장소나 제품의 상세 링크를 입력해주세요." : "https://example.com/article"}
                                 className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner"
                             />
                         </div>
@@ -1034,6 +1061,7 @@ export const ContentWriter: React.FC = () => {
                                 onChange={(e) => setWordCount(e.target.value)}
                                 className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner appearance-none"
                             >
+                                <option value="1500자~2000자 (추천)">1500자~2000자 (추천)</option>
                                 <option value="AI 추천 (자동)">AI 추천 (자동)</option>
                                 <option value="500~1000자">500~1000자</option>
                                 <option value="1000자~1500자">1000자~1500자</option>

@@ -904,7 +904,9 @@ export const generateFullPostStream = async (
            : (blogCategory?.includes('리뷰') ? '15 characters or less' : '20 characters or less')
          }. 
          - You MUST manually insert a newline (\n) to ensure these line length constraints are strictly met. This is a hard constraint for readability on specific mobile layouts and SEO.
-      3. **Content Length**: The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length.
+      3. **Content Length**: ${blogCategory?.includes('리뷰') 
+         ? "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters (aim for over 2000 characters if possible). You MUST provide extremely detailed, descriptive, and rich content to reach this substantial length, as high-quality reviews require significant depth." 
+         : "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length."}
       4. **No Bullet Points**: DO NOT use markdown bullet points (e.g., "- item") in the body text. Write in full paragraphs.
       5. **SEO Optimization**: Write the most SEO-optimized post possible. Naturally integrate the main keyword and secondary keywords throughout the text, especially in the first paragraph, subheadings, and conclusion.
 
