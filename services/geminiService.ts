@@ -72,11 +72,20 @@ const getClient = () => {
   const localKey = typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') : null;
   
   // 2. 로컬 키가 없으면 플랫폼에서 주입한 GEMINI_API_KEY를 사용합니다.
-  const apiKey = localKey || process.env.GEMINI_API_KEY;
+  let apiKey = localKey || process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error("API 키가 설정되지 않았습니다. API Key 설정을 완료해주세요.");
   }
+
+  // Header value sanitization: Remove any non-ISO-8859-1 characters and whitespace
+  // This prevents "Failed to execute 'append' on 'Headers'" error
+  apiKey = apiKey.trim().replace(/[^\x00-\xff]/g, "");
+
+  if (!apiKey) {
+    throw new Error("유효하지 않은 API 키 형식입니다. 올바른 키를 입력해주세요.");
+  }
+
   return new GoogleGenAI({ apiKey });
 };
 
@@ -899,11 +908,11 @@ export const generateFullPostStream = async (
       2. **Strict Line Length (SEO OPTIMIZED)**: 
          - **The VERY FIRST line of the blog post MUST NOT exceed 10 characters.** This is a critical SEO optimization rule.
          - For all other lines, EVERY single line in the blog post body MUST be ${
-           (blogCategory === '맛집 리뷰' || blogCategory === '카페 리뷰') 
-           ? 'between 15 and 20 characters' 
-           : (blogCategory?.includes('리뷰') ? '15 characters or less' : '20 characters or less')
+           blogCategory?.includes('리뷰') 
+           ? 'exactly 15 characters' 
+           : '20 characters or less'
          }. 
-         - You MUST manually insert a newline (\n) to ensure these line length constraints are strictly met. This is a hard constraint for readability on specific mobile layouts and SEO.
+         - You MUST manually insert a newline (\n) to ensure these line length constraints are strictly met. This is a hard constraint for readability on mobile layouts and SEO.
       3. **Content Length**: ${blogCategory?.includes('리뷰') 
          ? "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters (aim for over 2000 characters if possible). You MUST provide extremely detailed, descriptive, and rich content to reach this substantial length, as high-quality reviews require significant depth." 
          : "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length."}

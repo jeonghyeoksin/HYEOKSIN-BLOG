@@ -31,8 +31,12 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKeyChange 
   }, [isOpen]);
 
   const handleSaveManualKey = () => {
-    if (manualKey.trim()) {
-      localStorage.setItem('gemini_api_key', manualKey.trim());
+    // Sanitize key: Trim and remove non-ISO-8859-1 characters to prevent header errors
+    const sanitizedKey = manualKey.trim().replace(/[^\x00-\xff]/g, "");
+
+    if (sanitizedKey) {
+      localStorage.setItem('gemini_api_key', sanitizedKey);
+      setManualKey(sanitizedKey);
       setHasKey(true);
       setSaveStatus({ success: true, message: "API 키가 성공적으로 저장 및 적용되었습니다!" });
       if (onKeyChange) onKeyChange();
@@ -42,7 +46,8 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKeyChange 
     } else {
       localStorage.removeItem('gemini_api_key');
       setHasKey(false);
-      alert('API 키를 입력해 주세요.');
+      setManualKey('');
+      alert('유효한 API 키를 입력해 주세요.');
     }
   };
 
