@@ -2,6 +2,18 @@ import { PatchNote } from './types';
 
 export const patchNotes: PatchNote[] = [
   {
+    version: '1.2.8',
+    date: '2026-05-10',
+    title: 'AI 퀄리티 최적화 및 SEO 고도화 도입',
+    type: 'improvement',
+    changes: [
+      'Gemini AI의 추론 단계(Thinking Level)를 Standard로 상향하여 포스팅의 논리와 단어 선택의 퀄리티를 최적화했습니다.',
+      'LSI(잠재의미 지수) 키워드 및 TF-IDF 기반 SEO 최적화 지침을 프롬프트에 추가하여 네이버/구글 노출 확률을 높였습니다.',
+      '진부한 AI 시작 문구(예: 안녕하세요, 오늘은)를 억제하고 몰입감 있는 도입부(Hook) 작성을 강제했습니다.',
+      '다양한 리듬감의 종결어미 혼용 로직과 부드러운 화제 전환(접속사)을 통해 사람이 직접 쓴 듯한 자연스러움을 극대화했습니다.'
+    ]
+  },
+  {
     version: '1.2.7',
     date: '2026-05-03',
     title: '마스터 가이드 2.0 대규모 업데이트',

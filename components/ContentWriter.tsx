@@ -32,6 +32,8 @@ const steps: { id: StudioStep; label: string; icon: string }[] = [
   { id: 'result', label: '최종 결과', icon: '🏆' },
 ];
 
+const LOCAL_STORAGE_KEY = 'contentWriterSettings';
+
 export const ContentWriter: React.FC = () => {
   // --- State: UI Flags ---
   
@@ -39,7 +41,7 @@ export const ContentWriter: React.FC = () => {
   const [topic, setTopic] = useState('');
   const [blogStyle, setBlogStyle] = useState('');
   const [blogCategory, setBlogCategory] = useState('');
-  const [blogPlatform, setBlogPlatform] = useState('');
+  const [blogPlatform, setBlogPlatform] = useState('네이버');
   const [storeName, setStoreName] = useState('');
   const [salesService, setSalesService] = useState('');
   const [postGoal, setPostGoal] = useState(''); // USP / Goal
@@ -64,6 +66,7 @@ export const ContentWriter: React.FC = () => {
   const [contextImageFiles, setContextImageFiles] = useState<File[]>([]); // General references
   const [launderedImageFiles, setLaunderedImageFiles] = useState<File[]>([]); // Laundered images
   const [skipImageGeneration, setSkipImageGeneration] = useState<boolean>(false); // Skip image generation
+  const [smartImageMode, setSmartImageMode] = useState<boolean>(true); // Smart image mode for reviews
 
   // --- State: Process ---
   const [currentStep, setCurrentStep] = useState<StudioStep>('keyword');
@@ -100,6 +103,73 @@ export const ContentWriter: React.FC = () => {
   const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview');
   const [selectedImageStyle, setSelectedImageStyle] = useState<string>('기본 스타일');
   const [wordCount, setWordCount] = useState<string>('1500자~2000자 (추천)');
+
+  useEffect(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.topic) setTopic(parsed.topic);
+        if (parsed.blogStyle) setBlogStyle(parsed.blogStyle);
+        if (parsed.blogCategory) setBlogCategory(parsed.blogCategory);
+        if (parsed.blogPlatform) setBlogPlatform(parsed.blogPlatform);
+        if (parsed.storeName) setStoreName(parsed.storeName);
+        if (parsed.salesService) setSalesService(parsed.salesService);
+        if (parsed.postGoal) setPostGoal(parsed.postGoal);
+        if (parsed.referenceNote) setReferenceNote(parsed.referenceNote);
+        if (parsed.mustIncludeContent) setMustIncludeContent(parsed.mustIncludeContent);
+        if (parsed.benchmarkingText) setBenchmarkingText(parsed.benchmarkingText);
+        if (parsed.servicePriceText) setServicePriceText(parsed.servicePriceText);
+        if (parsed.referenceUrl) setReferenceUrl(parsed.referenceUrl);
+        if (parsed.targetAudience) setTargetAudience(parsed.targetAudience);
+        if (parsed.secondaryKeywords) setSecondaryKeywords(parsed.secondaryKeywords);
+        if (parsed.cta) setCta(parsed.cta);
+        if (parsed.faq) setFaq(parsed.faq);
+        if (parsed.includeFaq !== undefined) setIncludeFaq(parsed.includeFaq);
+        if (parsed.skipImageGeneration !== undefined) setSkipImageGeneration(parsed.skipImageGeneration);
+        if (parsed.smartImageMode !== undefined) setSmartImageMode(parsed.smartImageMode);
+        if (parsed.imageCount !== undefined) setImageCount(parsed.imageCount);
+        if (parsed.isAutoImageCount !== undefined) setIsAutoImageCount(parsed.isAutoImageCount);
+        if (parsed.selectedImageModel) setSelectedImageModel(parsed.selectedImageModel);
+        if (parsed.selectedImageStyle) setSelectedImageStyle(parsed.selectedImageStyle);
+        if (parsed.wordCount) setWordCount(parsed.wordCount);
+      } catch (e) {
+        console.error("Failed to parse local storage", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const settings = {
+        topic,
+        blogStyle,
+        blogCategory,
+        blogPlatform,
+        storeName,
+        salesService,
+        postGoal,
+        referenceNote,
+        mustIncludeContent,
+        benchmarkingText,
+        servicePriceText,
+        referenceUrl,
+        targetAudience,
+        secondaryKeywords,
+        cta,
+        faq,
+        includeFaq,
+        skipImageGeneration,
+        smartImageMode,
+        imageCount,
+        isAutoImageCount,
+        selectedImageModel,
+        selectedImageStyle,
+        wordCount
+    };
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings));
+  }, [
+    topic, blogStyle, blogCategory, blogPlatform, storeName, salesService, postGoal, referenceNote, mustIncludeContent, benchmarkingText, servicePriceText, referenceUrl, targetAudience, secondaryKeywords, cta, faq, includeFaq, skipImageGeneration, smartImageMode, imageCount, isAutoImageCount, selectedImageModel, selectedImageStyle, wordCount
+  ]);
 
   const IMAGE_MODELS = [
       { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', desc: '표준 이미지 생성' },
@@ -516,7 +586,7 @@ export const ContentWriter: React.FC = () => {
             setStepProgress(0);
             
             const finalImageCount = isAutoImageCount ? 5 : imageCount;
-            const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0, selectedImageModel, selectedImageStyle);
+            const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0, selectedImageModel, selectedImageStyle, blogCategory, smartImageMode);
             
             const placeholders: GeneratedImage[] = prompts.map(p => ({
                 prompt: p.prompt,
@@ -558,7 +628,7 @@ export const ContentWriter: React.FC = () => {
             if (automationKilled.current) return;
             setCurrentStep('thumbnail');
             setStepProgress(0);
-            const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle);
+            const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle, blogCategory, smartImageMode);
             setThumbnailPrompt(thumbPrompt);
             
             setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: true });
@@ -887,13 +957,20 @@ export const ContentWriter: React.FC = () => {
                     </div>
 
                     <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl backdrop-blur-sm">
-                        <div className="text-right text-xs text-slate-400">
-                            <span className="text-red-500">*</span> 은 필수항목입니다.
-                        </div>
+                        {(() => {
+                            const isReviewCategory = blogCategory?.includes('리뷰');
+                            const isPromoCategory = blogCategory?.includes('홍보');
+                            
+                            return (
+                                <>
+                                    <div className="text-right text-xs text-slate-400">
+                                        <span className="text-red-500">*</span> 은 필수항목입니다.
+                                    </div>
                         
-                        {/* Platform Input */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">블로그 플랫폼 <span className="text-red-500">*</span></label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Platform Input */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">블로그 플랫폼 <span className="text-red-500">*</span></label>
                             <select
                                 value={blogPlatform}
                                 onChange={(e) => setBlogPlatform(e.target.value)}
@@ -921,19 +998,27 @@ export const ContentWriter: React.FC = () => {
                                     setBlogCategory(newCat);
                                     
                                     // Automatic style selection
-                                    if (newCat.includes('리뷰')) {
+                                    if (newCat.includes('리뷰') && newCat !== '신조어 및 트렌드 리뷰' && newCat !== '인물 리뷰/위인전') {
                                         setBlogStyle('리뷰/체험단형 (솔직함, 디테일, 경험 위주)');
                                         setSkipImageGeneration(true);
-                                    } else if (['전문직 홍보', '병원 홍보', '학원 홍보', '교육 홍보', '부동산/분양 홍보', '건강/운동', '금융/재테크', '주식/투자', '세금관련', '법률', '자기계발', '정치/뉴스', '정부정책'].includes(newCat)) {
+                                    } else if (['전문직 홍보', '병원 홍보', '학원 홍보', '교육 홍보', '부동산/분양 홍보', '스타트업/IT기업 홍보', '프랜차이즈 가맹 홍보', '건강/운동', '다이어트/뷰티', '금융/재테크', '주식/투자', '코인/가상화폐', '세금관련', '법률', '자기계발', '정치/뉴스', '정부정책', 'IT/테크/컴퓨터', '지식 백과 및 용어 사전', '경제 및 비즈니스', '역사', '인문학', '언어 및 맞춤법', '잡학 및 과학'].includes(newCat)) {
                                         setBlogStyle('전문가/정보전달형 (신뢰감, 논리적, 객관적)');
-                                    } else if (['소상공인 홍보', '육아/결혼', '요리/레시피', '인테리어/DIY', '반려동물'].includes(newCat)) {
+                                    } else if (['소상공인 홍보', '육아/결혼', '요리/레시피', '인테리어/DIY', '반려동물', '생활 및 살림', '문화 및 에티켓'].includes(newCat)) {
                                         setBlogStyle('친근한 이웃형 (공감, 부드러움, 소통형)');
-                                    } else if (['브랜드 홍보', 'B2B 기업 홍보'].includes(newCat)) {
+                                    } else if (['브랜드 홍보', 'B2B 기업 홍보', '종교관련'].includes(newCat)) {
                                         setBlogStyle('비즈니스/격식형 (정중함, 공식적, 깔끔함)');
                                     } else if (newCat === '일상/생각') {
                                         setBlogStyle('일기/기록형 (솔직함, 개인적, 담백함)');
                                     } else if (newCat === '인테리어/시공 홍보') {
                                         setBlogStyle('현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)');
+                                    } else if (['디자인', '미술/디자인/예술', '예술/문화', '패션/스타일'].includes(newCat)) {
+                                        setBlogStyle('감성 에세이형 (서정적, 감각적, 여운)');
+                                    } else if (['신조어 및 트렌드 리뷰', '취미/게임'].includes(newCat)) {
+                                        setBlogStyle('트렌디/MZ세대형 (유행어, 밈, 톡톡 튀는 톤)');
+                                    } else if (newCat === '인물 리뷰/위인전') {
+                                        setBlogStyle('스토리텔링형 (기승전결, 몰입감, 서사적)');
+                                    } else if (newCat === '키워드 큐레이션') {
+                                        setBlogStyle('미니멀/요약형 (핵심만, 간결함, 가독성)');
                                     }
                                 }}
                                 className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white text-lg shadow-inner"
@@ -945,6 +1030,7 @@ export const ContentWriter: React.FC = () => {
                                     <option value="맛집 리뷰">맛집 리뷰</option>
                                     <option value="카페 리뷰">카페 리뷰</option>
                                     <option value="뷰티 리뷰">뷰티 리뷰</option>
+                                    <option value="숙박/펜션/호텔 리뷰">숙박/펜션/호텔 리뷰</option>
                                     <option value="여행 리뷰">여행 리뷰</option>
                                     <option value="도서/영화 리뷰">도서/영화 리뷰</option>
                                     <option value="공연/전시">공연/전시</option>
@@ -961,7 +1047,9 @@ export const ContentWriter: React.FC = () => {
                                     <option value="소상공인 홍보">소상공인 홍보</option>
                                     <option value="부동산/분양 홍보">부동산/분양 홍보</option>
                                     <option value="인테리어/시공 홍보">인테리어/시공 홍보</option>
+                                    <option value="스타트업/IT기업 홍보">스타트업/IT기업 홍보</option>
                                     <option value="B2B 기업 홍보">B2B 기업 홍보</option>
+                                    <option value="프랜차이즈 가맹 홍보">프랜차이즈 가맹 홍보</option>
                                 </optgroup>
                                 <optgroup label="정보/라이프스타일">
                                     <option value="일상/생각">일상/생각</option>
@@ -973,11 +1061,14 @@ export const ContentWriter: React.FC = () => {
                                     <option value="예술/문화">예술/문화</option>
                                     <option value="패션/스타일">패션/스타일</option>
                                     <option value="건강/운동">건강/운동</option>
+                                    <option value="다이어트/뷰티">다이어트/뷰티</option>
                                     <option value="금융/재테크">금융/재테크</option>
                                     <option value="주식/투자">주식/투자</option>
+                                    <option value="코인/가상화폐">코인/가상화폐</option>
                                     <option value="세금관련">세금관련</option>
                                     <option value="법률">법률</option>
                                     <option value="어학/외국어">어학/외국어</option>
+                                    <option value="IT/테크/컴퓨터">IT/테크/컴퓨터</option>
                                     <option value="취미/게임">취미/게임</option>
                                     <option value="반려동물">반려동물</option>
                                     <option value="자기계발">자기계발</option>
@@ -998,8 +1089,10 @@ export const ContentWriter: React.FC = () => {
                                 </optgroup>
                             </select>
                         </div>
+                        </div>
 
-                        {/* Topic Input */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Topic Input */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">블로그 주제 (원하시는 주제를 자유롭게 작성해주세요.) <span className="text-red-500">*</span></label>
                             <input 
@@ -1025,6 +1118,7 @@ export const ContentWriter: React.FC = () => {
                                 <option value="감성 에세이형 (서정적, 감각적, 여운)">감성 에세이형 (서정적, 감각적, 여운)</option>
                                 <option value="유머/재치형 (재미, 센스, 가벼운 톤)">유머/재치형 (재미, 센스, 가벼운 톤)</option>
                                 <option value="리뷰/체험단형 (솔직함, 디테일, 경험 위주)">리뷰/체험단형 (솔직함, 디테일, 경험 위주)</option>
+                                <option value="설득/판매형 (카피라이팅, 셀링포인트, 구매전환)">설득/판매형 (카피라이팅, 셀링포인트, 구매전환)</option>
                                 <option value="인터뷰/대화형 (문답형, 생동감, 현장감)">인터뷰/대화형 (문답형, 생동감, 현장감)</option>
                                 <option value="스토리텔링형 (기승전결, 몰입감, 서사적)">스토리텔링형 (기승전결, 몰입감, 서사적)</option>
                                 <option value="현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)">현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)</option>
@@ -1033,10 +1127,14 @@ export const ContentWriter: React.FC = () => {
                                 <option value="일기/기록형 (솔직함, 개인적, 담백함)">일기/기록형 (솔직함, 개인적, 담백함)</option>
                                 <option value="비즈니스/격식형 (정중함, 공식적, 깔끔함)">비즈니스/격식형 (정중함, 공식적, 깔끔함)</option>
                                 <option value="비판적/분석형 (날카로움, 통찰력, 논쟁적)">비판적/분석형 (날카로움, 통찰력, 논쟁적)</option>
+                                <option value="질의응답/Q&A형 (문제해결, 명쾌함, 친절함)">질의응답/Q&A형 (문제해결, 명쾌함, 친절함)</option>
+                                <option value="미니멀/요약형 (핵심만, 간결함, 가독성)">미니멀/요약형 (핵심만, 간결함, 가독성)</option>
                             </select>
                         </div>
+                        </div>
 
-                        {/* Reference Link Input */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Reference Link Input */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">
                                 참고 링크 {blogCategory?.includes('리뷰') ? (
@@ -1070,8 +1168,10 @@ export const ContentWriter: React.FC = () => {
                                 <option value="2500자~3000자">2500자~3000자</option>
                             </select>
                         </div>
+                        </div>
 
                         {/* Store & Service Inputs */}
+                        {(isPromoCategory || isReviewCategory || !blogCategory) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-slate-300 ml-1">상호명 / 브랜드명</label>
@@ -1094,19 +1194,22 @@ export const ContentWriter: React.FC = () => {
                                 />
                             </div>
                         </div>
+                        )}
 
                         {/* Advanced Inputs */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-300 ml-1">타겟 고객층</label>
-                                <input 
-                                    type="text" 
-                                    value={targetAudience}
-                                    onChange={(e) => setTargetAudience(e.target.value)}
-                                    placeholder="예: 2030 직장인, 30대 육아맘"
-                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
-                                />
-                            </div>
+                            {isPromoCategory ? (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-300 ml-1">타겟 고객층</label>
+                                    <input 
+                                        type="text" 
+                                        value={targetAudience}
+                                        onChange={(e) => setTargetAudience(e.target.value)}
+                                        placeholder="예: 2030 직장인, 30대 육아맘"
+                                        className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
+                                    />
+                                </div>
+                            ) : <div></div>}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-slate-300 ml-1">서브 키워드</label>
                                 <input 
@@ -1119,6 +1222,7 @@ export const ContentWriter: React.FC = () => {
                             </div>
                         </div>
 
+                        {(isPromoCategory || isReviewCategory) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-slate-300 ml-1">행동 유도 (CTA) 및 연락처/링크</label>
@@ -1130,72 +1234,118 @@ export const ContentWriter: React.FC = () => {
                                     className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
                                 />
                             </div>
-                        </div>
 
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 mb-1">
-                                <input 
-                                    type="checkbox" 
-                                    id="includeFaq"
-                                    checked={includeFaq}
-                                    onChange={(e) => setIncludeFaq(e.target.checked)}
-                                    className="w-4 h-4 text-indigo-600 bg-slate-800 border-slate-700 rounded focus:ring-indigo-500 cursor-pointer"
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <input 
+                                        type="checkbox" 
+                                        id="includeFaq"
+                                        checked={includeFaq}
+                                        onChange={(e) => setIncludeFaq(e.target.checked)}
+                                        className="w-4 h-4 text-indigo-600 bg-slate-800 border-slate-700 rounded focus:ring-indigo-500 cursor-pointer"
+                                    />
+                                    <label htmlFor="includeFaq" className="text-sm font-bold text-slate-300 cursor-pointer">자주 묻는 질문 (FAQ) 추가</label>
+                                </div>
+                                <textarea 
+                                    value={faq}
+                                    onChange={(e) => setFaq(e.target.value)}
+                                    placeholder="고객들이 평소에 가장 많이 묻는 질문 1~2가지를 입력하세요."
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
                                 />
-                                <label htmlFor="includeFaq" className="text-sm font-bold text-slate-300 cursor-pointer">자주 묻는 질문 (FAQ) 추가</label>
                             </div>
-                            <textarea 
-                                value={faq}
-                                onChange={(e) => setFaq(e.target.value)}
-                                placeholder="고객들이 평소에 가장 많이 묻는 질문 1~2가지를 입력하세요."
-                                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
-                            />
+                        </div>
+                        )}
+
+                        {/* Reference Note and Must Include Content */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">참고 노트</label>
+                                <textarea 
+                                    value={referenceNote}
+                                    onChange={(e) => setReferenceNote(e.target.value)}
+                                    placeholder="추가적인 요청사항이나 참고할 내용을 입력하세요."
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">꼭 들어가야 할 내용</label>
+                                <textarea 
+                                    value={mustIncludeContent}
+                                    onChange={(e) => setMustIncludeContent(e.target.value)}
+                                    placeholder="블로그 본문에 반드시 포함되어야 하는 특정 문구, 정보, 이벤트 내용 등을 입력하세요."
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
+                                />
+                            </div>
                         </div>
 
-                        {/* Reference Note */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">참고 노트</label>
-                            <textarea 
-                                value={referenceNote}
-                                onChange={(e) => setReferenceNote(e.target.value)}
-                                placeholder="추가적인 요청사항이나 참고할 내용을 입력하세요."
-                                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
-                            />
-                        </div>
+                        {/* Reference Files and Benchmarking Text */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">참고할 파일 (PDF, DOCX)</label>
+                                <input 
+                                    type="file" 
+                                    accept=".pdf,.docx"
+                                    multiple
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            setReferenceFiles(Array.from(e.target.files));
+                                        } else {
+                                            setReferenceFiles([]);
+                                        }
+                                    }}
+                                    className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                />
+                                {referenceFiles.length > 0 && (
+                                    <p className="text-xs text-slate-400 ml-1 mt-1">{referenceFiles.length}개의 파일이 선택되었습니다.</p>
+                                )}
+                            </div>
 
-                        {/* Must Include Content */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">꼭 들어가야 할 내용</label>
-                            <textarea 
-                                value={mustIncludeContent}
-                                onChange={(e) => setMustIncludeContent(e.target.value)}
-                                placeholder="블로그 본문에 반드시 포함되어야 하는 특정 문구, 정보, 이벤트 내용 등을 입력하세요."
-                                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white h-20 resize-none"
-                            />
-                        </div>
-
-                        {/* Reference Files (New Section) */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">참고할 파일 (PDF, DOCX)</label>
-                            <input 
-                                type="file" 
-                                accept=".pdf,.docx"
-                                multiple
-                                onChange={(e) => {
-                                    if (e.target.files) {
-                                        setReferenceFiles(Array.from(e.target.files));
-                                    } else {
-                                        setReferenceFiles([]);
-                                    }
-                                }}
-                                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                            />
-                            {referenceFiles.length > 0 && (
-                                <p className="text-xs text-slate-400 ml-1 mt-1">{referenceFiles.length}개의 파일이 선택되었습니다.</p>
-                            )}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-bold text-slate-300 ml-1">벤치마킹 원고</label>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="file" 
+                                            accept=".pdf,.txt,.docx" 
+                                            onChange={handleFileUpload} 
+                                            className="hidden" 
+                                            id="benchmarking-file-upload"
+                                        />
+                                        <label 
+                                            htmlFor="benchmarking-file-upload"
+                                            className="cursor-pointer text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium flex items-center gap-1"
+                                        >
+                                            파일 첨부
+                                        </label>
+                                        <a 
+                                            href="https://docs.google.com/document/d/1UUi9NaY9NUY585E5lt-Hx9Sjz9YWlVFhwX-yrDcGAoM/edit?usp=sharing" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium flex items-center gap-1"
+                                        >
+                                            드래그프리 매뉴얼
+                                        </a>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all">
+                                    <textarea 
+                                        value={benchmarkingText}
+                                        onChange={(e) => setBenchmarkingText(e.target.value)}
+                                        placeholder="경쟁사 글이나 모방하고 싶은 텍스트를 붙여넣으세요."
+                                        className="w-full bg-transparent border-none outline-none text-white text-sm h-12 resize-none placeholder-slate-500"
+                                    />
+                                    <div className="mt-2 pt-2 border-t border-slate-700 flex justify-between items-center">
+                                        <span className="text-[10px] bg-slate-700 text-slate-300 px-2 py-1 rounded">
+                                            유사 문서 회피 모드
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Service Price Inputs */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {(isPromoCategory || isReviewCategory) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-800">
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-slate-300 ml-1">서비스 금액표 이미지 (다중 선택 가능)</label>
                                 <input 
@@ -1226,104 +1376,51 @@ export const ContentWriter: React.FC = () => {
                                 />
                             </div>
                         </div>
+                        )}
 
-                        {/* Benchmarking Text (New) */}
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-slate-300 ml-1">벤치마킹 원고</label>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="file" 
-                                        accept=".pdf,.txt,.docx" 
-                                        onChange={handleFileUpload} 
-                                        className="hidden" 
-                                        id="benchmarking-file-upload"
-                                    />
-                                    <label 
-                                        htmlFor="benchmarking-file-upload"
-                                        className="cursor-pointer text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium flex items-center gap-1"
+                        {/* Image Style and Model Selector (2-col) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">🎨 이미지 스타일 선택</label>
+                                <div className="relative">
+                                    <select 
+                                        value={selectedImageStyle}
+                                        onChange={(e) => setSelectedImageStyle(e.target.value)}
+                                        className="w-full bg-slate-800 text-white border border-slate-700 rounded-lg px-4 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm font-bold"
                                     >
-                                        파일 첨부
-                                    </label>
-                                    <a 
-                                        href="https://docs.google.com/document/d/1UUi9NaY9NUY585E5lt-Hx9Sjz9YWlVFhwX-yrDcGAoM/edit?usp=sharing" 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium flex items-center gap-1"
-                                    >
-                                        드래그프리 설치 및 사용 매뉴얼
-                                    </a>
+                                        {IMAGE_STYLES.map((style) => (
+                                            <option key={style.id} value={style.id}>{style.name}</option>
+                                        ))}
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                    </div>
                                 </div>
                             </div>
-                            <p className="text-xs text-slate-400 ml-1 mb-2">
-                                벤치마킹 원고는 내가 카피하고 싶은 원고를 선택한 블로그 분류, 주제, 상호명 / 브랜드명, 판매 제품 / 서비스, USP에 맞게끔 수정하여 블로그 원고 작성시 참고하는 기능입니다.
-                            </p>
-                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all">
-                                <textarea 
-                                    value={benchmarkingText}
-                                    onChange={(e) => setBenchmarkingText(e.target.value)}
-                                    placeholder="성공한 경쟁사의 글이나 모방하고 싶은 텍스트를 붙여넣으세요. &#13;&#10;AI가 해당 글의 논리 구조와 톤앤매너를 분석하여, 우리 브랜드에 맞게 '유사 문서' 걱정 없이 새롭게 재창조합니다."
-                                    className="w-full bg-transparent border-none outline-none text-white text-sm h-32 resize-none placeholder-slate-500 leading-relaxed"
-                                />
-                                <div className="mt-2 pt-2 border-t border-slate-700 flex justify-between items-center">
-                                    <p className="text-[11px] text-slate-400">
-                                        💡 <strong>팁:</strong> 상호명과 서비스명은 자동으로 변경되며, 문체와 흐름만 모방합니다.
-                                    </p>
-                                    <span className="text-[10px] bg-slate-700 text-slate-300 px-2 py-1 rounded">
-                                        유사 문서 회피 모드
-                                    </span>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">🎨 이미지 생성 모델</label>
+                                <div className="relative">
+                                    <select
+                                        value={selectedImageModel}
+                                        onChange={(e) => setSelectedImageModel(e.target.value)}
+                                        className="w-full bg-slate-800 text-white border border-slate-700 rounded-lg px-4 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm font-bold"
+                                    >
+                                        {IMAGE_MODELS.map((model) => (
+                                            <option key={model.id} value={model.id}>{model.name} - {model.desc}</option>
+                                        ))}
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Image Style Selector */}
-                        <div className="pt-4 border-t border-slate-800 space-y-3">
-                            <label className="text-xs font-bold text-slate-300 block">🎨 이미지 스타일 선택</label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-2">
-                                {IMAGE_STYLES.map((style) => (
-                                    <button
-                                        key={style.id}
-                                        onClick={() => setSelectedImageStyle(style.id)}
-                                        className={`px-2 py-2 rounded-lg text-[10px] font-bold transition-all border text-center ${
-                                            selectedImageStyle === style.id
-                                                ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
-                                                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
-                                        }`}
-                                    >
-                                        {style.name}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Image Asset Inputs */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-800">
-                             {/* Image Generation Model Selector */}
-                             <div className="space-y-2">
-                                 <label className="text-xs font-bold text-slate-300 block">🎨 이미지 생성 모델</label>
-                                 <div className="grid grid-cols-1 gap-2">
-                                     {IMAGE_MODELS.map((model) => (
-                                         <button
-                                             key={model.id}
-                                             onClick={() => setSelectedImageModel(model.id)}
-                                             className={`px-3 py-2 rounded-lg text-xs font-bold transition-all border text-left ${
-                                                 selectedImageModel === model.id
-                                                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
-                                                     : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
-                                             }`}
-                                         >
-                                             <div className="flex justify-between items-center">
-                                                 <span>{model.name}</span>
-                                             </div>
-                                             <div className="text-[10px] opacity-70 mt-1">{model.desc}</div>
-                                         </button>
-                                     ))}
-                                 </div>
-                             </div>
-                             {/* Logo */}
-                             <div className="space-y-2">
-                                 <label className="text-xs font-bold text-teal-400 block">🖼️ 로고 이미지 (제한 없음)</label>
-                                 <input 
+                        {/* Image Asset Inputs (2-col) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-teal-400 ml-1">🖼️ 로고 이미지 (제한 없음)</label>
+                                <input 
                                     type="file" 
                                     multiple
                                     accept="image/*"
@@ -1332,14 +1429,13 @@ export const ContentWriter: React.FC = () => {
                                             setLogoFiles(prev => [...prev, ...Array.from(e.target.files!)]);
                                         }
                                     }}
-                                    className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-teal-900/30 file:text-teal-300 hover:file:bg-teal-900"
-                                 />
-                                 {logoFiles.length > 0 && <p className="text-[10px] text-teal-300 truncate">{logoFiles.length}장 선택됨</p>}
-                             </div>
-                             {/* Person */}
-                             <div className="space-y-2">
-                                 <label className="text-xs font-bold text-purple-400 block">👤 인물 이미지 (제한 없음)</label>
-                                 <input 
+                                    className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-teal-900/30 file:text-teal-300 hover:file:bg-teal-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                />
+                                {logoFiles.length > 0 && <p className="text-[10px] text-teal-300 truncate ml-1">{logoFiles.length}장 선택됨</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-purple-400 ml-1">👤 인물 / 얼굴 이미지 (제한 없음)</label>
+                                <input 
                                     type="file" 
                                     multiple
                                     accept="image/*"
@@ -1348,26 +1444,27 @@ export const ContentWriter: React.FC = () => {
                                             setFaceImageFiles(prev => [...prev, ...Array.from(e.target.files!)]);
                                         }
                                     }}
-                                    className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-purple-900/30 file:text-purple-300 hover:file:bg-purple-900"
-                                 />
-                                 {faceImageFiles.length > 0 && <p className="text-[10px] text-purple-300 truncate">{faceImageFiles.length}장 선택됨</p>}
-                             </div>
-                             {/* Reference */}
-                             <div className="space-y-2">
-                                 <label className="text-xs font-bold text-slate-300 block">📁 참고 이미지 (제한 없음)</label>
-                                 <input 
+                                    className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-purple-900/30 file:text-purple-300 hover:file:bg-purple-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                />
+                                {faceImageFiles.length > 0 && <p className="text-[10px] text-purple-300 truncate ml-1">{faceImageFiles.length}장 선택됨</p>}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1">📁 참고 이미지 (제한 없음)</label>
+                                <input 
                                     type="file" 
                                     multiple
                                     accept="image/*"
                                     onChange={handleContextImagesChange}
-                                    className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-slate-700 file:text-slate-300 hover:file:bg-slate-600"
-                                 />
-                                 {contextImageFiles.length > 0 && <p className="text-[10px] text-slate-300">{contextImageFiles.length}장 선택됨</p>}
-                             </div>
-                             {/* Laundered */}
-                             <div className="space-y-2">
-                                 <label className="text-xs font-bold text-amber-400 block">🧼 세탁 이미지 (제한 없음)</label>
-                                 <input 
+                                    className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-slate-700 file:text-slate-300 hover:file:bg-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                />
+                                {contextImageFiles.length > 0 && <p className="text-[10px] text-slate-300 ml-1">{contextImageFiles.length}장 선택됨</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-amber-400 ml-1">🧼 세탁 이미지 (제한 없음)</label>
+                                <input 
                                     type="file" 
                                     multiple
                                     accept="image/*"
@@ -1376,66 +1473,90 @@ export const ContentWriter: React.FC = () => {
                                             setLaunderedImageFiles(prev => [...prev, ...Array.from(e.target.files!)]);
                                         }
                                     }}
-                                    className="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-amber-900/30 file:text-amber-300 hover:file:bg-amber-900"
-                                 />
-                                 <p className="text-[9px] text-slate-500 leading-tight">첨부한 이미지의 값을 변경하여 그대로 다시 출력합니다. 이미지 변형은 절대 하지 않습니다.</p>
-                                 {launderedImageFiles.length > 0 && <p className="text-[10px] text-amber-300 truncate">{launderedImageFiles.length}장 선택됨</p>}
-                             </div>
-                             {/* Skip Image Generation */}
-                             <div className="space-y-4 flex flex-col p-4 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-inner">
-                                 <div className="flex items-center gap-3">
-                                     <div className="relative flex items-center">
-                                         <input 
-                                            type="checkbox" 
-                                            id="skipImageGeneration"
-                                            checked={skipImageGeneration}
-                                            onChange={(e) => setSkipImageGeneration(e.target.checked)}
-                                            className="w-6 h-6 text-indigo-600 bg-slate-800 border-slate-700 rounded-lg focus:ring-indigo-500 cursor-pointer transition-all hover:scale-110"
-                                         />
-                                     </div>
-                                     <div className="flex flex-col">
-                                         <label htmlFor="skipImageGeneration" className="text-base font-black text-white cursor-pointer">
-                                             이미지 생성하지 않음
-                                         </label>
-                                         <p className="text-xs text-slate-400 font-medium mt-0.5">이미지 생성을 안하고 싶다면 해당 버튼을 체크하세요.</p>
-                                     </div>
-                                 </div>
-                             </div>
+                                    className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-amber-900/30 file:text-amber-300 hover:file:bg-amber-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                />
+                                <p className="text-[9px] text-slate-500 leading-tight ml-1">이미지 메타값을 변경, 그대로 출력 처리됩니다.</p>
+                                {launderedImageFiles.length > 0 && <p className="text-[10px] text-amber-300 truncate ml-1">{launderedImageFiles.length}장 선택됨</p>}
+                            </div>
+                        </div>
 
-                             {/* Image Count Selection */}
-                             {!skipImageGeneration && (
-                                 <div className="space-y-3 p-4 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-inner">
-                                     <label className="text-sm font-bold text-slate-300 flex items-center gap-2">
-                                         <span className="text-lg">🖼️</span> 이미지 생성 개수 선택
-                                     </label>
-                                     <div className="flex flex-wrap gap-2">
-                                         {[
-                                             { label: 'AI추천', value: 0 },
-                                             { label: '1개', value: 1 },
-                                             { label: '3개', value: 3 },
-                                             { label: '5개', value: 5 },
-                                             { label: '10개', value: 10 }
-                                         ].map((opt) => (
-                                             <button
-                                                 key={opt.value}
-                                                 onClick={() => {
-                                                     setIsAutoImageCount(opt.value === 0);
-                                                     setImageCount(opt.value);
-                                                 }}
-                                                 className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
-                                                     (isAutoImageCount && opt.value === 0) || (!isAutoImageCount && imageCount === opt.value)
-                                                     ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-900/40 scale-105'
-                                                     : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-white'
-                                                 }`}
-                                             >
-                                                 {opt.label}
-                                             </button>
-                                         ))}
-                                     </div>
-                                     <p className="text-[10px] text-slate-500">생성할 이미지의 개수를 선택하세요. AI추천은 본문 길이에 맞춰 적절한 개수를 생성합니다.</p>
-                                 </div>
-                             )}
-                         </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Skip Image Generation */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-300 ml-1 mb-2">이미지 생성 스킵 여부</label>
+                                <div className="p-3 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-between h-14">
+                                    <div className="flex flex-col">
+                                        <label htmlFor="skipImageGeneration" className="text-sm font-bold text-white cursor-pointer">
+                                            이미지 생성하지 않음
+                                        </label>
+                                    </div>
+                                    <input 
+                                       type="checkbox" 
+                                       id="skipImageGeneration"
+                                       checked={skipImageGeneration}
+                                       onChange={(e) => setSkipImageGeneration(e.target.checked)}
+                                       className="w-5 h-5 text-indigo-600 bg-slate-900 border-slate-600 rounded focus:ring-indigo-500 cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Image Count Selection */}
+                            {!skipImageGeneration && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-300 ml-1">🖼️ 이미지 생성 개수 선택</label>
+                                    <div className="relative">
+                                        <select
+                                            value={isAutoImageCount ? 0 : imageCount}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value, 10);
+                                                setIsAutoImageCount(val === 0);
+                                                setImageCount(val);
+                                            }}
+                                            className="w-full bg-slate-800 text-white border border-slate-700 rounded-xl px-4 py-3 appearance-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm font-bold h-14"
+                                        >
+                                            {[
+                                                { label: 'AI추천', value: 0 },
+                                                { label: '1개', value: 1 },
+                                                { label: '3개', value: 3 },
+                                                { label: '5개', value: 5 },
+                                                { label: '10개', value: 10 }
+                                            ].map((opt) => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 ml-1">AI추천은 본문 길이에 맞춰 적절한 개수를 생성합니다.</p>
+                                </div>
+                            )}
+                            
+                            {/* Smart Image Mode (Reviews Only) */}
+                            {!skipImageGeneration && blogCategory?.includes('리뷰') && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-300 ml-1 mb-2">스마트 참고 이미지 기능</label>
+                                    <div className="p-3 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-between h-14">
+                                        <div className="flex flex-col">
+                                            <label htmlFor="smartImageMode" className="text-sm font-bold text-white cursor-pointer group-hover:text-amber-400 transition-colors">
+                                                실사 모드 최적화 적용
+                                            </label>
+                                        </div>
+                                        <input 
+                                           type="checkbox" 
+                                           id="smartImageMode"
+                                           checked={smartImageMode}
+                                           onChange={(e) => setSmartImageMode(e.target.checked)}
+                                           className="w-5 h-5 text-amber-500 bg-slate-900 border-slate-600 rounded focus:ring-amber-500 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        
+                                </>
+                            );
+                        })()}
                     </div>
 
                     {/* Action Area */}

@@ -129,7 +129,7 @@ export const generateBlogIdeas = async (niche: string): Promise<string> => {
       config: {
         temperature: 0.8,
         // thinkingLevel is the correct parameter for Gemini 3 series
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+        thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD }
       }
     }));
 
@@ -293,7 +293,7 @@ export const generateUSP = async (
       contents: { parts },
       config: {
         temperature: 0.7,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+        thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD }
       }
     }));
 
@@ -766,7 +766,7 @@ export const generateOutline = async (
       contents: { parts },
       config: {
         temperature: 0.7,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD },
         tools: [{ googleSearch: {} }]
       }
     }));
@@ -840,10 +840,10 @@ export const generateFullPostStream = async (
       ` : ""}
 
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
-      1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
-      2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI.
-      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI."}
-      4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
+      1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category. Write with deep LSI (Latent Semantic Indexing) keywords related to the main topic.
+      2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI. Do NOT use cliché AI openings like "안녕하세요. 오늘은...".
+      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI. Use engaging transition words (e.g., '무엇보다 중요한 것은', '특히 주목해야 할 점은')."}
+      4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body. Build a logical flow.
       5. **Readability & Formatting**: **CRITICAL**: ${blogCategory?.includes('리뷰') ? (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. However, ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews.") : (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.") }
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
@@ -917,7 +917,8 @@ export const generateFullPostStream = async (
          ? "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters (aim for over 2000 characters if possible). You MUST provide extremely detailed, descriptive, and rich content to reach this substantial length, as high-quality reviews require significant depth." 
          : "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length."}
       4. **No Bullet Points**: DO NOT use markdown bullet points (e.g., "- item") in the body text. Write in full paragraphs.
-      5. **SEO Optimization**: Write the most SEO-optimized post possible. Naturally integrate the main keyword and secondary keywords throughout the text, especially in the first paragraph, subheadings, and conclusion.
+      5. **SEO Optimization (LSI & TF-IDF)**: Write the most SEO-optimized post possible. Naturally integrate the main keyword, secondary keywords, and Latent Semantic Indexing (LSI) terms throughout the text, especially in the first paragraph, subheadings, and conclusion. Use varied vocabulary relevant to the niche to increase topical authority.
+      6. **Dynamic Phrasing**: Avoid repetitive sentence endings (e.g., "~습니다", "~합니다" continuously). Mix ~습니다, ~해요, ~것이죠, ~입니다 to create a lively and natural rhythm.
 
       **TEXT FORMATTING & HIGHLIGHTS (CRITICAL)**:
       You MUST use the following markdown formatting to highlight important keywords, benefits, or emotional phrases. Use them harmoniously and frequently throughout the body text:
@@ -1028,7 +1029,7 @@ export const generateFullPostStream = async (
         contents: { parts },
         config: {
           temperature: 0.7,
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD },
           tools: [{ googleSearch: {} }]
         }
       });
@@ -1055,16 +1056,25 @@ export const generateImagePromptsForPost = async (
   numberOfImages: number = 4, 
   hasReferenceImages: boolean = false, 
   modelName: string = 'gemini-3.1-flash-image-preview',
-  style: string = '기본 스타일'
+  style: string = '기본 스타일',
+  category: string = '',
+  smartImageMode: boolean = true
 ): Promise<ImagePromptRequest[]> => {
   try {
     const ai = getClient();
     const isAuto = numberOfImages === 0;
     const supportsText = modelName === 'gemini-3.1-flash-image-preview';
 
-    const styleInstruction = style === '기본 스타일' 
+    let styleInstruction = style === '기본 스타일' 
       ? '"Modern Professional Infographic" with a clean, high-end aesthetic. Theme: Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".'
       : `Apply the following specific visual style: "${style}". Ensure all images in the set maintain this consistent style.`;
+
+    // Smart Reference Image Mode for Reviews
+    if (category.includes('리뷰') && smartImageMode) {
+      styleInstruction = style === '기본 스타일' || style === '실사/사진' 
+        ? '"Photorealistic Review Image", "Shot on iPhone 15 Pro", "Raw Photo", "Highly Detailed", "Real Life Experience", "Authentic Consumer Review Photo". Focus on extreme photorealism, natural lighting, and completely realistic textures to simulate an authentic user-taken review photo.'
+        : styleInstruction + ' (Note: User chose a specific artistic style for a review, so blend it slightly with authenticity but maintain the artistic style.)';
+    }
 
     const textRules = supportsText ? `
     **STRICT TEXT RULES (KOREAN ONLY - CRITICAL)**:
@@ -1117,7 +1127,7 @@ export const generateImagePromptsForPost = async (
     contents: prompt,
     config: {
       temperature: 0.7,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -1146,15 +1156,24 @@ export const generateThumbnailPrompt = async (
   keyword: string, 
   content: string, 
   modelName: string = 'gemini-3.1-flash-image-preview',
-  style: string = '기본 스타일'
+  style: string = '기본 스타일',
+  category: string = '',
+  smartImageMode: boolean = true
 ): Promise<string> => {
   try {
     const ai = getClient();
     const supportsText = modelName === 'gemini-3.1-flash-image-preview';
     
-    const styleInstruction = style === '기본 스타일'
+    let styleInstruction = style === '기본 스타일'
       ? '"Viral YouTube Thumbnail", "High-End Brand Identity".'
       : `Apply the following specific visual style: "${style}".`;
+      
+    // Smart Reference Image Mode for Reviews
+    if (category.includes('리뷰') && smartImageMode) {
+      styleInstruction = style === '기본 스타일' || style === '실사/사진' 
+        ? '"Photorealistic Review Thumbnail", "Shot on iPhone 15 Pro", "Bokeh effect", "Real Life Experience", "Authentic Consumer Review Photo". Focus on extreme photorealism.'
+        : styleInstruction;
+    }
 
     const textRequirements = supportsText ? `
       **TEXT REQUIREMENTS (CRITICAL)**:
