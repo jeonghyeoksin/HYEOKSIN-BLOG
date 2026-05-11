@@ -100,7 +100,7 @@ export const ContentWriter: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [imageCount, setImageCount] = useState<number>(4);
   const [isAutoImageCount, setIsAutoImageCount] = useState<boolean>(true);
-  const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview');
+  const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview-no-text');
   const [selectedImageStyle, setSelectedImageStyle] = useState<string>('기본 스타일');
   const [wordCount, setWordCount] = useState<string>('1500자~2000자 (추천)');
 

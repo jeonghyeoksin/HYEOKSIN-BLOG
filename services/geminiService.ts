@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentResponse, Type, Part, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type, Part } from "@google/genai";
 import { KeywordSuggestion } from "../types";
 
 // --- Helper: Fetch Naver Data ---
@@ -127,9 +127,7 @@ export const generateBlogIdeas = async (niche: string): Promise<string> => {
       model: TEXT_MODEL,
       contents: prompt,
       config: {
-        temperature: 0.8,
-        // thinkingLevel is the correct parameter for Gemini 3 series
-        thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD }
+        temperature: 0.8
       }
     }));
 
@@ -292,8 +290,7 @@ export const generateUSP = async (
       model: TEXT_MODEL,
       contents: { parts },
       config: {
-        temperature: 0.7,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD }
+        temperature: 0.7
       }
     }));
 
@@ -404,7 +401,7 @@ export const generateTitleStream = async (
       ${fileParts && fileParts.length > 0 ? "Use the information from the attached reference files to create a highly relevant and grounded title." : ""}
       
       **GEO & SEO GUIDELINES (STRICT)**:
-      1. **MANDATORY KEYWORD PLACEMENT**: The target keyword "${keyword}" MUST be the **absolute first word** of the title. DO NOT put anything before it. (e.g., "${keyword}: ...", "${keyword} ...")
+      ${blogCategory?.includes('리뷰') ? `1. **NATURAL REVIEW TITLE (CRITICAL)**: The title MUST read like a genuine, compelling personal review written by a human. Blend the keyword "${keyword}" and the store/service name "${storeName || ''}" naturally into a conversational phrase. DO NOT force the keyword to be the absolute first word if it sounds robotic. Make it sound authentic.` : `1. **MANDATORY KEYWORD PLACEMENT**: The target keyword "${keyword}" MUST be the **absolute first word** of the title. DO NOT put anything before it. (e.g., "${keyword}: ...", "${keyword} ...")`}
       2. **SEARCH ENGINE OPTIMIZATION (SEO)**: The title must be highly optimized for search engines (Naver, Google). Use high-intent phrasing that matches what users actually search for.
       3. **GEO (Generative Engine Optimization)**: Use clear, authoritative, and structured phrasing that AI search engines (like Gemini, Perplexity) can easily index and cite.
       4. **HOME FEED STRATEGY**: The title must be emotionally stimulating and highly engaging to attract clicks from home feeds and discovery sections.
@@ -468,7 +465,7 @@ export const generateTitle = async (
       ${fileParts && fileParts.length > 0 ? "Use the information from the attached reference files to create highly relevant and grounded titles." : ""}
       
       **GEO & SEO GUIDELINES**:
-      ${blogCategory?.includes('리뷰') ? `1. **Keyword & Store Name Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title, and the store name "${storeName || ''}" MUST be placed at the very end of the title. (e.g., "${keyword} ... ${storeName || ''}")` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
+      ${blogCategory?.includes('리뷰') ? `1. **Natural Review Title Strategy (CRITICAL)**: The title MUST read like a genuine, persuasive personal review written by a real human. Blend the keyword "${keyword}" and the store/service name "${storeName || ''}" naturally into a conversational or experiential title. Do NOT use robotic formats where the keyword is just tacked on at the front. It should sound like a real person's review (e.g., "직접 가본 [StoreName], [Keyword] 맛집 인정하는 이유").` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
       ${(blogCategory === '맛집 리뷰' || blogCategory === '카페 리뷰') ? `2. **Enticing Titles**: For Restaurant/Cafe reviews, the titles MUST be exceptionally enticing, making readers feel a strong desire to visit. Use evocative adjectives and clear benefits.` : `2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).`}
       3. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
       4. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
@@ -766,7 +763,6 @@ export const generateOutline = async (
       contents: { parts },
       config: {
         temperature: 0.7,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD },
         tools: [{ googleSearch: {} }]
       }
     }));
@@ -841,8 +837,8 @@ export const generateFullPostStream = async (
 
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category. Write with deep LSI (Latent Semantic Indexing) keywords related to the main topic.
-      2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. Avoid sounding like a generic AI. Do NOT use cliché AI openings like "안녕하세요. 오늘은...".
-      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI. Use engaging transition words (e.g., '무엇보다 중요한 것은', '특히 주목해야 할 점은')."}
+      2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. ${blogCategory?.includes('리뷰') ? "Write exactly like a real person writing a personal blog review. Build a natural structure: hook the reader, share authentic feelings, give honest pros and cons, and sound conversational. Do not use awkward AI-like structures." : "Avoid sounding like a generic AI. Do NOT use cliché AI openings like '안녕하세요. 오늘은...'. "}
+      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Start the intro naturally, sharing a personal reason for visiting or using the product. Maintain an authentic, experiential tone (e.g., '~했어요', '~더라고요') from a visitor's perspective. Avoid formal or mechanical phrasing." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI. Use engaging transition words (e.g., '무엇보다 중요한 것은', '특히 주목해야 할 점은')."}
       4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body. Build a logical flow.
       5. **Readability & Formatting**: **CRITICAL**: ${blogCategory?.includes('리뷰') ? (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. However, ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews.") : (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.") }
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
@@ -1029,7 +1025,6 @@ export const generateFullPostStream = async (
         contents: { parts },
         config: {
           temperature: 0.7,
-          thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD },
           tools: [{ googleSearch: {} }]
         }
       });
@@ -1127,7 +1122,6 @@ export const generateImagePromptsForPost = async (
     contents: prompt,
     config: {
       temperature: 0.7,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.STANDARD },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
