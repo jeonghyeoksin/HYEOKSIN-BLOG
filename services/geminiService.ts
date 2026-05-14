@@ -181,20 +181,18 @@ export const generateUSPStream = async (
       ${fileParts && fileParts.length > 0 ? "- Attached Reference Files: Provided (PDF, DOCX). These are the PRIMARY SOURCE of information for this blog post." : ""}
       ${crawledText ? `- Referenced Crawled Content: Provided (Web Crawled Content). Use this as a key reference for the USP strategy.\n--- START CRAWLED CONTENT ---\n${crawledText}\n--- END CRAWLED CONTENT ---\n` : ""}
 
-      **Task**:
-      Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
-      1. **Customer Inquiries** (Lead Generation)
-      2. **Brand Trust** (Authority)
-      3. **Search Visibility** (SEO/GEO)
+      Task:
+      Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. Focus EXCLUSIVELY on Keyword Discovery and Strategy Formulation. Do NOT write the blog post intro, outro, or general conversation.
       
-      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026. ${fileParts && fileParts.length > 0 ? "If reference files are provided, the USP must be deeply rooted in their content and facts." : ""}
-
+      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026. This prompt runs "initialized per task", so provide ONLY the core Keyword Strategy and USP.
+      
       **Output Requirements**:
+      - Focus strictly on "Keyword Discovery (키워드 발굴)" and "Strategy Formulation (전략 수립)".
       - Identify the core pain point of the target audience related to the topic.
       ${storeName || salesService ? '- Explain how this specific brand/service solves it better than others.' : '- If brand/service information is missing, focus on the core value of the topic and the reader\'s needs.'}
       - Use the suggested keywords to refine the USP's focus and relevance.
       - **Tone Alignment**: The USP and strategy must be consistent with the professional and stylistic expectations of the "${blogCategory}" and "${topic}".
-      - Return ONLY the USP text (1-2 sentences). No labels or explanations.
+      - Return ONLY the strategic text (1-3 sentences) focused on keywords and strategy. No labels like "USP:" or explanations.
       - Korean language.
     `;
 
@@ -266,18 +264,17 @@ export const generateUSP = async (
       ${fileParts && fileParts.length > 0 ? "- Attached Reference Files: Provided (PDF, DOCX). These are the PRIMARY SOURCE of information for this blog post." : ""}
       ${crawledText ? `- Referenced Crawled Content: Provided (Web Crawled Content). Use this as a key reference for the USP strategy.\n--- START CRAWLED CONTENT ---\n${crawledText}\n--- END CRAWLED CONTENT ---\n` : ""}
 
-      **Task**:
-      Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. It must maximize the probability of:
-      1. **Customer Inquiries** (Lead Generation)
-      2. **Sales Conversion** (Purchase)
+      Task:
+      Deduce a powerful **USP (Unique Selling Proposition)** and **Content Strategy** that is highly optimized for the specified Blog Category and Platform. Focus EXCLUSIVELY on Keyword Discovery and Strategy Formulation. Do NOT write the blog post intro, outro, or general conversation.
       
-      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026. ${fileParts && fileParts.length > 0 ? "If reference files are provided, the USP must be deeply rooted in their content and facts." : ""}
-
+      **CRITICAL REQUIREMENT**: You MUST base your strategy and USP on the latest trends, technologies, and market information as of the year 2026. This prompt runs "initialized per task", so provide ONLY the core Keyword Strategy and USP.
+      
       **Output Requirements**:
+      - Focus strictly on "Keyword Discovery (키워드 발굴)" and "Strategy Formulation (전략 수립)".
       - Identify the core pain point of the target audience related to the topic.
       ${storeName || salesService ? '- Explain how this specific brand/service solves it better than others.' : '- If brand/service information is missing, focus on the core value of the topic and the reader\'s needs.'}
       - Formulate a specific "Goal of the Post" that acts as a strategic guideline for the writer.
-      - **Format**: Just return the strategic paragraph (approx 3-4 lines) that describes the selling point and the goal. Do not use bullet points.
+      - **Format**: Just return the strategic paragraph (approx 3-4 lines) that describes the selling point, keywords, and the goal. Do not use bullet points. No conversational filler.
       - **Language**: Korean.
     `;
 

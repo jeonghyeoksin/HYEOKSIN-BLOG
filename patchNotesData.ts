@@ -2,6 +2,17 @@ import { PatchNote } from './types';
 
 export const patchNotes: PatchNote[] = [
   {
+    version: '1.2.9',
+    date: '2026-05-14',
+    title: '키워드 발굴 정밀도 향상 및 새 작업 초기화 기능 추가',
+    type: 'feature',
+    changes: [
+      '새로운 포스팅 작업을 위해 모든 설정값을 한 번에 비워주는 "새 작업 시작 (초기화)" 버튼을 추가했습니다.',
+      '1단계 USP 및 전략 도출 과정에서 일반적인 대화문이나 본문 내용이 출력되지 않도록 프롬프트 지시어를 엄격하게 분리했습니다.',
+      '최신 Gemini API SDK와의 호환성 문제(Thinking Level 속성 제어)를 해결하여 엔진의 생성 안정성을 높였습니다.'
+    ]
+  },
+  {
     version: '1.2.8',
     date: '2026-05-10',
     title: 'AI 퀄리티 최적화 및 SEO 고도화 도입',

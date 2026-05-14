@@ -668,6 +668,48 @@ export const ContentWriter: React.FC = () => {
       return;
   };
 
+  const handleResetAll = () => {
+      if (confirm("모든 설정과 진행 상황을 초기화하시겠습니까?")) {
+          setTopic('');
+          setBlogStyle('');
+          setBlogCategory('');
+          setBlogPlatform('네이버');
+          setStoreName('');
+          setSalesService('');
+          setPostGoal('');
+          setReferenceNote('');
+          setMustIncludeContent('');
+          setBenchmarkingText('');
+          setServicePriceText('');
+          setReferenceUrl('');
+          setTargetAudience('');
+          setSecondaryKeywords('');
+          setCta('');
+          setFaq('');
+          setIncludeFaq(false);
+          setSkipImageGeneration(false);
+          setSmartImageMode(true);
+          setImageCount(4);
+          setIsAutoImageCount(true);
+          setSelectedImageModel('gemini-3.1-flash-image-preview-no-text');
+          setSelectedImageStyle('기본 스타일');
+          setWordCount('1500자~2000자 (추천)');
+          setKeywords([]);
+          setTitleOptions([]);
+          setSelectedTitle('');
+          setOutline('');
+          setContent('');
+          setImagePrompts([]);
+          setGeneratedImages([]);
+          setThumbnail(null);
+          setThumbnailPrompt('');
+          setHashtags('');
+          setLaunderedImages([]);
+          setCurrentStep('keyword');
+          localStorage.removeItem(LOCAL_STORAGE_KEY);
+      }
+  };
+
   const handleDiscoverKeywords = async () => {
     if (!topic) {
       alert("블로그 주제를 먼저 입력해주세요.");
@@ -951,9 +993,15 @@ export const ContentWriter: React.FC = () => {
                 {/* Step 1: Keyword & Inputs */}
                 {currentStep === 'keyword' && (
                   <div className="space-y-10 pb-24 animate-fade-in">
-                    <div className="text-center space-y-4">
+                    <div className="text-center space-y-4 relative">
                         <h2 className="text-3xl font-bold text-white">키워드 발굴 & 전략 수립</h2>
                         <p className="text-slate-400">어떤 주제로 포스팅을 작성할까요?</p>
+                        <button 
+                            onClick={handleResetAll} 
+                            className="absolute right-0 top-0 px-4 py-2 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 rounded-lg text-sm font-bold transition-colors border border-rose-600/30 flex items-center gap-2"
+                        >
+                            <span>🔄</span> 새 작업 시작 (초기화)
+                        </button>
                     </div>
 
                     <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl backdrop-blur-sm">
