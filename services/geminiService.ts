@@ -1073,19 +1073,19 @@ export const generateImagePromptsForPost = async (
     }
 
     const textRules = supportsText ? `
-    **STRICT TEXT RULES (KOREAN ONLY - CRITICAL)**:
-    1. **Text Strategy**: Image generation models frequently struggle with long Korean phrases (causing text corruption/깨짐). To completely prevent this in Infographics:
-    2. **Length Limit**: Any Korean text **MUST be limited to 1-2 words (MAXIMUM 2 to 6 syllables in total per line)**. Use short, punchy noun keywords (e.g., "핵심", "분석 결과", "성공 패턴", "매출 상승").
+    **STRICT INFOGRAPHIC TEXT RULES (KOREAN ONLY - CRITICAL)**:
+    1. **Content Relevance**: You MUST extract the core message directly from the provided blog content snippet. The text you generate must reflect the actual body content perfectly.
+    2. **Length Limit (ANTI-CORRUPTION)**: Image generation models frequently struggle with Korean phrases, causing severe text corruption (텍스트 깨짐). To absolutely prevent this, the Korean text MUST be condensed to an **ultra-short, punchy keyword of 1~3 syllables MAXIMUM per line** (e.g., "핵심", "결과", "해결책", "비법"). Do not use long words or full sentences.
     3. **Structure**: 
-       - Line 1: Ultra-short Keyword (e.g., "문제점").
-       - Line 2 (Optional): Ultra-short Value (e.g., "해결!").
-    4. **Legibility**: Use massive, bold "Pretendard" font. Perfect spelling is absolute priority. Do not write full sentences.
+       - Main Element: One giant, ultra-short Keyword extracted from the content (e.g., "매출").
+       - Sub Element (Optional): One ultra-short complementary word (e.g., "상승!").
+    4. **Legibility**: Use massive, bold "Pretendard" font. Perfect spelling is absolute priority!
     5. **NO ENGLISH**: **DO NOT include any English text**.
     6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
 
     **Prompt Format (English)**:
-    - Detailed visual description.
-    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Short Keyword]' in a massive, bold Sans-serif font at the center. No other text."
+    - Detailed visual description of the infographic (charts, data points, icons).
+    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Ultra-Short Content Keyword]' in a massive, bold Sans-serif font at the center. No other text."
     ` : `
     **STRICT TEXT RULES**:
     - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
@@ -1177,16 +1177,16 @@ export const generateThumbnailPrompt = async (
     const textRequirements = supportsText ? `
       **TEXT REQUIREMENTS (CRITICAL TO PREVENT CORRUPTION)**:
       - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**.
-      - **Main Text**: The blog topic or keyword MUST be dramatically summarized.
-      - **Length Limit**: To absolutely prevent Korean text corruption (깨짐), you MUST limit the text to **MAXIMUM 2-4 words per line** (e.g., "블로그 필수 전략!", "매출 10배 비법", "핵심 노하우").
+      - **Content Relevance**: The text MUST be derived from the blog topic or keyword, providing a highly relevant summary.
+      - **Length Limit**: To absolutely prevent Korean text corruption (깨짐), you MUST severely limit the text to **MAXIMUM 1-3 syllables per line** (e.g., "성공!", "매출", "핵심", "필독"). Any phrase longer than this WILL corrupt.
       - **Structure**: Center the main text. Maximum 2 lines. Do not use full sentences.
       - **Font**: You MUST explicitly command the image model to use the **Pretendard** font.
-      - **Positioning**: The text MUST be **perfectly centered** in the image, large, and high-contrast.
-      - **Accuracy**: If the keyword is too long, **summarize it into 2-3 syllables**. Short text guarantees no spelling errors.
+      - **Positioning**: The text MUST be **perfectly centered** in the image, massive, and high-contrast.
+      - **Accuracy**: Compress the keyword into 1-3 syllables. Short text guarantees no spelling errors.
       - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
       
       The output prompt must be in English.
-      Example: "A cinematic 3D render of [Subject]. Center stage: The Korean text '성공 비결' in massive, glowing gold characters using the Pretendard font, perfectly centered. Below it, a smaller white Korean text reading '필독!' adds context. Background is a deep, rich gradient with floating particles."
+      Example: "A cinematic 3D render of [Subject representing the content]. Center stage: The Korean text '핵심' in a massive, glowing gold font using Pretendard, perfectly centered. Below it, a smaller white Korean text reading '공개!' adds context. Background is a deep, rich gradient with floating particles."
     ` : `
       **TEXT REQUIREMENTS**:
       - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
