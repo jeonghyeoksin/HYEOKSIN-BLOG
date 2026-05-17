@@ -1,10 +1,17 @@
-import { GoogleGenAI, GenerateContentResponse, Type, Part } from "@google/genai";
+import {
+  GoogleGenAI,
+  GenerateContentResponse,
+  Type,
+  Part,
+} from "@google/genai";
 import { KeywordSuggestion } from "../types";
 
 // --- Helper: Fetch Naver Data ---
 async function fetchNaverLocalData(query: string): Promise<string | null> {
   try {
-    const res = await fetch(`/api/naver/local?query=${encodeURIComponent(query)}`);
+    const res = await fetch(
+      `/api/naver/local?query=${encodeURIComponent(query)}`,
+    );
     if (!res.ok) return null;
     const data = await res.json();
     if (data && data.items && data.items.length > 0) {
@@ -18,29 +25,41 @@ async function fetchNaverLocalData(query: string): Promise<string | null> {
 }
 
 // --- Helper: withRetry for robust API calls ---
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, minDelay = 10000, maxDelay = 30000, timeoutMs = 60000): Promise<T> {
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  minDelay = 10000,
+  maxDelay = 30000,
+  timeoutMs = 60000,
+): Promise<T> {
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
     try {
       // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("API 호출 시간 초과 (Timeout)")), timeoutMs)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("API 호출 시간 초과 (Timeout)")),
+          timeoutMs,
+        ),
       );
 
       // Race the actual function against the timeout
-      return await Promise.race([fn(), timeoutPromise]) as T;
+      return (await Promise.race([fn(), timeoutPromise])) as T;
     } catch (error: any) {
       lastError = error;
       const errorMessage = (error.message || "").toLowerCase();
-      
+
       // If it's a timeout, we might want to retry as well if it's not the last attempt
-      const isTimeout = errorMessage.includes("timeout") || errorMessage.includes("시간 초과") || errorMessage.includes("deadline exceeded");
+      const isTimeout =
+        errorMessage.includes("timeout") ||
+        errorMessage.includes("시간 초과") ||
+        errorMessage.includes("deadline exceeded");
 
       // 503 (Overloaded), 429 (Quota), and other transient errors are retryable
-      const isRetryable = 
+      const isRetryable =
         isTimeout ||
-        errorMessage.includes("503") || 
-        errorMessage.includes("overloaded") || 
+        errorMessage.includes("503") ||
+        errorMessage.includes("overloaded") ||
         errorMessage.includes("수요가 급증") ||
         errorMessage.includes("429") ||
         errorMessage.includes("resource_exhausted") ||
@@ -53,15 +72,18 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, minDelay = 100
         errorMessage.includes("504") ||
         errorMessage.includes("deadline exceeded") ||
         errorMessage.includes("transient");
-      
+
       if (!isRetryable || i === maxRetries - 1) {
         throw error;
       }
-      
+
       // Wait for a random delay between minDelay and maxDelay
       const delay = Math.random() * (maxDelay - minDelay) + minDelay;
-      console.warn(`Gemini API call failed (attempt ${i + 1}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`, error);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      console.warn(
+        `Gemini API call failed (attempt ${i + 1}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`,
+        error,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   throw lastError;
@@ -69,13 +91,18 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, minDelay = 100
 
 const getClient = () => {
   // 1. 로컬 저장소에서 사용자가 직접 입력한 키가 있는지 먼저 확인합니다.
-  const localKey = typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') : null;
-  
+  const localKey =
+    typeof window !== "undefined"
+      ? localStorage.getItem("gemini_api_key")
+      : null;
+
   // 2. 로컬 키가 없으면 플랫폼에서 주입한 GEMINI_API_KEY를 사용합니다.
   let apiKey = localKey || process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    throw new Error("API 키가 설정되지 않았습니다. API Key 설정을 완료해주세요.");
+    throw new Error(
+      "API 키가 설정되지 않았습니다. API Key 설정을 완료해주세요.",
+    );
   }
 
   // Header value sanitization: Remove any non-ISO-8859-1 characters and whitespace
@@ -83,28 +110,41 @@ const getClient = () => {
   apiKey = apiKey.trim().replace(/[^\x00-\xff]/g, "");
 
   if (!apiKey) {
-    throw new Error("유효하지 않은 API 키 형식입니다. 올바른 키를 입력해주세요.");
+    throw new Error(
+      "유효하지 않은 API 키 형식입니다. 올바른 키를 입력해주세요.",
+    );
   }
 
   return new GoogleGenAI({ apiKey });
 };
 
 // Gemini 3 Flash Preview for High Availability, Speed & Higher Quota
-const TEXT_MODEL = 'gemini-3-flash-preview';
+const TEXT_MODEL = "gemini-3-flash-preview";
 // Gemini 3 Pro Image Preview for High-Quality Image Generation
-const IMAGE_MODEL = 'gemini-3-pro-image-preview';
+const IMAGE_MODEL = "gemini-3-pro-image-preview";
 
 const handleApiError = (error: any, fallbackMessage: string): string => {
   console.error("Gemini API Error:", error);
   const errorMessage = (error.message || "").toLowerCase();
 
-  if (errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("resource_exhausted")) {
+  if (
+    errorMessage.includes("429") ||
+    errorMessage.includes("quota") ||
+    errorMessage.includes("resource_exhausted")
+  ) {
     return "API 사용량이 일일 할당량을 초과했습니다. 잠시 후 다시 시도하거나 다른 API 키를 사용해 주세요.";
   }
-  if (errorMessage.includes("503") || errorMessage.includes("unavailable") || errorMessage.includes("overloaded")) {
+  if (
+    errorMessage.includes("503") ||
+    errorMessage.includes("unavailable") ||
+    errorMessage.includes("overloaded")
+  ) {
     return "현재 AI 모델의 수요가 급증하여 일시적으로 서비스를 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.";
   }
-  if (errorMessage.includes("entity was not found") || errorMessage.includes("api_key_invalid")) {
+  if (
+    errorMessage.includes("entity was not found") ||
+    errorMessage.includes("api_key_invalid")
+  ) {
     return "API 키가 올바르지 않거나 권한이 없습니다. 상단 'API Key 설정'에서 키를 다시 확인해주세요.";
   }
   return `${fallbackMessage}: ${error.message || "알 수 없는 오류"}`;
@@ -113,7 +153,7 @@ const handleApiError = (error: any, fallbackMessage: string): string => {
 export const generateBlogIdeas = async (niche: string): Promise<string> => {
   try {
     const ai = getClient();
-    
+
     const prompt = `
       You are a professional blog strategist.
       Generate 5 innovative and viral blog post ideas for the niche: "${niche}".
@@ -123,13 +163,15 @@ export const generateBlogIdeas = async (niche: string): Promise<string> => {
       Korean language only.
     `;
 
-    const response = await withRetry(() => ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: prompt,
-      config: {
-        temperature: 0.8
-      }
-    }));
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+        config: {
+          temperature: 0.8,
+        },
+      }),
+    );
 
     return response.text || "아이디어를 생성할 수 없습니다.";
   } catch (error: any) {
@@ -153,8 +195,8 @@ export const generateUSPStream = async (
     referenceNote?: string;
     mustIncludeContent?: string;
   },
-  fileParts?: { data: string, mimeType: string }[],
-  crawledText?: string
+  fileParts?: { data: string; mimeType: string }[],
+  crawledText?: string,
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -171,7 +213,7 @@ export const generateUSPStream = async (
       ${blogPlatform ? `- Blog Platform: "${blogPlatform}"` : ""}
       ${storeName ? `- Brand/Store Name: "${storeName}"` : ""}
       ${salesService ? `- Sales Service/Product: "${salesService}"` : ""}
-      ${suggestedKeywords && suggestedKeywords.length > 0 ? `- Suggested Keywords: ${suggestedKeywords.join(', ')}` : ""}
+      ${suggestedKeywords && suggestedKeywords.length > 0 ? `- Suggested Keywords: ${suggestedKeywords.join(", ")}` : ""}
       ${advancedInputs?.targetAudience ? `- Target Audience: "${advancedInputs.targetAudience}"` : ""}
       ${advancedInputs?.secondaryKeywords ? `- Secondary Keywords: "${advancedInputs.secondaryKeywords}"` : ""}
       ${advancedInputs?.cta ? `- CTA / Contact: "${advancedInputs.cta}"` : ""}
@@ -189,7 +231,7 @@ export const generateUSPStream = async (
       **Output Requirements**:
       - Focus strictly on "Keyword Discovery (키워드 발굴)" and "Strategy Formulation (전략 수립)".
       - Identify the core pain point of the target audience related to the topic.
-      ${storeName || salesService ? '- Explain how this specific brand/service solves it better than others.' : '- If brand/service information is missing, focus on the core value of the topic and the reader\'s needs.'}
+      ${storeName || salesService ? "- Explain how this specific brand/service solves it better than others." : "- If brand/service information is missing, focus on the core value of the topic and the reader's needs."}
       - Use the suggested keywords to refine the USP's focus and relevance.
       - **Tone Alignment**: The USP and strategy must be consistent with the professional and stylistic expectations of the "${blogCategory}" and "${topic}".
       - Return ONLY the strategic text (1-3 sentences) focused on keywords and strategy. No labels like "USP:" or explanations.
@@ -198,15 +240,17 @@ export const generateUSPStream = async (
 
     const parts: Part[] = [{ text: prompt }];
     if (fileParts && fileParts.length > 0) {
-        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+      fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
-    const response = await withRetry(() => ai.models.generateContentStream({
-      model: TEXT_MODEL,
-      contents: { parts },
-    }));
+    const response = await withRetry(() =>
+      ai.models.generateContentStream({
+        model: TEXT_MODEL,
+        contents: { parts },
+      }),
+    );
 
-    let fullText = '';
+    let fullText = "";
     for await (const chunk of response) {
       const text = chunk.text;
       if (text) {
@@ -236,8 +280,8 @@ export const generateUSP = async (
     referenceNote?: string;
     mustIncludeContent?: string;
   },
-  fileParts?: { data: string, mimeType: string }[],
-  crawledText?: string
+  fileParts?: { data: string; mimeType: string }[],
+  crawledText?: string,
 ): Promise<string> => {
   try {
     const ai = getClient();
@@ -254,7 +298,7 @@ export const generateUSP = async (
       ${blogPlatform ? `- Blog Platform: "${blogPlatform}"` : ""}
       ${storeName ? `- Brand/Store Name: "${storeName}"` : ""}
       ${salesService ? `- Sales Service/Product: "${salesService}"` : ""}
-      ${suggestedKeywords && suggestedKeywords.length > 0 ? `- Suggested Keywords: ${suggestedKeywords.join(', ')}` : ""}
+      ${suggestedKeywords && suggestedKeywords.length > 0 ? `- Suggested Keywords: ${suggestedKeywords.join(", ")}` : ""}
       ${advancedInputs?.targetAudience ? `- Target Audience: "${advancedInputs.targetAudience}"` : ""}
       ${advancedInputs?.secondaryKeywords ? `- Secondary Keywords: "${advancedInputs.secondaryKeywords}"` : ""}
       ${advancedInputs?.cta ? `- CTA / Contact: "${advancedInputs.cta}"` : ""}
@@ -272,7 +316,7 @@ export const generateUSP = async (
       **Output Requirements**:
       - Focus strictly on "Keyword Discovery (키워드 발굴)" and "Strategy Formulation (전략 수립)".
       - Identify the core pain point of the target audience related to the topic.
-      ${storeName || salesService ? '- Explain how this specific brand/service solves it better than others.' : '- If brand/service information is missing, focus on the core value of the topic and the reader\'s needs.'}
+      ${storeName || salesService ? "- Explain how this specific brand/service solves it better than others." : "- If brand/service information is missing, focus on the core value of the topic and the reader's needs."}
       - Formulate a specific "Goal of the Post" that acts as a strategic guideline for the writer.
       - **Format**: Just return the strategic paragraph (approx 3-4 lines) that describes the selling point, keywords, and the goal. Do not use bullet points. No conversational filler.
       - **Language**: Korean.
@@ -280,16 +324,18 @@ export const generateUSP = async (
 
     const parts: Part[] = [{ text: prompt }];
     if (fileParts && fileParts.length > 0) {
-        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+      fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
-    const response = await withRetry(() => ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: { parts },
-      config: {
-        temperature: 0.7
-      }
-    }));
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: { parts },
+        config: {
+          temperature: 0.7,
+        },
+      }),
+    );
 
     return response.text || "전략을 도출할 수 없습니다.";
   } catch (error: any) {
@@ -298,18 +344,18 @@ export const generateUSP = async (
 };
 
 export const suggestRelatedKeywords = async (
-  baseTopic: string, 
+  baseTopic: string,
   storeName?: string,
   salesService?: string,
   postGoal?: string,
-  fileParts?: { data: string, mimeType: string }[],
+  fileParts?: { data: string; mimeType: string }[],
   referenceNote?: string,
   blogCategory?: string,
-  blogPlatform?: string
+  blogPlatform?: string,
 ): Promise<KeywordSuggestion[]> => {
   try {
     const ai = getClient();
-    
+
     const promptText = `
       Topic: "${baseTopic}"
       ${blogCategory ? `Blog Category: "${blogCategory}"` : ""}
@@ -336,28 +382,30 @@ export const suggestRelatedKeywords = async (
 
     const parts: Part[] = [{ text: promptText }];
     if (fileParts && fileParts.length > 0) {
-        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+      fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
-    const response = await withRetry(() => ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              rank: { type: Type.INTEGER },
-              keyword: { type: Type.STRING },
-              suitabilityScore: { type: Type.INTEGER },
-              reason: { type: Type.STRING }
-            }
-          }
-        }
-      }
-    }));
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: { parts },
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                rank: { type: Type.INTEGER },
+                keyword: { type: Type.STRING },
+                suitabilityScore: { type: Type.INTEGER },
+                reason: { type: Type.STRING },
+              },
+            },
+          },
+        },
+      }),
+    );
 
     const text = response.text;
     if (!text) return [];
@@ -365,7 +413,10 @@ export const suggestRelatedKeywords = async (
   } catch (error: any) {
     console.error("Failed to suggest keywords", error);
     // 503 에러 등 심각한 오류는 상위로 던집니다.
-    if (error.message?.includes("503") || error.message?.includes("overloaded")) {
+    if (
+      error.message?.includes("503") ||
+      error.message?.includes("overloaded")
+    ) {
       throw new Error(handleApiError(error, "키워드 추천 실패"));
     }
     return [];
@@ -381,7 +432,7 @@ export const generateTitleStream = async (
   blogCategory?: string,
   blogPlatform?: string,
   storeName?: string,
-  fileParts?: { data: string, mimeType: string }[]
+  fileParts?: { data: string; mimeType: string }[],
 ): Promise<string[]> => {
   try {
     const ai = getClient();
@@ -398,7 +449,7 @@ export const generateTitleStream = async (
       ${fileParts && fileParts.length > 0 ? "Use the information from the attached reference files to create a highly relevant and grounded title." : ""}
       
       **GEO & SEO GUIDELINES (STRICT)**:
-      ${blogCategory?.includes('리뷰') ? `1. **NATURAL REVIEW TITLE (CRITICAL)**: The title MUST read like a genuine, compelling personal review written by a human. Blend the keyword "${keyword}" and the store/service name "${storeName || ''}" naturally into a conversational phrase. DO NOT force the keyword to be the absolute first word if it sounds robotic. Make it sound authentic.` : `1. **MANDATORY KEYWORD PLACEMENT**: The target keyword "${keyword}" MUST be the **absolute first word** of the title. DO NOT put anything before it. (e.g., "${keyword}: ...", "${keyword} ...")`}
+      ${blogCategory?.includes("리뷰") ? `1. **NATURAL REVIEW TITLE (CRITICAL)**: The title MUST read like a genuine, compelling personal review written by a human. Blend the keyword "${keyword}" and the store/service name "${storeName || ""}" naturally into a conversational phrase. DO NOT force the keyword to be the absolute first word if it sounds robotic. Make it sound authentic.` : `1. **MANDATORY KEYWORD PLACEMENT**: The target keyword "${keyword}" MUST be the **absolute first word** of the title. DO NOT put anything before it. (e.g., "${keyword}: ...", "${keyword} ...")`}
       2. **SEARCH ENGINE OPTIMIZATION (SEO)**: The title must be highly optimized for search engines (Naver, Google). Use high-intent phrasing that matches what users actually search for.
       3. **GEO (Generative Engine Optimization)**: Use clear, authoritative, and structured phrasing that AI search engines (like Gemini, Perplexity) can easily index and cite.
       4. **HOME FEED STRATEGY**: The title must be emotionally stimulating and highly engaging to attract clicks from home feeds and discovery sections.
@@ -413,15 +464,17 @@ export const generateTitleStream = async (
 
     const parts: Part[] = [{ text: prompt }];
     if (fileParts && fileParts.length > 0) {
-        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+      fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
-    const response = await withRetry(() => ai.models.generateContentStream({
-      model: TEXT_MODEL,
-      contents: { parts },
-    }));
+    const response = await withRetry(() =>
+      ai.models.generateContentStream({
+        model: TEXT_MODEL,
+        contents: { parts },
+      }),
+    );
 
-    let fullText = '';
+    let fullText = "";
     for await (const chunk of response) {
       const text = chunk.text;
       if (text) {
@@ -429,7 +482,7 @@ export const generateTitleStream = async (
         onTitlesUpdate([fullText.trim()]);
       }
     }
-    
+
     return [fullText.trim()];
   } catch (error) {
     console.error("Error generating titles stream:", error);
@@ -445,7 +498,7 @@ export const generateTitle = async (
   blogCategory?: string,
   blogPlatform?: string,
   storeName?: string,
-  fileParts?: { data: string, mimeType: string }[]
+  fileParts?: { data: string; mimeType: string }[],
 ): Promise<string[]> => {
   try {
     const ai = getClient();
@@ -462,8 +515,8 @@ export const generateTitle = async (
       ${fileParts && fileParts.length > 0 ? "Use the information from the attached reference files to create highly relevant and grounded titles." : ""}
       
       **GEO & SEO GUIDELINES**:
-      ${blogCategory?.includes('리뷰') ? `1. **Natural Review Title Strategy (CRITICAL)**: The title MUST read like a genuine, persuasive personal review written by a real human. Blend the keyword "${keyword}" and the store/service name "${storeName || ''}" naturally into a conversational or experiential title. Do NOT use robotic formats where the keyword is just tacked on at the front. It should sound like a real person's review (e.g., "직접 가본 [StoreName], [Keyword] 맛집 인정하는 이유").` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
-      ${(blogCategory === '맛집 리뷰' || blogCategory === '카페 리뷰') ? `2. **Enticing Titles**: For Restaurant/Cafe reviews, the titles MUST be exceptionally enticing, making readers feel a strong desire to visit. Use evocative adjectives and clear benefits.` : `2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).`}
+      ${blogCategory?.includes("리뷰") ? `1. **Natural Review Title Strategy (CRITICAL)**: The title MUST read like a genuine, persuasive personal review written by a real human. Blend the keyword "${keyword}" and the store/service name "${storeName || ""}" naturally into a conversational or experiential title. Do NOT use robotic formats where the keyword is just tacked on at the front. It should sound like a real person's review (e.g., "직접 가본 [StoreName], [Keyword] 맛집 인정하는 이유").` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
+      ${blogCategory === "맛집 리뷰" || blogCategory === "카페 리뷰" ? `2. **Enticing Titles**: For Restaurant/Cafe reviews, the titles MUST be exceptionally enticing, making readers feel a strong desire to visit. Use evocative adjectives and clear benefits.` : `2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).`}
       3. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
       4. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
       5. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
@@ -476,18 +529,20 @@ export const generateTitle = async (
 
     const parts: Part[] = [{ text: prompt }];
     if (fileParts && fileParts.length > 0) {
-        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+      fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
-    const response = await withRetry(() => ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: { parts },
-      config: {
-        temperature: 0.8,
-        responseMimeType: "application/json",
-      }
-    }));
-    
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: { parts },
+        config: {
+          temperature: 0.8,
+          responseMimeType: "application/json",
+        },
+      }),
+    );
+
     const text = response.text?.trim() || "[]";
     try {
       const titles = JSON.parse(text);
@@ -508,26 +563,27 @@ export const extractTextFromUrl = async (url: string): Promise<string> => {
   try {
     let targetUrl = url;
     try {
-        if (url.includes('blog.naver.com')) {
-            const match = url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/([0-9]+)/);
-            if (match) {
-                targetUrl = `https://m.blog.naver.com/${match[1]}/${match[2]}`;
-            } else {
-                const urlObj = new URL(url);
-                const blogId = urlObj.searchParams.get('blogId');
-                const logNo = urlObj.searchParams.get('logNo');
-                if (blogId && logNo) {
-                    targetUrl = `https://m.blog.naver.com/${blogId}/${logNo}`;
-                }
-            }
+      if (url.includes("blog.naver.com")) {
+        const match = url.match(/blog\.naver\.com\/([a-zA-Z0-9_-]+)\/([0-9]+)/);
+        if (match) {
+          targetUrl = `https://m.blog.naver.com/${match[1]}/${match[2]}`;
+        } else {
+          const urlObj = new URL(url);
+          const blogId = urlObj.searchParams.get("blogId");
+          const logNo = urlObj.searchParams.get("logNo");
+          if (blogId && logNo) {
+            targetUrl = `https://m.blog.naver.com/${blogId}/${logNo}`;
+          }
         }
+      }
     } catch (e) {
-        // Ignore URL parsing errors
+      // Ignore URL parsing errors
     }
 
-    let text = '';
+    let text = "";
     try {
-        const response = await withRetry(() => ai.models.generateContent({
+      const response = await withRetry(() =>
+        ai.models.generateContent({
           model: "gemini-3.1-pro-preview",
           contents: `Extract the main article text from this URL: ${targetUrl}. 
           
@@ -535,40 +591,52 @@ export const extractTextFromUrl = async (url: string): Promise<string> => {
           
           Return ONLY the plain text content, without any markdown formatting, headers, or extra conversational text. Do not apologize or explain your method.`,
           config: {
-            tools: [{ urlContext: {} }, { googleSearch: {} }]
-          }
-        }));
-        text = response.text || '';
+            tools: [{ urlContext: {} }, { googleSearch: {} }],
+          },
+        }),
+      );
+      text = response.text || "";
     } catch (e: any) {
-        console.warn("Primary extraction failed, trying fallback:", e);
+      console.warn("Primary extraction failed, trying fallback:", e);
     }
-    
-    if (text.includes("Unable to extract") || text.includes("blocks automated access") || text.trim() === "") {
-        // Fallback if the model still outputs the error message or threw an error
-        try {
-            const fallbackResponse = await withRetry(() => ai.models.generateContent({
-                model: "gemini-3.1-pro-preview",
-                contents: `Search for this exact URL using googleSearch: "${targetUrl}". Read the search results and snippets, and reconstruct the main article text as best as you can. Return ONLY the plain text content.`,
-                config: {
-                    tools: [{ googleSearch: {} }]
-                }
-            }));
-            const fallbackText = fallbackResponse.text || '';
-            if (fallbackText.includes("Unable to extract") || fallbackText.includes("blocks automated access")) {
-                throw new Error("Blocked");
-            }
-            return fallbackText;
-        } catch (fallbackError: any) {
-            console.error("Fallback extraction failed:", fallbackError);
-            throw new Error("해당 웹사이트가 보안상의 이유로 내용 추출을 차단하고 있습니다. 원고 내용을 직접 복사하여 붙여넣어 주세요.");
+
+    if (
+      text.includes("Unable to extract") ||
+      text.includes("blocks automated access") ||
+      text.trim() === ""
+    ) {
+      // Fallback if the model still outputs the error message or threw an error
+      try {
+        const fallbackResponse = await withRetry(() =>
+          ai.models.generateContent({
+            model: "gemini-3.1-pro-preview",
+            contents: `Search for this exact URL using googleSearch: "${targetUrl}". Read the search results and snippets, and reconstruct the main article text as best as you can. Return ONLY the plain text content.`,
+            config: {
+              tools: [{ googleSearch: {} }],
+            },
+          }),
+        );
+        const fallbackText = fallbackResponse.text || "";
+        if (
+          fallbackText.includes("Unable to extract") ||
+          fallbackText.includes("blocks automated access")
+        ) {
+          throw new Error("Blocked");
         }
+        return fallbackText;
+      } catch (fallbackError: any) {
+        console.error("Fallback extraction failed:", fallbackError);
+        throw new Error(
+          "해당 웹사이트가 보안상의 이유로 내용 추출을 차단하고 있습니다. 원고 내용을 직접 복사하여 붙여넣어 주세요.",
+        );
+      }
     }
-    
+
     return text;
   } catch (error: any) {
     console.error("URL 추출 실패:", error);
     if (error.message && error.message.includes("보안상의 이유로")) {
-        throw error;
+      throw error;
     }
     throw new Error(handleApiError(error, "URL 추출 실패"));
   }
@@ -579,34 +647,34 @@ export const generateOutline = async (
   storeName?: string,
   salesService?: string,
   postGoal?: string,
-  fileParts?: { data: string, mimeType: string }[],
-  excludedFilePart?: { data: string, mimeType: string },
+  fileParts?: { data: string; mimeType: string }[],
+  excludedFilePart?: { data: string; mimeType: string },
   benchmarkingText?: string,
   referenceNote?: string,
-  scriptImageParts?: { data: string, mimeType: string }[],
+  scriptImageParts?: { data: string; mimeType: string }[],
   mustIncludeContent?: string,
   blogCategory?: string,
   blogPlatform?: string,
   servicePriceText?: string,
-  servicePriceImageParts?: { data: string, mimeType: string }[],
+  servicePriceImageParts?: { data: string; mimeType: string }[],
   blogStyle?: string,
   wordCount?: string,
   faq?: string,
   includeFaq?: boolean,
-  crawledText?: string
+  crawledText?: string,
 ): Promise<string> => {
   try {
     const ai = getClient();
-    
+
     let naverDataText = "";
     const searchTarget = storeName || topic;
-    if (blogPlatform === '네이버' && searchTarget) {
+    if (blogPlatform === "네이버" && searchTarget) {
       const naverData = await fetchNaverLocalData(searchTarget);
       if (naverData) {
         naverDataText = `\n\n**NAVER LOCAL API DATA**: The following is real data fetched from Naver Local API for "${searchTarget}". You MUST use this data (address, phone, etc.) accurately in the outline.\n${naverData}\n`;
       }
     }
-    
+
     const promptText = `
       Create a detailed SEO-optimized blog post outline for the topic: "${topic}".
       ${blogCategory ? `**Blog Category**: "${blogCategory}"` : ""}
@@ -621,35 +689,41 @@ export const generateOutline = async (
       ${excludedFilePart ? "**CRITICAL CONSTRAINT**: The attached 'EXCLUDED FILE' contains information that MUST NOT appear in the outline. Do not mention or reference its specific contents." : ""}
       ${servicePriceText ? `**SERVICE PRICE INFO**: The user provided the following pricing information: "${servicePriceText}". You MUST plan to include a Markdown table in the body detailing these services and prices.` : ""}
       ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST plan to extract and include the relevant prices in a Markdown table in the body.` : ""}
-      ${blogCategory?.includes('리뷰') && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the outline or table.` : ""}
+      ${blogCategory?.includes("리뷰") && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the outline or table.` : ""}
       ${naverDataText}
       ${crawledText ? `\n\n**REFERENCED CRAWLED WEB CONTENT**: The following content was crawled from a reference link provided by the user. You MUST analyze this content and use its key information, facts, and structure as a primary reference for creating the outline.\n--- START CRAWLED CONTENT ---\n${crawledText}\n--- END CRAWLED CONTENT ---\n` : ""}
       
-      ${wordCount && wordCount !== 'AI 추천 (자동)' ? `**WORD COUNT CONSTRAINT**: The planned blog post length should be approximately ${wordCount}. Structure the outline to support this depth.` : ""}
+      ${wordCount && wordCount !== "AI 추천 (자동)" ? `**WORD COUNT CONSTRAINT**: The planned blog post length should be approximately ${wordCount}. Structure the outline to support this depth.` : ""}
 
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category.
       2. **Experience-Based Content**: Structure the outline to reflect a first-hand, authentic experience with honest opinions. Avoid sounding like a generic AI.
-      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust."}
+      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || "the main benefit"}"). ${blogCategory?.includes("리뷰") ? "Maintain an authentic, experiential tone from a visitor's perspective." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust."}
       4. **Curiosity Resolution**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body.
-      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory?.includes('리뷰') ? (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. However, ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews.") : (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.") }
+      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory?.includes("리뷰") ? (blogCategory === "제품리뷰(서술형)" ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. However, ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews.") : blogCategory === "제품리뷰(서술형)" ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability."}
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
-      10. **Topic-Category Synergy (Tone Match)**: The content MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured. In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards. ${blogCategory === '학원 홍보' ? "For '학원 홍보' category, specifically in the final section/conclusion of the post, avoid the word '친절하게' (kindly) and use '자세하게' (in detail) instead." : ""}
+      10. **Topic-Category Synergy (Tone Match)**: The content MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured. In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards. ${blogCategory === "학원 홍보" ? "For '학원 홍보' category, specifically in the final section/conclusion of the post, avoid the word '친절하게' (kindly) and use '자세하게' (in detail) instead." : ""}
       11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
       12. **NO AI MENTION**: NEVER mention that the content is written by AI or use phrases like "AI 첨단 기기로 확인해 드립니다". All content must sound 100% natural, as if written by a person from direct first-hand experience.
 
-      ${benchmarkingText ? `
+      ${
+        benchmarkingText
+          ? `
       **BENCHMARKING MASTER INSTRUCTION**: 
       I have provided "BENCHMARKING TEXT" below. This text is a reference that the user wants to copy.
-      You MUST modify and adapt this benchmarking text to perfectly fit the selected Blog Category (${blogCategory || 'General'}), Topic (${topic}), Brand/Store Name (${storeName || 'our brand'}), Product/Service (${salesService || 'our service'}), and USP (${postGoal || 'our USP'}).
+      You MUST modify and adapt this benchmarking text to perfectly fit the selected Blog Category (${blogCategory || "General"}), Topic (${topic}), Brand/Store Name (${storeName || "our brand"}), Product/Service (${salesService || "our service"}), and USP (${postGoal || "our USP"}).
       1. **Analyze Structure**: Identify its logical flow and tone.
       2. **Adapt Content**: Create an outline that uses the benchmark's flow as a reference, but completely changes the subject matter to promote our specific brand, product, and USP.
-      ` : ""}
+      `
+          : ""
+      }
       
-      ${blogCategory?.includes('리뷰') && !blogCategory.includes('제품') ? `
+      ${
+        blogCategory?.includes("리뷰") && !blogCategory.includes("제품")
+          ? `
       **CRITICAL STRUCTURE REQUIREMENT FOR REVIEW**:
       Since the category is a Review, you MUST 100% include the following 6 mandatory sections/information in the outline without fail:
       1. 🏪 업체명 (Store name)
@@ -669,27 +743,37 @@ export const generateOutline = async (
       
       **PERSPECTIVE**: The outline must be structured from the first-person perspective of a customer who actually visited the restaurant (experiential tone).
       
-      ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and explicitly incorporate this real data into the outline.` : ""}
-      ` : (blogCategory?.includes('제품') ? `
+      ${blogPlatform === "네이버" ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and explicitly incorporate this real data into the outline.` : ""}
+      `
+          : blogCategory?.includes("제품")
+            ? `
       **CRITICAL STRUCTURE REQUIREMENT FOR PRODUCT REVIEW**:
       Since this is a Product Review, focus deeply on the product experience.
       1. **Authentic Detail**: Describe the product's features, performance, and usability based on personal experience.
       2. **Pros & Cons**: Provide an honest evaluation including both strengths and weaknesses.
       3. **NO Location Info**: DO NOT include any physical addresses, business hours, or store locations.
-      ${blogCategory === '제품리뷰(서술형)' ? "4. **Alignment**: The text must be conceptually Left-Aligned." : ""}
-      ` : `
+      ${blogCategory === "제품리뷰(서술형)" ? "4. **Alignment**: The text must be conceptually Left-Aligned." : ""}
+      `
+            : `
       **CRITICAL RESTRICTION**:
       Since the category is NOT a Review, you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated outline. Do not write about locations or website links.
-      `)}
+      `
+      }
       
-      ${includeFaq ? `
+      ${
+        includeFaq
+          ? `
       **FAQ REQUIREMENT**:
       You MUST include a "자주 묻는 질문 (FAQ)" section at the VERY END of the outline.
       ${faq ? `Use this provided FAQ content as a basis: "${faq}"` : "Generate 2-3 relevant frequency asked questions and answers based on the topic."}
-      ` : ""}
+      `
+          : ""
+      }
       ${naverDataText}
       
-      ${blogStyle === '현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)' ? `
+      ${
+        blogStyle === "현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)"
+          ? `
       **[현장 밀착형 스토리텔링 스타일 가이드]**
       1. **현장감 (Realness)**: 스튜디오 사진이 아닌, 실제 작업 현장의 '가공되지 않은' 사진을 활용해 투명성을 강조합니다.
       2. **신뢰 자본 축적**: "내부용 지게차만 사용한다", "라벨링을 철저히 한다" 등 디테일한 원칙을 언급하며 '보이지 않는 곳에서도 정직하다'는 인상을 줍니다.
@@ -706,13 +790,17 @@ export const generateOutline = async (
       - 전개 2: 우리의 디테일 한 가지 (청결, 정리 정돈, 검수 과정 등)
       - 강점: 왜 이렇게 까다롭게 하는지 우리만의 철학 한 줄
       - 정보: 활동 범위 및 취급 품목 언급
-      ` : (blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST structure the outline and write the content to perfectly match this specific style and tone. Do not use a generic tone.` : "")}
+      `
+          : blogStyle
+            ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST structure the outline and write the content to perfectly match this specific style and tone. Do not use a generic tone.`
+            : ""
+      }
 
       Structure Guidelines:
       1. **Introduction**: MUST include a "Hook" strategy to grab attention immediately. Address the reader's problem related to "${postGoal || topic}". **CRITICAL**: The introduction MUST be highly SEO-optimized with a topic-based hook that captures the reader's interest.
       2. **Body (H2/H3)**: Structured logic to persuade or inform the reader. 
          - **IMPORTANT**: Designate one section to be presented as a **Table/Chart** (e.g., Feature comparison, Price list, Pros/Cons, Specs).
-      3. **Conclusion**: MUST be conversion-focused. Summarize and lead the reader to the specific goal ("${postGoal || 'Action'}"). **CRITICAL**: Do NOT include the word "결론" (Conclusion) as a heading or text. Start the conclusion naturally.
+      3. **Conclusion**: MUST be conversion-focused. Summarize and lead the reader to the specific goal ("${postGoal || "Action"}"). **CRITICAL**: Do NOT include the word "결론" (Conclusion) as a heading or text. Start the conclusion naturally.
       
       Output Format:
       1. Introduction (Hook, Problem, Solution)
@@ -725,44 +813,54 @@ export const generateOutline = async (
     `;
 
     const parts: Part[] = [{ text: promptText }];
-    
+
     // Add Script Reference Images
     if (scriptImageParts && scriptImageParts.length > 0) {
-        scriptImageParts.forEach(img => {
-            parts.push({ inlineData: img });
-        });
-        parts.push({ text: "These are the Script Reference Images. Analyze them for context." });
+      scriptImageParts.forEach((img) => {
+        parts.push({ inlineData: img });
+      });
+      parts.push({
+        text: "These are the Script Reference Images. Analyze them for context.",
+      });
     }
 
     if (servicePriceImageParts && servicePriceImageParts.length > 0) {
-        servicePriceImageParts.forEach(img => {
-            parts.push({ inlineData: img });
-        });
-        parts.push({ text: "These are the Service Price Table Images. Extract the relevant prices to use in the outline." });
+      servicePriceImageParts.forEach((img) => {
+        parts.push({ inlineData: img });
+      });
+      parts.push({
+        text: "These are the Service Price Table Images. Extract the relevant prices to use in the outline.",
+      });
     }
 
     if (fileParts && fileParts.length > 0) {
-        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+      fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
     if (benchmarkingText) {
-        // Pass benchmarking content as text part
-        parts.push({ text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]\n\nUse the structure of the text above as a template.` });
+      // Pass benchmarking content as text part
+      parts.push({
+        text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]\n\nUse the structure of the text above as a template.`,
+      });
     }
 
     if (excludedFilePart) {
-        parts.push({ inlineData: excludedFilePart });
-        parts.push({ text: "This previous file is the EXCLUDED FILE. Its contents are forbidden." });
+      parts.push({ inlineData: excludedFilePart });
+      parts.push({
+        text: "This previous file is the EXCLUDED FILE. Its contents are forbidden.",
+      });
     }
 
-    const response = await withRetry(() => ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: { parts },
-      config: {
-        temperature: 0.7,
-        tools: [{ googleSearch: {} }]
-      }
-    }));
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: { parts },
+        config: {
+          temperature: 0.7,
+          tools: [{ googleSearch: {} }],
+        },
+      }),
+    );
 
     return response.text || "개요를 생성할 수 없습니다.";
   } catch (error: any) {
@@ -771,35 +869,35 @@ export const generateOutline = async (
 };
 
 export const generateFullPostStream = async (
-  topic: string, 
+  topic: string,
   outline: string,
   storeName: string | undefined,
   salesService: string | undefined,
   postGoal: string | undefined,
   onChunk: (text: string) => void,
   onReset?: () => void,
-  fileParts?: { data: string, mimeType: string }[],
-  excludedFilePart?: { data: string, mimeType: string },
+  fileParts?: { data: string; mimeType: string }[],
+  excludedFilePart?: { data: string; mimeType: string },
   benchmarkingText?: string,
   referenceNote?: string,
-  scriptImageParts?: { data: string, mimeType: string }[],
+  scriptImageParts?: { data: string; mimeType: string }[],
   mustIncludeContent?: string,
   blogCategory?: string,
   blogPlatform?: string,
   servicePriceText?: string,
-  servicePriceImageParts?: { data: string, mimeType: string }[],
+  servicePriceImageParts?: { data: string; mimeType: string }[],
   blogStyle?: string,
   wordCount?: string,
   faq?: string,
   includeFaq?: boolean,
-  crawledText?: string
+  crawledText?: string,
 ): Promise<void> => {
   try {
     const ai = getClient();
 
     let naverDataText = "";
     const searchTarget = storeName || topic;
-    if (blogPlatform === '네이버' && searchTarget) {
+    if (blogPlatform === "네이버" && searchTarget) {
       const naverData = await fetchNaverLocalData(searchTarget);
       if (naverData) {
         naverDataText = `\n\n**NAVER LOCAL API DATA**: The following is real data fetched from Naver Local API for "${searchTarget}". You MUST use this data (address, phone, etc.) accurately in the blog post.\n${naverData}\n`;
@@ -820,49 +918,61 @@ export const generateFullPostStream = async (
       ${fileParts && fileParts.length > 0 ? "Analyze the attached reference files (PDF, DOCX, etc.) carefully and use their information as the primary source for the blog post content. The blog post must be written based on the content of these files." : ""}
       ${servicePriceText ? `**SERVICE PRICE INFO**: The user provided the following pricing information: "${servicePriceText}". You MUST include a Markdown table in the body detailing these services and prices.` : ""}
       ${servicePriceImageParts && servicePriceImageParts.length > 0 ? `**SERVICE PRICE IMAGE**: Price table images are attached. You MUST extract and include the relevant prices in a Markdown table in the body.` : ""}
-      ${blogCategory?.includes('리뷰') && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the text or table.` : ""}
+      ${blogCategory?.includes("리뷰") && !servicePriceText && (!servicePriceImageParts || servicePriceImageParts.length === 0) ? `**PRICING CONSTRAINT**: Since this is a Review and no specific price information was provided, DO NOT invent or include any prices in the text or table.` : ""}
       ${naverDataText}
       ${crawledText ? `\n\n**REFERENCED CRAWLED WEB CONTENT**: The following content was crawled from a reference link provided by the user. You MUST analyze this content and use its key information, facts, and structure as a primary reference for writing the blog post. Ensure the content accurately reflects the information from this source while remaining natural and experiential.\n--- START CRAWLED CONTENT ---\n${crawledText}\n--- END CRAWLED CONTENT ---\n` : ""}
       
-      ${wordCount && wordCount !== 'AI 추천 (자동)' ? `**WORD COUNT CONSTRAINT**: The blog post length (excluding hashtags) should be approximately ${wordCount}.` : ""}
+      ${wordCount && wordCount !== "AI 추천 (자동)" ? `**WORD COUNT CONSTRAINT**: The blog post length (excluding hashtags) should be approximately ${wordCount}.` : ""}
       
-      ${includeFaq ? `
+      ${
+        includeFaq
+          ? `
       **FAQ REQUIREMENT**:
       You MUST include a "자주 묻는 질문 (FAQ)" section at the VERY END of the blog post, just before the hashtags.
       ${faq ? `Use this provided FAQ content as a basis: "${faq}"` : "Generate 2-3 relevant frequency asked questions and answers based on the topic."}
-      ` : ""}
+      `
+          : ""
+      }
 
       **UNIVERSAL BLOG STYLE GUIDELINES (MUST FOLLOW FOR ALL TOPICS)**:
       1. **Topic Focus (C-Rank)**: Concentrate deeply on one main topic (or two closely related ones). Establish clear expertise in the category. Write with deep LSI (Latent Semantic Indexing) keywords related to the main topic.
-      2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. ${blogCategory?.includes('리뷰') ? "Write exactly like a real person writing a personal blog review. Build a natural structure: hook the reader, share authentic feelings, give honest pros and cons, and sound conversational. Do not use awkward AI-like structures." : "Avoid sounding like a generic AI. Do NOT use cliché AI openings like '안녕하세요. 오늘은...'. "}
-      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || 'the main benefit'}"). ${blogCategory?.includes('리뷰') ? "Start the intro naturally, sharing a personal reason for visiting or using the product. Maintain an authentic, experiential tone (e.g., '~했어요', '~더라고요') from a visitor's perspective. Avoid formal or mechanical phrasing." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI. Use engaging transition words (e.g., '무엇보다 중요한 것은', '특히 주목해야 할 점은')."}
+      2. **Experience-Based Content**: Write as if sharing a first-hand, authentic experience with honest opinions. This is the most powerful content type. ${blogCategory?.includes("리뷰") ? "Write exactly like a real person writing a personal blog review. Build a natural structure: hook the reader, share authentic feelings, give honest pros and cons, and sound conversational. Do not use awkward AI-like structures." : "Avoid sounding like a generic AI. Do NOT use cliché AI openings like '안녕하세요. 오늘은...'. "}
+      3. **Intro Strategy**: The introduction MUST be SEO-optimized and feature a powerful 'Hook' based on the Topic ("${topic}") and USP ("${postGoal || "the main benefit"}"). ${blogCategory?.includes("리뷰") ? "Start the intro naturally, sharing a personal reason for visiting or using the product. Maintain an authentic, experiential tone (e.g., '~했어요', '~더라고요') from a visitor's perspective. Avoid formal or mechanical phrasing." : "Start with an SEO-optimized Hook that addresses the reader's core curiosity and provides a compelling reason to keep reading, using specific data or intriguing facts to build trust and increase the chance of being cited by AI. Use engaging transition words (e.g., '무엇보다 중요한 것은', '특히 주목해야 할 점은')."}
       4. **Curiosity Resolution (Prompt Design)**: Do not give everything away immediately after the intro. Resolve the reader's curiosity step-by-step throughout the body. Build a logical flow.
-      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory?.includes('리뷰') ? (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. However, ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews.") : (blogCategory === '제품리뷰(서술형)' ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability.") }
+      5. **Readability & Formatting**: **CRITICAL**: ${blogCategory?.includes("리뷰") ? (blogCategory === "제품리뷰(서술형)" ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. However, ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. ALL text MUST be Center-Aligned (가운데 정렬) as this is a requirement for all reviews.") : blogCategory === "제품리뷰(서술형)" ? "Since the category is '제품리뷰(서술형)', you MUST write in a conventional descriptive/prose style (서술형) with normal paragraph lengths. Do NOT use the 2-line paragraph rule. All text must be clearly Left-Aligned (좌측 정렬)." : "You MUST group exactly 2 lines/sentences together, and then insert an empty line (double Enter) to create a new paragraph. This 2-line paragraph rule is absolute for all content to ensure maximum readability."}
       6. **Structure**: Use at least 3 subheadings. **CRITICAL**: You MUST format ALL subheadings as blockquotes using the \`>\` symbol (e.g., \`> ## Subheading\`).
       7. **Visual & Rich Media**: Do not just list text. Actively incorporate markdown tables to increase reader dwell time. DO NOT use any bracket placeholders like "[ ]" (e.g., do not write "[이미지 삽입]"). The text must be clean and ready to copy-paste.
       8. **Keyword Placement**: The target keyword MUST be placed at the very beginning of the title.
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
-      10. **Topic-Category Synergy (Tone Match)**: The blog post MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured (e.g., using legal terms correctly, citing potential regulations if applicable). In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards. ${blogCategory === '학원 홍보' ? "For '학원 홍보' category, in the final paragraph of the post, you MUST NOT use the word '친절하게' (friendly/kindly). Instead, use the word '자세하게' (in detail/thoroughly) when describing how you will provide information or consult." : ""}
+      10. **Topic-Category Synergy (Tone Match)**: The blog post MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured (e.g., using legal terms correctly, citing potential regulations if applicable). In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards. ${blogCategory === "학원 홍보" ? "For '학원 홍보' category, in the final paragraph of the post, you MUST NOT use the word '친절하게' (friendly/kindly). Instead, use the word '자세하게' (in detail/thoroughly) when describing how you will provide information or consult." : ""}
       11. **Hashtags**: At the very end of the post, provide exactly 5 highly relevant hashtags. Separate them from the main content with the marker "[HASHTAGS]". Format them as a single line of space-separated hashtags starting with #.
       11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
       12. **NO AI MENTION**: NEVER mention that the content is written by AI or use phrases like "AI 첨단 기기로 확인해 드립니다". All content must sound 100% natural, as if written by a person from direct first-hand experience.
 
-      ${benchmarkingText ? `
+      ${
+        benchmarkingText
+          ? `
       **BENCHMARKING & ADAPTATION MODE ACTIVATED**:
       I have provided "BENCHMARKING TEXT". This text is a reference that the user wants to copy.
-      You MUST modify and adapt this benchmarking text to perfectly fit the selected Blog Category (${blogCategory || 'General'}), Topic (${topic}), Brand/Store Name (${storeName || 'our brand'}), Product/Service (${salesService || 'our service'}), and USP (${postGoal || 'our USP'}).
+      You MUST modify and adapt this benchmarking text to perfectly fit the selected Blog Category (${blogCategory || "General"}), Topic (${topic}), Brand/Store Name (${storeName || "our brand"}), Product/Service (${salesService || "our service"}), and USP (${postGoal || "our USP"}).
       
       **YOUR MISSION**:
       1. **Analyze the DNA**: Absorb the benchmark's **tone**, **sentence length rhythm**, and **narrative structure**.
       2. **Adapt & Rewrite**: Use the benchmark as a reference, but rewrite the content to focus entirely on our Topic, Brand, Service, and USP.
-      3. **Brand Adaptation**: Replace the benchmark's brand/service with "${storeName || 'our brand'}" and "${salesService || 'our service'}". The hero of this story is now "${storeName}".
+      3. **Brand Adaptation**: Replace the benchmark's brand/service with "${storeName || "our brand"}" and "${salesService || "our service"}". The hero of this story is now "${storeName}".
       4. **Simulated Document Avoidance**: You must write a completely new article to avoid "Similar Document" penalties by search engines. 
          - **Structure Mimicry**: Copy the *flow* and *logic*, but NOT the *phrasing*.
          - **Sentence Transformation**: Invert sentence structures, use different vocabulary, and change the tone slightly if needed.
-      ` : ""}
+      `
+          : ""
+      }
 
-      ${blogCategory?.includes('리뷰') ? `
-      ${!blogCategory.includes('제품') ? `
+      ${
+        blogCategory?.includes("리뷰")
+          ? `
+      ${
+        !blogCategory.includes("제품")
+          ? `
       **CRITICAL STRUCTURE REQUIREMENT FOR REVIEW**:
       Since the category is a Review, you MUST 100% ensure the following mandatory sections/information are clearly written and included in the final post without fail:
       1. 🏪 업체명 (Store name)
@@ -882,33 +992,41 @@ export const generateFullPostStream = async (
       
       **PERSPECTIVE & TONE**: You MUST write from the first-person perspective of a customer who actually visited the restaurant. Use an authentic, experiential tone (e.g., "I visited...", "The taste was...").
       Make sure these points are naturally integrated into the blog post flow.
-      ` : `
+      `
+          : `
       **CRITICAL STRUCTURE REQUIREMENT FOR PRODUCT REVIEW**:
       Since the category is a Product Review, focus deeply on the product itself.
       1. **Authentic Experience**: Write from the perspective of someone who has actually used the product in their daily life.
       2. **Detail focus**: Describe the design, functionality, performance, and value for money. Include both pros and cons based on your usage.
       3. **NO Location Info**: DO NOT include any physical addresses, business hours, or store locations in the text.
-      ${blogCategory === '제품리뷰(서술형)' ? "4. **Alignment**: The text must be conceptually Center-Aligned (가운데 정렬)." : ""}
-      `}
+      ${blogCategory === "제품리뷰(서술형)" ? "4. **Alignment**: The text must be conceptually Center-Aligned (가운데 정렬)." : ""}
+      `
+      }
 
-      ${blogCategory === '맛집 리뷰' ? `
+      ${
+        blogCategory === "맛집 리뷰"
+          ? `
       **CRITICAL RESTRICTION FOR RESTAURANT REVIEWS**:
       You MUST NOT mention anything related to AI (Artificial Intelligence), ChatGPT, Gemini, automated generation, or any AI tools. The review must sound 100% human, authentic, and based on real personal experience.
-      ` : ""}
+      `
+          : ""
+      }
 
       **REVIEW ENTITY & LINE RULES**:
       1. **Entity Reference**: NEVER use the generic word '이것' (this) to refer to the subject or its products. ALWAYS use the actual Store/Brand Name ("${storeName || topic}") instead.
       2. **Strict Line Length (SEO OPTIMIZED)**: 
          - **The VERY FIRST line of the blog post MUST NOT exceed 10 characters.** This is a critical SEO optimization rule.
          - For all other lines, EVERY single line in the blog post body MUST be ${
-           blogCategory?.includes('리뷰') 
-           ? 'between 20 and 23 characters' 
-           : '20 characters or less'
+           blogCategory?.includes("리뷰")
+             ? "between 20 and 23 characters"
+             : "20 characters or less"
          }. 
          - You MUST manually insert a newline (\n) to ensure these line length constraints are strictly met. This is a hard constraint for readability on mobile layouts and SEO.
-      3. **Content Length**: ${blogCategory?.includes('리뷰') 
-         ? "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters (aim for over 2000 characters if possible). You MUST provide extremely detailed, descriptive, and rich content to reach this substantial length, as high-quality reviews require significant depth." 
-         : "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length."}
+      3. **Content Length**: ${
+        blogCategory?.includes("리뷰")
+          ? "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters (aim for over 2000 characters if possible). You MUST provide extremely detailed, descriptive, and rich content to reach this substantial length, as high-quality reviews require significant depth."
+          : "The total length of the blog post (excluding hashtags) MUST be between 1500 and 2500 characters. You MUST provide enough detail and descriptive content to reach this length."
+      }
       4. **No Bullet Points**: DO NOT use markdown bullet points (e.g., "- item") in the body text. Write in full paragraphs.
       5. **SEO Optimization (LSI & TF-IDF)**: Write the most SEO-optimized post possible. Naturally integrate the main keyword, secondary keywords, and Latent Semantic Indexing (LSI) terms throughout the text, especially in the first paragraph, subheadings, and conclusion. Use varied vocabulary relevant to the niche to increase topical authority.
       6. **Dynamic Phrasing**: Avoid repetitive sentence endings (e.g., "~습니다", "~합니다" continuously). Mix ~습니다, ~해요, ~것이죠, ~입니다 to create a lively and natural rhythm.
@@ -921,14 +1039,18 @@ export const generateFullPostStream = async (
       - \`~~text~~\` : Brown text (Use for warm, emotional, or atmospheric descriptions)
       - \`\` \`text\` \`\` : Blue text with Yellow background (Use for special features or tips)
       
-      ${blogPlatform === '네이버' ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and write the review based entirely on this real data. Do not invent menu items or hours; use the actual data.` : ""}
-      ` : `
+      ${blogPlatform === "네이버" ? `**NAVER SMARTPLACE INTEGRATION (MANDATORY)**: Since the platform is '네이버', you MUST use the provided NAVER LOCAL API DATA and the Google Search tool to find the "네이버 스마트플레이스" (Naver Map/Place) information for "${storeName || topic}". You MUST extract real data (address, hours, menu items, prices, parking, features) and write the review based entirely on this real data. Do not invent menu items or hours; use the actual data.` : ""}
+      `
+          : `
       **CRITICAL RESTRICTION**:
       Since the category is NOT a Review, you MUST NOT include any physical addresses (주소) or URLs/links (링크) in the generated post. Do not write about locations or website links.
-      `}
+      `
+      }
       ${naverDataText}
 
-      ${blogStyle === '현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)' ? `
+      ${
+        blogStyle === "현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)"
+          ? `
       **[현장 밀착형 스토리텔링 스타일 가이드]**
       1. **현장감 (Realness)**: 스튜디오 사진이 아닌, 실제 작업 현장의 '가공되지 않은' 사진을 활용해 투명성을 강조합니다.
       2. **신뢰 자본 축적**: "내부용 지게차만 사용한다", "라벨링을 철저히 한다" 등 디테일한 원칙을 언급하며 '보이지 않는 곳에서도 정직하다'는 인상을 줍니다.
@@ -951,7 +1073,11 @@ export const generateFullPostStream = async (
       - **포맷팅 (필수)**: 
         - 모든 본문 텍스트는 **가운데 정렬**되어야 합니다.
         - **한 줄에 최대 10자(한글 기준)**까지만 입력하고, 그 이후에는 반드시 줄바꿈을 하세요.
-      ` : (blogStyle ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST write the entire post to perfectly match this specific style and tone. Do not use a generic tone.` : "")}
+      `
+          : blogStyle
+            ? `**CRITICAL TONE & STYLE REQUIREMENT**: The user has explicitly selected the following blog style: "${blogStyle}". You MUST write the entire post to perfectly match this specific style and tone. Do not use a generic tone.`
+            : ""
+      }
 
       Outline:
       ${outline}
@@ -984,46 +1110,54 @@ export const generateFullPostStream = async (
     `;
 
     const parts: Part[] = [{ text: prompt }];
-    
+
     // Add all types of file/image data to the prompt parts
     if (fileParts && fileParts.length > 0) {
-        fileParts.forEach(fp => parts.unshift({ inlineData: fp }));
+      fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
     // Add Script Reference Images
     if (scriptImageParts && scriptImageParts.length > 0) {
-        scriptImageParts.forEach(img => {
-            parts.push({ inlineData: img });
-        });
-        parts.push({ text: "These are the Script Reference Images. Use them for context/atmosphere ONLY. Do NOT describe them in the text." });
+      scriptImageParts.forEach((img) => {
+        parts.push({ inlineData: img });
+      });
+      parts.push({
+        text: "These are the Script Reference Images. Use them for context/atmosphere ONLY. Do NOT describe them in the text.",
+      });
     }
 
     if (servicePriceImageParts && servicePriceImageParts.length > 0) {
-        servicePriceImageParts.forEach(img => {
-            parts.push({ inlineData: img });
-        });
-        parts.push({ text: "These are the Service Price Table Images. Extract the relevant prices to use in the text and table." });
+      servicePriceImageParts.forEach((img) => {
+        parts.push({ inlineData: img });
+      });
+      parts.push({
+        text: "These are the Service Price Table Images. Extract the relevant prices to use in the text and table.",
+      });
     }
 
     if (benchmarkingText) {
-        parts.push({ text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]` });
+      parts.push({
+        text: `[[BENCHMARKING TEXT START]]\n${benchmarkingText}\n[[BENCHMARKING TEXT END]]`,
+      });
     }
 
     if (excludedFilePart) {
-        parts.push({ inlineData: excludedFilePart });
-        parts.push({ text: "This file content above is FORBIDDEN. Do not use it." });
+      parts.push({ inlineData: excludedFilePart });
+      parts.push({
+        text: "This file content above is FORBIDDEN. Do not use it.",
+      });
     }
 
     await withRetry(async () => {
       if (onReset) onReset();
-      
+
       const streamResult = await ai.models.generateContentStream({
         model: TEXT_MODEL,
         contents: { parts },
         config: {
           temperature: 0.7,
-          tools: [{ googleSearch: {} }]
-        }
+          tools: [{ googleSearch: {} }],
+        },
       });
 
       for await (const chunk of streamResult) {
@@ -1043,52 +1177,57 @@ export interface ImagePromptRequest {
 }
 
 export const generateImagePromptsForPost = async (
-  content: string, 
-  hasFaceReference: boolean = false, 
-  numberOfImages: number = 4, 
-  hasReferenceImages: boolean = false, 
-  modelName: string = 'gemini-3.1-flash-image-preview',
-  style: string = '3D 미니멀 인포그래픽',
-  category: string = '',
-  smartImageMode: boolean = true
+  content: string,
+  hasFaceReference: boolean = false,
+  numberOfImages: number = 4,
+  hasReferenceImages: boolean = false,
+  modelName: string = "gemini-3.1-flash-image-preview",
+  style: string = "3D 미니멀 인포그래픽",
+  category: string = "",
+  smartImageMode: boolean = true,
 ): Promise<ImagePromptRequest[]> => {
   try {
     const ai = getClient();
     const isAuto = numberOfImages === 0;
-    let supportsText = modelName === 'gemini-3.1-flash-image-preview';
+    let supportsText = modelName === "gemini-3.1-flash-image-preview";
 
-    let styleInstruction = style === '기본 스타일' 
-      ? '"Modern Professional Infographic" with a clean, high-end aesthetic. Theme: Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".'
-      : style === '3D 미니멀 인포그래픽'
-      ? '"3D Minimalist Infographic Advertisement", "Clean studio lighting", "Soft natural shadows", "Pristine white or light neutral background", "Highly detailed 3D isometric objects (e.g., coins, tech gadgets, abstract shapes)", "High-end commercial aesthetic", "Product photography style but with 3D elements", "Clean space around the objects".'
-      : `Apply the following specific visual style: "${style}". Ensure all images in the set maintain this consistent style.`;
+    let styleInstruction =
+      style === "기본 스타일"
+        ? '"Copywriting Infographic Advertisement", "Clean studio lighting", "Pristine background", "High-end commercial aesthetic", "A massive Korean copy text at the top, and related 3D isometric objects (e.g., coins, tech gadgets, abstract shapes) playfully arranged below or around the text", "Perfectly spelled Korean text is MANDATORY".'
+        : style === "3D 미니멀 인포그래픽"
+          ? '"3D Minimalist Infographic Advertisement", "Clean studio lighting", "Soft natural shadows", "Pristine white or light neutral background", "Highly detailed 3D isometric objects (e.g., coins, tech gadgets, abstract shapes)", "High-end commercial aesthetic", "Product photography style but with 3D elements", "Clean space around the objects".'
+          : `Apply the following specific visual style: "${style}". Ensure all images in the set maintain this consistent style.`;
 
     // Smart Reference Image Mode for Reviews
-    if (category.includes('리뷰') && smartImageMode) {
-      styleInstruction = style === '기본 스타일' || style === '실사/사진' 
-        ? '"Photorealistic Review Image", "Shot on iPhone 15 Pro", "Raw Photo", "Highly Detailed", "Real Life Experience", "Authentic Consumer Review Photo". Focus on extreme photorealism, natural lighting, and completely realistic textures to simulate an authentic user-taken review photo.'
-        : styleInstruction + ' (Note: User chose a specific artistic style for a review, so blend it slightly with authenticity but maintain the artistic style.)';
-        
-      if (style === '기본 스타일' || style === '실사/사진') {
-          supportsText = false; // Disable text for photorealistic mode to prevent Korean text corruption
+    if (category.includes("리뷰") && smartImageMode) {
+      styleInstruction =
+        style === "실사/사진"
+          ? '"Photorealistic Review Image", "Shot on iPhone 15 Pro", "Raw Photo", "Highly Detailed", "Real Life Experience", "Authentic Consumer Review Photo". Focus on extreme photorealism, natural lighting, and completely realistic textures to simulate an authentic user-taken review photo.'
+          : styleInstruction +
+            " (Note: User chose a specific artistic style for a review, so blend it slightly with authenticity but maintain the artistic style.)";
+
+      if (style === "실사/사진") {
+        supportsText = false; // Disable text for photorealistic mode to prevent Korean text corruption
       }
     }
 
-    const textRules = supportsText ? `
+    const textRules = supportsText
+      ? `
     **STRICT INFOGRAPHIC TEXT RULES (KOREAN ONLY - CRITICAL)**:
     1. **Content Relevance**: You MUST aggressively extract the core message, facts, or keywords directly from the provided blog content snippet. The text MUST perfectly reflect the actual body content to create an attractive, informative infographic.
-    2. **Anti-Corruption Rule**: To absolutely prevent Korean text corruption (깨짐), the text MUST be concise. Use short, punchy keywords or very brief phrases (e.g., "핵심 전략", "매출 200% 상승", "성공 비결!"). Avoid long conversational sentences.
+    2. **Copywriting Format (ANTI-CORRUPTION)**: To absolutely prevent Korean text corruption (깨짐), generate short, punchy marketing copywriting.
     3. **Structure & Appeal**: Create highly attractive, modern infographic layouts.
-       - Main Element: Eye-catching Korean text summarizing a key point from the content.
-       - Sub Element (Optional): A complementary short phrase providing context.
-    4. **Legibility & Precision**: Use massive, bold "Pretendard" font. Perfect spelling is absolute priority! The text must be flawlessly integrated into the visual design with no corruption.
+       - Main Title: A catchy, ultra-short Korean phrase summarizing a key point (Maximum 3-5 words).
+       - Subtitle (Optional): A concise complementary phrase explaining the main title.
+    4. **Legibility & Precision**: Use massive, bold "Pretendard" font for the main title, and a smaller clean font for the subtitle. Perfect spelling is absolute priority! The text must be flawlessly integrated into the visual design with no corruption.
     5. **NO ENGLISH**: **DO NOT include any English text**.
     6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
 
     **Prompt Format (English)**:
-    - Detailed visual description of a stunning, modern infographic (charts, data points, 3D icons, clean layout).
-    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Extracted Content Keyword]' in a massive, bold Pretendard font. Below it, render '[Short Sub Context]' in a clean font. The text must be flawlessly spelled."
-    ` : `
+    - Detailed visual description of a stunning, modern infographic with 3D objects and clean layout.
+    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Main Copy]' in a massive, bold Pretendard font at the top. Below it, render '[Sub Copy]' in a clean font. The layout should look like a high-end commercial ad. The text must be flawlessly spelled."
+    `
+      : `
     **STRICT TEXT RULES**:
     - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
     - **Prompt Format (English)**: Detailed visual description ONLY. Focus purely on the visual elements, composition, and style.
@@ -1120,24 +1259,26 @@ export const generateImagePromptsForPost = async (
     Content snippet: ${content.substring(0, 4000)}...
   `;
 
-  const response = await withRetry(() => ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: prompt,
-    config: {
-      temperature: 0.7,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-            type: Type.OBJECT,
-            properties: {
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+        config: {
+          temperature: 0.7,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
                 context: { type: Type.STRING },
-                prompt: { type: Type.STRING }
-            }
-        }
-      }
-    }
-  }));
+                prompt: { type: Type.STRING },
+              },
+            },
+          },
+        },
+      }),
+    );
 
     try {
       return JSON.parse(response.text || "[]");
@@ -1150,48 +1291,52 @@ export const generateImagePromptsForPost = async (
 };
 
 export const generateThumbnailPrompt = async (
-  keyword: string, 
-  content: string, 
-  modelName: string = 'gemini-3.1-flash-image-preview',
-  style: string = '3D 미니멀 인포그래픽',
-  category: string = '',
-  smartImageMode: boolean = true
+  keyword: string,
+  content: string,
+  modelName: string = "gemini-3.1-flash-image-preview",
+  style: string = "3D 미니멀 인포그래픽",
+  category: string = "",
+  smartImageMode: boolean = true,
 ): Promise<string> => {
   try {
     const ai = getClient();
-    let supportsText = modelName === 'gemini-3.1-flash-image-preview';
-    
-    let styleInstruction = style === '기본 스타일'
-      ? '"Viral YouTube Thumbnail", "High-End Brand Identity".'
-      : style === '3D 미니멀 인포그래픽'
-      ? '"High-End Commercial 3D Advertisement", "Minimalist layout with 3D isometric objects", "Pristine white or very light background", "Soft studio shadows", "Extremely clean aesthetics".'
-      : `Apply the following specific visual style: "${style}".`;
-      
+    let supportsText = modelName === "gemini-3.1-flash-image-preview";
+
+    let styleInstruction =
+      style === "기본 스타일"
+        ? '"High-End Copywriting Thumbnail", "Clean studio lighting", "Pristine background", "3D isometric objects arranged harmoniously", "Commercial advertisement look".'
+        : style === "3D 미니멀 인포그래픽"
+          ? '"High-End Commercial 3D Advertisement", "Minimalist layout with 3D isometric objects", "Pristine white or very light background", "Soft studio shadows", "Extremely clean aesthetics".'
+          : `Apply the following specific visual style: "${style}".`;
+
     // Smart Reference Image Mode for Reviews
-    if (category.includes('리뷰') && smartImageMode) {
-      styleInstruction = style === '기본 스타일' || style === '실사/사진' 
-        ? '"Photorealistic Review Thumbnail", "Shot on iPhone 15 Pro", "Bokeh effect", "Real Life Experience", "Authentic Consumer Review Photo". Focus on extreme photorealism.'
-        : styleInstruction;
-        
-      if (style === '기본 스타일' || style === '실사/사진') {
+    if (category.includes("리뷰") && smartImageMode) {
+      styleInstruction =
+        style === "실사/사진"
+          ? '"Photorealistic Review Thumbnail", "Shot on iPhone 15 Pro", "Bokeh effect", "Real Life Experience", "Authentic Consumer Review Photo". Focus on extreme photorealism.'
+          : styleInstruction;
+
+      if (style === "실사/사진") {
         supportsText = false; // Disable text for photorealistic mode to prevent Korean text corruption
       }
     }
 
-    const textRequirements = supportsText ? `
+    const textRequirements = supportsText
+      ? `
       **TEXT REQUIREMENTS (CRITICAL TO PREVENT CORRUPTION)**:
       - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**.
-      - **Content Relevance**: The text MUST be derived from the blog topic or keyword, providing a highly relevant summary.
-      - **Length Limit**: To absolutely prevent Korean text corruption (깨짐), you MUST severely limit the text to **MAXIMUM 1-3 syllables per line** (e.g., "성공!", "매출", "핵심", "필독"). Any phrase longer than this WILL corrupt.
-      - **Structure**: Center the main text. Maximum 2 lines. Do not use full sentences.
+      - **Content Relevance**: Create a highly engaging, punchy marketing copy based on the topic.
+      - **Length Limit**: To absolutely prevent Korean text corruption (깨짐), limit the text to short and punchy copywriting (e.g., "월 100만원 절약 비법!", "통신비 아끼는 꿀팁").
+      - **Structure**: Include a Main Title and an optional Subtitle. Do not use very long full sentences.
       - **Font**: You MUST explicitly command the image model to use the **Pretendard** font.
-      - **Positioning**: The text MUST be **perfectly centered** in the image, massive, and high-contrast.
-      - **Accuracy**: Compress the keyword into 1-3 syllables. Short text guarantees no spelling errors.
+      - **Positioning**: The text MUST be prominently placed, massive, and high-contrast, like a commercial ad.
+      - **Accuracy**: Extremely short and punchy text guarantees no spelling errors. Perfect spelling is absolute priority.
       - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
       
       The output prompt must be in English.
-      Example: "A cinematic 3D render of [Subject representing the content]. Center stage: The Korean text '핵심' in a massive, glowing gold font using Pretendard, perfectly centered. Below it, a smaller white Korean text reading '공개!' adds context. Background is a deep, rich gradient with floating particles."
-    ` : `
+      Example: "A cinematic 3D render of [Subject representing the content]. Center stage: The Korean text '[Main Copy]' in a massive, glowing gold font using Pretendard. Below it, a smaller text reading '[Sub Copy]' adds context. The layout is commercial and pristine. Background is a deep, rich gradient with floating particles."
+    `
+      : `
       **TEXT REQUIREMENTS**:
       - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
       
@@ -1210,111 +1355,131 @@ export const generateThumbnailPrompt = async (
       
       Content context: ${content.substring(0, 800)}...
     `;
-    
-    const response = await withRetry(() => ai.models.generateContent({
-      model: TEXT_MODEL,
-      contents: prompt,
-    }));
-    return response.text || `A creative 3D design representing the blog topic. No text.`;
+
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+      }),
+    );
+    return (
+      response.text ||
+      `A creative 3D design representing the blog topic. No text.`
+    );
   } catch (error: any) {
     throw new Error(handleApiError(error, "썸네일 프롬프트 생성 실패"));
   }
 };
 
 export const generateBlogImage = async (
-  prompt: string, 
+  prompt: string,
   aspectRatio: string = "16:9",
-  referenceImages: { data: string, mimeType: string }[] = [],
-  faceImageParts: { data: string, mimeType: string }[] = [],
-  modelName: string = 'gemini-3.1-flash-image-preview'
+  referenceImages: { data: string; mimeType: string }[] = [],
+  faceImageParts: { data: string; mimeType: string }[] = [],
+  modelName: string = "gemini-3.1-flash-image-preview",
 ): Promise<string | null> => {
   const ai = getClient();
   try {
-    if (modelName.startsWith('imagen-')) {
-        const response = await withRetry(() => ai.models.generateImages({
-            model: modelName,
-            prompt: prompt,
-            config: {
-              numberOfImages: 1,
-              outputMimeType: 'image/jpeg',
-              aspectRatio: aspectRatio as any,
-            },
-        }));
-        const base64EncodeString: string = response.generatedImages[0].image.imageBytes;
-        return `data:image/jpeg;base64,${base64EncodeString}`;
+    if (modelName.startsWith("imagen-")) {
+      const response = await withRetry(() =>
+        ai.models.generateImages({
+          model: modelName,
+          prompt: prompt,
+          config: {
+            numberOfImages: 1,
+            outputMimeType: "image/jpeg",
+            aspectRatio: aspectRatio as any,
+          },
+        }),
+      );
+      const base64EncodeString: string =
+        response.generatedImages[0].image.imageBytes;
+      return `data:image/jpeg;base64,${base64EncodeString}`;
     } else {
-        const parts: Part[] = [];
+      const parts: Part[] = [];
 
-        // 1. Handle Person Consistency FIRST (Critical Priority)
-        if (faceImageParts && faceImageParts.length > 0) {
-          faceImageParts.forEach(img => parts.push({ inlineData: img }));
-          parts.push({ text: "REFERENCE ID: PERSON_IMAGE. The image(s) above are the Reference Person(s). You must generate an image where these exact people are included without any distortion or modification. \n\n**CRITICAL REQUIREMENT**:\n1. **Zero Distortion**: The person(s) must be 100% identical to the reference. Do not deform, caricature, or alter the person in any way. \n2. **Integration**: Incorporate the person(s) naturally into the scene while keeping their appearance completely unmodified." });
-        }
-        
-        // Add Korean text handling instruction
-        parts.push({ text: "\n\n**CRITICAL KOREAN TEXT REQUIREMENT**: If you include any Korean text in the image, you MUST ensure it is rendered perfectly, clearly, and completely. Do not break, distort, garble, or omit any Korean characters. \n\n**RENDERING STRATEGY**: Prioritize the structural integrity of Korean characters over aesthetic complexity. If the model struggles to render a complex character, simplify the text. \n\n**FINAL VERIFICATION**: Double-check that every Korean character is legible, correctly formed, and not distorted or garbled." });
-        // 2. Handle other reference images (Logo, Context)
-        if (referenceImages && referenceImages.length > 0) {
-          referenceImages.forEach(img => {
-              parts.push({ inlineData: img });
-          });
-          // Append instruction to use the images without distortion
-          parts.push({ 
-            text: "REFERENCE ID: SOURCE_IMAGES. The images above are the Reference Images. You MUST use them 100% as provided. \n\n**STRICT REQUIREMENTS**:\n1. **Zero Distortion**: Do not deform, caricature, or alter the reference images in any way. They must be 100% identical to the source.\n2. **Integration**: Incorporate them into a professional, attractive infographic. Use them as core visual elements (e.g., in a comparison, a step-by-step guide, or a feature highlight).\n3. **Composition**: The overall composition should be a high-quality, data-driven infographic with clean typography and balanced layout." 
-          });
-        }
+      // 1. Handle Person Consistency FIRST (Critical Priority)
+      if (faceImageParts && faceImageParts.length > 0) {
+        faceImageParts.forEach((img) => parts.push({ inlineData: img }));
+        parts.push({
+          text: "REFERENCE ID: PERSON_IMAGE. The image(s) above are the Reference Person(s). You must generate an image where these exact people are included without any distortion or modification. \n\n**CRITICAL REQUIREMENT**:\n1. **Zero Distortion**: The person(s) must be 100% identical to the reference. Do not deform, caricature, or alter the person in any way. \n2. **Integration**: Incorporate the person(s) naturally into the scene while keeping their appearance completely unmodified.",
+        });
+      }
 
-        // 3. Add the main prompt and safety instructions
-        const supportsText = modelName === 'gemini-3.1-flash-image-preview';
-        
-        let safePrompt = `GENERATE_IMAGE: ${prompt}
+      // Add Korean text handling instruction
+      parts.push({
+        text: "\n\n**CRITICAL KOREAN TEXT REQUIREMENT**: If you include any Korean text in the image, you MUST ensure it is rendered perfectly, clearly, and completely. Do not break, distort, garble, or omit any Korean characters. \n\n**RENDERING STRATEGY**: Prioritize the structural integrity of Korean characters over aesthetic complexity. If the model struggles to render a complex character, simplify the text. \n\n**FINAL VERIFICATION**: Double-check that every Korean character is legible, correctly formed, and not distorted or garbled.",
+      });
+      // 2. Handle other reference images (Logo, Context)
+      if (referenceImages && referenceImages.length > 0) {
+        referenceImages.forEach((img) => {
+          parts.push({ inlineData: img });
+        });
+        // Append instruction to use the images without distortion
+        parts.push({
+          text: "REFERENCE ID: SOURCE_IMAGES. The images above are the Reference Images. You MUST use them 100% as provided. \n\n**STRICT REQUIREMENTS**:\n1. **Zero Distortion**: Do not deform, caricature, or alter the reference images in any way. They must be 100% identical to the source.\n2. **Integration**: Incorporate them into a professional, attractive infographic. Use them as core visual elements (e.g., in a comparison, a step-by-step guide, or a feature highlight).\n3. **Composition**: The overall composition should be a high-quality, data-driven infographic with clean typography and balanced layout.",
+        });
+      }
+
+      // 3. Add the main prompt and safety instructions
+      const supportsText = modelName === "gemini-3.1-flash-image-preview";
+
+      let safePrompt = `GENERATE_IMAGE: ${prompt}
 Style: Professional flat design or 3D isometric.
 Requirements: Clear and clean resolution, no distortion.
 Constraints: NO placeholder text, NO tool calls, NO JSON.
 CRITICAL: You must output the image part directly. Do not talk about generating it. Do not return JSON.`;
 
-        if (supportsText) {
-            safePrompt += `\n\n**TEXT REQUIREMENTS**: Perfectly spelled Korean text using the **Pretendard** font.
+      if (supportsText) {
+        safePrompt += `\n\n**TEXT REQUIREMENTS**: Perfectly spelled Korean text using the **Pretendard** font.
 **CRITICAL TEXT CONSTRAINT**: To absolutely prevent Korean text corruption/breaking, use short and punchy keywords or very brief phrases. Extract the core meaning into highly legible, massive text. Perfect spelling is absolute priority! No long conversational sentences.`;
-        } else {
-            safePrompt += `\n\n**TEXT REQUIREMENTS**: NO TEXT ALLOWED. Do not generate any text, typography, or labels in the image.`;
-        }
+      } else {
+        safePrompt += `\n\n**TEXT REQUIREMENTS**: NO TEXT ALLOWED. Do not generate any text, typography, or labels in the image.`;
+      }
 
-        parts.push({ text: safePrompt });
+      parts.push({ text: safePrompt });
 
-        const response = await withRetry(() => {
-            const config: any = {
-                imageConfig: {
-                    aspectRatio: aspectRatio as any,
-                    imageSize: "512px"
-                }
-            };
+      const response = await withRetry(() => {
+        const config: any = {
+          imageConfig: {
+            aspectRatio: aspectRatio as any,
+            imageSize: "512px",
+          },
+        };
 
-            return ai.models.generateContent({
-                model: modelName,
-                contents: {
-                    parts: parts
-                },
-                config: config
-            });
+        return ai.models.generateContent({
+          model: modelName,
+          contents: {
+            parts: parts,
+          },
+          config: config,
         });
+      });
 
-        for (const part of response.candidates[0]?.content?.parts || []) {
-            if (part.inlineData) {
-                const cleanBase64 = part.inlineData.data.replace(/[\r\n\s]+/g, '');
-                return `data:${part.inlineData.mimeType || 'image/png'};base64,${cleanBase64}`;
-            }
-            if (part.text) {
-                // Check if the model is returning a JSON tool call instead of an image
-                if (part.text.includes('"action":') || part.text.includes('"prompt":')) {
-                    console.error("Model hallucinated a tool call:", part.text);
-                    throw new Error("모델이 이미지를 생성하는 대신 도구 호출을 제안했습니다. 다른 모델을 선택하거나 다시 시도해 주세요.");
-                }
-                console.log("Model returned text instead of image:", part.text);
-            }
+      for (const part of response.candidates[0]?.content?.parts || []) {
+        if (part.inlineData) {
+          const cleanBase64 = part.inlineData.data.replace(/[\r\n\s]+/g, "");
+          return `data:${part.inlineData.mimeType || "image/png"};base64,${cleanBase64}`;
         }
-        console.error("Full response candidates:", JSON.stringify(response.candidates, null, 2));
-        throw new Error("응답에서 이미지 데이터를 찾을 수 없습니다.");
+        if (part.text) {
+          // Check if the model is returning a JSON tool call instead of an image
+          if (
+            part.text.includes('"action":') ||
+            part.text.includes('"prompt":')
+          ) {
+            console.error("Model hallucinated a tool call:", part.text);
+            throw new Error(
+              "모델이 이미지를 생성하는 대신 도구 호출을 제안했습니다. 다른 모델을 선택하거나 다시 시도해 주세요.",
+            );
+          }
+          console.log("Model returned text instead of image:", part.text);
+        }
+      }
+      console.error(
+        "Full response candidates:",
+        JSON.stringify(response.candidates, null, 2),
+      );
+      throw new Error("응답에서 이미지 데이터를 찾을 수 없습니다.");
     }
   } catch (error) {
     console.error("Image generation error:", error);
