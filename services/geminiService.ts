@@ -1055,7 +1055,7 @@ export const generateImagePromptsForPost = async (
   try {
     const ai = getClient();
     const isAuto = numberOfImages === 0;
-    const supportsText = modelName === 'gemini-3.1-flash-image-preview';
+    let supportsText = modelName === 'gemini-3.1-flash-image-preview';
 
     let styleInstruction = style === '기본 스타일' 
       ? '"Modern Professional Infographic" with a clean, high-end aesthetic. Theme: Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".'
@@ -1066,6 +1066,10 @@ export const generateImagePromptsForPost = async (
       styleInstruction = style === '기본 스타일' || style === '실사/사진' 
         ? '"Photorealistic Review Image", "Shot on iPhone 15 Pro", "Raw Photo", "Highly Detailed", "Real Life Experience", "Authentic Consumer Review Photo". Focus on extreme photorealism, natural lighting, and completely realistic textures to simulate an authentic user-taken review photo.'
         : styleInstruction + ' (Note: User chose a specific artistic style for a review, so blend it slightly with authenticity but maintain the artistic style.)';
+        
+      if (style === '기본 스타일' || style === '실사/사진') {
+          supportsText = false; // Disable text for photorealistic mode to prevent Korean text corruption
+      }
     }
 
     const textRules = supportsText ? `
@@ -1153,7 +1157,7 @@ export const generateThumbnailPrompt = async (
 ): Promise<string> => {
   try {
     const ai = getClient();
-    const supportsText = modelName === 'gemini-3.1-flash-image-preview';
+    let supportsText = modelName === 'gemini-3.1-flash-image-preview';
     
     let styleInstruction = style === '기본 스타일'
       ? '"Viral YouTube Thumbnail", "High-End Brand Identity".'
@@ -1164,6 +1168,10 @@ export const generateThumbnailPrompt = async (
       styleInstruction = style === '기본 스타일' || style === '실사/사진' 
         ? '"Photorealistic Review Thumbnail", "Shot on iPhone 15 Pro", "Bokeh effect", "Real Life Experience", "Authentic Consumer Review Photo". Focus on extreme photorealism.'
         : styleInstruction;
+        
+      if (style === '기본 스타일' || style === '실사/사진') {
+        supportsText = false; // Disable text for photorealistic mode to prevent Korean text corruption
+      }
     }
 
     const textRequirements = supportsText ? `
