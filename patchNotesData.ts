@@ -2,6 +2,16 @@ import { PatchNote } from './types';
 
 export const patchNotes: PatchNote[] = [
   {
+    version: '1.2.11',
+    date: '2026-05-17',
+    title: '이미지 기본 스타일 명칭 및 인포그래픽 모드 안내 강화',
+    type: 'improvement',
+    changes: [
+      '이미지 생성 시 기본 적용되던 스타일을 "시각화 인포그래픽 (기본)" 직관적으로 명칭을 변경했습니다.',
+      '이제 기본 설정으로 텍스트가 포함된 깔끔한 정보 전달형 인포그래픽과 시각화 자료를 쉽게 생성할 수 있음을 UI에서 확인 가능합니다.'
+    ]
+  },
+  {
     version: '1.2.10',
     date: '2026-05-17',
     title: '실사 이미지 생성 시 한국어 텍스트 깨짐 오류 개선',
