@@ -1048,7 +1048,7 @@ export const generateImagePromptsForPost = async (
   numberOfImages: number = 4, 
   hasReferenceImages: boolean = false, 
   modelName: string = 'gemini-3.1-flash-image-preview',
-  style: string = '기본 스타일',
+  style: string = '3D 미니멀 인포그래픽',
   category: string = '',
   smartImageMode: boolean = true
 ): Promise<ImagePromptRequest[]> => {
@@ -1059,6 +1059,8 @@ export const generateImagePromptsForPost = async (
 
     let styleInstruction = style === '기본 스타일' 
       ? '"Modern Professional Infographic" with a clean, high-end aesthetic. Theme: Choose ONE consistent theme: "Professional Flat Design (Vector Art)" OR "Sophisticated 3D Isometric".'
+      : style === '3D 미니멀 인포그래픽'
+      ? '"3D Minimalist Infographic Advertisement", "Clean studio lighting", "Soft natural shadows", "Pristine white or light neutral background", "Highly detailed 3D isometric objects (e.g., coins, tech gadgets, abstract shapes)", "High-end commercial aesthetic", "Product photography style but with 3D elements", "Clean space around the objects".'
       : `Apply the following specific visual style: "${style}". Ensure all images in the set maintain this consistent style.`;
 
     // Smart Reference Image Mode for Reviews
@@ -1151,7 +1153,7 @@ export const generateThumbnailPrompt = async (
   keyword: string, 
   content: string, 
   modelName: string = 'gemini-3.1-flash-image-preview',
-  style: string = '기본 스타일',
+  style: string = '3D 미니멀 인포그래픽',
   category: string = '',
   smartImageMode: boolean = true
 ): Promise<string> => {
@@ -1161,6 +1163,8 @@ export const generateThumbnailPrompt = async (
     
     let styleInstruction = style === '기본 스타일'
       ? '"Viral YouTube Thumbnail", "High-End Brand Identity".'
+      : style === '3D 미니멀 인포그래픽'
+      ? '"High-End Commercial 3D Advertisement", "Minimalist layout with 3D isometric objects", "Pristine white or very light background", "Soft studio shadows", "Extremely clean aesthetics".'
       : `Apply the following specific visual style: "${style}".`;
       
     // Smart Reference Image Mode for Reviews

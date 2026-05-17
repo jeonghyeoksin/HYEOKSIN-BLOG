@@ -101,7 +101,7 @@ export const ContentWriter: React.FC = () => {
   const [imageCount, setImageCount] = useState<number>(4);
   const [isAutoImageCount, setIsAutoImageCount] = useState<boolean>(true);
   const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview-no-text');
-  const [selectedImageStyle, setSelectedImageStyle] = useState<string>('기본 스타일');
+  const [selectedImageStyle, setSelectedImageStyle] = useState<string>('3D 미니멀 인포그래픽');
   const [wordCount, setWordCount] = useState<string>('1500자~2000자 (추천)');
 
   useEffect(() => {
@@ -180,6 +180,7 @@ export const ContentWriter: React.FC = () => {
 
   const IMAGE_STYLES = [
       { id: '기본 스타일', name: '시각화 인포그래픽 (기본)', desc: '텍스트가 들어간 깔끔한 인포그래픽 및 시각화 자료 스타일' },
+      { id: '3D 미니멀 인포그래픽', name: '3D 미니멀 인포그래픽', desc: '깔끔한 배경과 고품질 3D 오브젝트를 활용한 상업용 광고 스타일' },
       { id: '실사/사진', name: '실사/사진', desc: '고해상도 카메라로 촬영한 듯한 사실적인 사진 스타일' },
       { id: '3D 렌더링', name: '3D 렌더링', desc: '입체적이고 매끄러운 3D 그래픽 스타일' },
       { id: '일러스트', name: '일러스트', desc: '깔끔하고 현대적인 벡터 일러스트 스타일' },
