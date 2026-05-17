@@ -66,7 +66,7 @@ export const ContentWriter: React.FC = () => {
   const [contextImageFiles, setContextImageFiles] = useState<File[]>([]); // General references
   const [launderedImageFiles, setLaunderedImageFiles] = useState<File[]>([]); // Laundered images
   const [skipImageGeneration, setSkipImageGeneration] = useState<boolean>(false); // Skip image generation
-  const [smartImageMode, setSmartImageMode] = useState<boolean>(true); // Smart image mode for reviews
+  const [smartImageMode, setSmartImageMode] = useState<boolean>(false); // Smart image mode for reviews
 
   // --- State: Process ---
   const [currentStep, setCurrentStep] = useState<StudioStep>('keyword');
@@ -713,7 +713,7 @@ export const ContentWriter: React.FC = () => {
 
   const handleDiscoverKeywords = async () => {
     if (!topic) {
-      alert("블로그 주제를 먼저 입력해주세요.");
+      alert("메인 키워드를 먼저 입력해주세요.");
       return;
     }
     if (blogCategory.includes('리뷰') && !referenceUrl) {
@@ -1143,7 +1143,7 @@ export const ContentWriter: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Topic Input */}
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-300 ml-1">블로그 주제 (원하시는 주제를 자유롭게 작성해주세요.) <span className="text-red-500">*</span></label>
+                            <label className="text-sm font-bold text-slate-300 ml-1">메인 키워드 (원하시는 주제를 자유롭게 작성해주세요.) <span className="text-red-500">*</span></label>
                             <input 
                                 type="text" 
                                 value={topic}
@@ -1610,7 +1610,7 @@ export const ContentWriter: React.FC = () => {
 
                     {/* Action Area */}
                     <div className="pt-4 border-t border-slate-800">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
                           {/* 1. Discover Keywords */}
                           <button 
                             onClick={handleDiscoverKeywords}
@@ -1631,55 +1631,12 @@ export const ContentWriter: React.FC = () => {
                                 </div>
                              )}
                           </button>
-                          
-                          {/* 2. Manual Keyword Start */}
-                          <div className="bg-slate-800/60 p-6 rounded-3xl border border-slate-700/50 hover:border-emerald-500/30 hover:bg-slate-800 flex flex-col justify-between shadow-lg group transition-all min-h-[180px] relative overflow-hidden">
-                               <div className="relative z-10">
-                                   <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center text-2xl mb-4 text-emerald-400">⚡️</div>
-                                   <h3 className="text-xl font-bold text-white tracking-tight mb-2">원하는 키워드로 시작</h3>
-                                   <p className="text-xs text-slate-400 font-medium mb-4">직접 입력한 키워드로 작성합니다.</p>
-                               </div>
-                               <div className="relative z-10 flex gap-2">
-                                    <input 
-                                        type="text" 
-                                        value={manualKeyword}
-                                        onChange={(e) => setManualKeyword(e.target.value)}
-                                        placeholder="키워드 입력"
-                                        className="flex-1 bg-slate-900 border border-slate-600 rounded-xl px-3 text-sm text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all"
-                                        onKeyDown={(e) => e.key === 'Enter' && handleManualStart()} 
-                                    />
-                                   <button 
-                                      onClick={handleManualStart}
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-900/20"
-                                   >
-                                      Go
-                                   </button>
-                               </div>
-                          </div>
-
-                          {/* 3. Start with Blog Topic */}
-                          <button 
-                            onClick={() => {
-                                if (!topic) {
-                                    alert("블로그 주제를 먼저 입력해주세요.");
-                                    return;
-                                }
-                                runAutomationSequence(topic);
-                            }}
-                            className="bg-slate-800/60 p-6 rounded-3xl border border-slate-700/50 hover:border-blue-500/30 hover:bg-slate-800 flex flex-col justify-between shadow-lg group transition-all min-h-[180px] relative overflow-hidden text-left"
-                          >
-                             <div className="relative z-10">
-                                 <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center text-2xl mb-4 text-blue-400">📝</div>
-                                 <h3 className="text-xl font-bold text-white tracking-tight mb-2">블로그 주제로 바로 시작하기</h3>
-                                 <p className="text-xs text-slate-400 font-medium leading-relaxed">입력한 주제를 바탕으로 즉시 원고 작성을 시작합니다.</p>
-                             </div>
-                          </button>
 
                           {/* 4. One-Click Automation */}
                           <button 
                             onClick={() => {
                                 if (!topic) {
-                                    alert("블로그 주제를 먼저 입력해주세요.");
+                                    alert("메인 키워드를 먼저 입력해주세요.");
                                     return;
                                 }
                                 runAutomationSequence(topic, true);

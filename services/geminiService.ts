@@ -1214,18 +1214,18 @@ export const generateImagePromptsForPost = async (
     const textRules = supportsText
       ? `
     **STRICT INFOGRAPHIC TEXT RULES (KOREAN ONLY - CRITICAL)**:
-    1. **Content Relevance**: You MUST aggressively extract the core message, facts, or keywords directly from the provided blog content snippet. The text MUST perfectly reflect the actual body content to create an attractive, informative infographic.
+    1. **Content Summary & Copywriting**: You MUST summarize the specific section of the blog content into an attractive, punchy marketing copywriting in Korean. The text MUST strictly be constructed ONLY from the facts, concepts, and meaning inside the provided body content. DO NOT infer, guess, invent, or create any external context.
     2. **Copywriting Format (ANTI-CORRUPTION)**: To absolutely prevent Korean text corruption (깨짐), generate short, punchy marketing copywriting.
-    3. **Structure & Appeal**: Create highly attractive, modern infographic layouts.
-       - Main Title: A catchy, ultra-short Korean phrase summarizing a key point (Maximum 3-5 words).
-       - Subtitle (Optional): A concise complementary phrase explaining the main title.
+    3. **Structure & Appeal**: EVERY SINGLE IMAGE MUST HAVE AT LEAST TWO LINES of Korean text (two or more lines).
+       - Main Title (Line 1): A catchy, ultra-short Korean phrase summarizing a key point.
+       - Subtitles (Line 2+): Concise complementary phrases explaining the main title. You can use multiple lines if needed.
     4. **Legibility & Precision**: Use massive, bold "Pretendard" font for the main title, and a smaller clean font for the subtitle. Perfect spelling is absolute priority! The text must be flawlessly integrated into the visual design with no corruption.
     5. **NO ENGLISH**: **DO NOT include any English text**.
     6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
 
     **Prompt Format (English)**:
-    - Detailed visual description of a stunning, modern infographic with 3D objects and clean layout.
-    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Main Copy]' in a massive, bold Pretendard font at the top. Below it, render '[Sub Copy]' in a clean font. The layout should look like a high-end commercial ad. The text must be flawlessly spelled."
+    - Detailed visual description of a stunning, modern infographic with perfectly matching 3D objects and clean layout. The visual elements MUST strictly relate to the specific content point of the article.
+    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Main Copy]' in a massive, bold Pretendard font at the top. Below it, render '[Sub Copy]' in a clean font. The layout should look like a high-end commercial ad. The visual objects must directly relate to these texts. The text must be flawlessly spelled."
     `
       : `
     **STRICT TEXT RULES**:
@@ -1241,9 +1241,10 @@ export const generateImagePromptsForPost = async (
     ${hasReferenceImages ? "**INFOGRAPHIC MODE (MANDATORY)**: The user has provided reference images. You MUST use these images 100% as they are, without any distortion or caricature. Your prompts MUST focus on creating 'Attractive Data-Driven Infographics' where these reference images are the central, non-distorted visual elements. Design layouts like comparison tables, step-by-step guides, or feature highlights that showcase the reference images perfectly." : ""}
 
     **CONTENT STRUCTURE**:
-    - **Image 1 (Hook)**: Visualizes the problem or a shocking fact to grab attention.
-    - **Middle Images**: Visualize key concepts, steps, solutions, or benefits in a logical narrative flow.
-    - **Last Image (Action/Conclusion)**: Summarizes and encourages action.
+    - **Image 1 (Hook)**: Visualizes the problem or a shocking fact from the introduction to grab attention. MUST include 2 lines of text and highly relevant imagery.
+    - **Middle Images**: Visualize key concepts, steps, solutions, or benefits in a strict logical narrative flow following the article's body. EVERY image MUST have 2 lines of text and highly relevant imagery.
+    - **Last Image (Action/Conclusion)**: Summarizes the outcome and encourages action based on the article's conclusion. MUST include 2 lines of text and highly relevant imagery.
+    - **Narrative Flow Constraint**: The text in each image MUST sequentially match the chronological flow of the article. Do not use random or disjointed text. The visual objects MUST directly represent the specific text of the image.
 
     **VISUAL DESIGN STYLE**:
     - **Style**: ${styleInstruction}
@@ -1325,9 +1326,9 @@ export const generateThumbnailPrompt = async (
       ? `
       **TEXT REQUIREMENTS (CRITICAL TO PREVENT CORRUPTION)**:
       - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**.
-      - **Content Relevance**: Create a highly engaging, punchy marketing copy based on the topic.
+      - **Content Relevance**: The thumbnail image MUST explicitly display the EXACT user-provided Blog Topic ("${keyword}") as the main text. The text MUST 100% reflect this blog topic.
       - **Length Limit**: To absolutely prevent Korean text corruption (깨짐), limit the text to short and punchy copywriting (e.g., "월 100만원 절약 비법!", "통신비 아끼는 꿀팁").
-      - **Structure**: Include a Main Title and an optional Subtitle. Do not use very long full sentences.
+      - **Structure**: You MUST include AT LEAST TWO LINES of text (two or more lines): A Main Title and Subtitle(s). Do not use very long full sentences.
       - **Font**: You MUST explicitly command the image model to use the **Pretendard** font.
       - **Positioning**: The text MUST be prominently placed, massive, and high-contrast, like a commercial ad.
       - **Accuracy**: Extremely short and punchy text guarantees no spelling errors. Perfect spelling is absolute priority.
@@ -1432,7 +1433,7 @@ CRITICAL: You must output the image part directly. Do not talk about generating 
 
       if (supportsText) {
         safePrompt += `\n\n**TEXT REQUIREMENTS**: Perfectly spelled Korean text using the **Pretendard** font.
-**CRITICAL TEXT CONSTRAINT**: To absolutely prevent Korean text corruption/breaking, use short and punchy keywords or very brief phrases. Extract the core meaning into highly legible, massive text. Perfect spelling is absolute priority! No long conversational sentences.`;
+**CRITICAL TEXT CONSTRAINT**: To absolutely prevent Korean text corruption/breaking, you MUST include AT LEAST TWO LINES (two or more lines) of short and punchy marketing text (Main copy and Sub copy). Extract the core meaning into highly legible, massive text. The text MUST strictly relate to the specific content point or blog topic. Perfect spelling is absolute priority! No long conversational sentences.`;
       } else {
         safePrompt += `\n\n**TEXT REQUIREMENTS**: NO TEXT ALLOWED. Do not generate any text, typography, or labels in the image.`;
       }
