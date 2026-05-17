@@ -1193,9 +1193,9 @@ export const generateImagePromptsForPost = async (
 
     let styleInstruction =
       style === "기본 스타일"
-        ? '"Copywriting Infographic Advertisement", "Clean studio lighting", "Pristine background", "High-end commercial aesthetic", "A massive Korean copy text at the top, and related 3D isometric objects (e.g., coins, tech gadgets, abstract shapes) playfully arranged below or around the text", "Perfectly spelled Korean text is MANDATORY".'
+        ? '"Copywriting Infographic Advertisement", "Clean studio lighting", "Pristine background", "High-end commercial aesthetic", "A massive Korean main title text at the top and a Korean subtitle below it. You MUST include at least two lines of Korean text strictly derived from the body content. This is an ABSOLUTE REQUIREMENT for EVERY image. Perfectly spelled Korean text is MANDATORY".'
         : style === "3D 미니멀 인포그래픽"
-          ? '"3D Minimalist Infographic Advertisement", "Clean studio lighting", "Soft natural shadows", "Pristine white or light neutral background", "Highly detailed 3D isometric objects (e.g., coins, tech gadgets, abstract shapes)", "High-end commercial aesthetic", "Product photography style but with 3D elements", "Clean space around the objects".'
+          ? '"3D Minimalist Infographic Advertisement", "Clean studio lighting", "Pristine background", "Highly detailed 3D isometric objects", "High-end commercial aesthetic", "A massive Korean main title text at the top and a Korean subtitle below it. You MUST include at least two lines of Korean text strictly derived from the body content. This is an ABSOLUTE REQUIREMENT for EVERY image. Perfectly spelled Korean text is MANDATORY".'
           : `Apply the following specific visual style: "${style}". Ensure all images in the set maintain this consistent style.`;
 
     // Smart Reference Image Mode for Reviews
@@ -1214,18 +1214,18 @@ export const generateImagePromptsForPost = async (
     const textRules = supportsText
       ? `
     **STRICT INFOGRAPHIC TEXT RULES (KOREAN ONLY - CRITICAL)**:
-    1. **Content Summary & Copywriting**: You MUST summarize the specific section of the blog content into an attractive, punchy marketing copywriting in Korean. The text MUST strictly be constructed ONLY from the facts, concepts, and meaning inside the provided body content. DO NOT infer, guess, invent, or create any external context.
-    2. **Copywriting Format (ANTI-CORRUPTION)**: To absolutely prevent Korean text corruption (깨짐), generate short, punchy marketing copywriting.
-    3. **Structure & Appeal**: EVERY SINGLE IMAGE MUST HAVE AT LEAST TWO LINES of Korean text (two or more lines).
+    1. **Content Summary & Copywriting**: The text MUST be strictly extracted and constructed ONLY from the facts, concepts, and meaning inside the provided body content. DO NOT infer, guess, invent, or create any external context. The generated text must be a direct summary of the provided blog body content snippet.
+    2. **Copywriting Format (ANTI-CORRUPTION)**: To absolutely prevent Korean text corruption (깨짐), generate highly engaging, hooky marketing copywriting based entirely on the body content. Use the body text to create catchy, attention-grabbing phrases.
+    3. **Structure & Appeal**: EVERY SINGLE IMAGE (100% of generated images) MUST PROMINENTLY DISPLAY AT LEAST TWO LINES of Korean text (Main Title and Subtitle). THIS IS AN ABSOLUTE MUST. DO NOT GENERATE AN IMAGE WITHOUT KOREAN TEXT.
        - Main Title (Line 1): A catchy, ultra-short Korean phrase summarizing a key point.
        - Subtitles (Line 2+): Concise complementary phrases explaining the main title. You can use multiple lines if needed.
-    4. **Legibility & Precision**: Use massive, bold "Pretendard" font for the main title, and a smaller clean font for the subtitle. Perfect spelling is absolute priority! The text must be flawlessly integrated into the visual design with no corruption.
+    4. **Legibility & Precision**: Use massive, bold "Pretendard" font for the main title, and a smaller clean font for the subtitle. Perfect spelling is absolute priority! There must be ZERO corruption, weird symbols, or breaking.
     5. **NO ENGLISH**: **DO NOT include any English text**.
     6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
 
     **Prompt Format (English)**:
     - Detailed visual description of a stunning, modern infographic with perfectly matching 3D objects and clean layout. The visual elements MUST strictly relate to the specific content point of the article.
-    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Main Copy]' in a massive, bold Pretendard font at the top. Below it, render '[Sub Copy]' in a clean font. The layout should look like a high-end commercial ad. The visual objects must directly relate to these texts. The text must be flawlessly spelled."
+    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Exact text extracted from body]' in a massive, bold Pretendard font at the top. Below it, render '[Secondary exact text from body]' in a clean font. The layout should look like a high-end commercial ad. The visual objects must directly relate to these texts. The text must be flawlessly spelled. I absolutely MUST render these 2 lines of text."
     `
       : `
     **STRICT TEXT RULES**:
@@ -1254,8 +1254,8 @@ export const generateImagePromptsForPost = async (
     ${textRules}
 
     Return JSON array of ${isAuto ? "objects (length between 4 and 8, determined by content length)" : `${numberOfImages} objects`}:
-    - 'context': Korean description.
-    - 'prompt': The English prompt for the model.
+    - 'context': Korean description (e.g., of the section being visualized).
+    - 'prompt': The English prompt for the image generation model. It MUST explicitly contain the command to render 2 lines of specific Korean text derived from the context. (e.g., "... Render the Korean text 'XXX' as the main title and 'YYY' as the subtitle...").
 
     Content snippet: ${content.substring(0, 4000)}...
   `;
@@ -1298,17 +1298,18 @@ export const generateThumbnailPrompt = async (
   style: string = "3D 미니멀 인포그래픽",
   category: string = "",
   smartImageMode: boolean = true,
+  includeThumbnailText: boolean = true,
 ): Promise<string> => {
   try {
     const ai = getClient();
-    let supportsText = modelName === "gemini-3.1-flash-image-preview";
+    let supportsText = modelName.includes("gemini-3.1-flash-image-preview") && includeThumbnailText;
 
     let styleInstruction =
       style === "기본 스타일"
-        ? '"High-End Copywriting Thumbnail", "Clean studio lighting", "Pristine background", "3D isometric objects arranged harmoniously", "Commercial advertisement look".'
+        ? '"High-End Commercial YouTube Thumbnail", "Vibrant striking colors", "Massive stroke-outlined Korean 3D typography", "Eye-catching composition with deep contrast", "MUST include ONLY ONE massive Korean main title text. NO subtitles allowed.". '
         : style === "3D 미니멀 인포그래픽"
-          ? '"High-End Commercial 3D Advertisement", "Minimalist layout with 3D isometric objects", "Pristine white or very light background", "Soft studio shadows", "Extremely clean aesthetics".'
-          : `Apply the following specific visual style: "${style}".`;
+          ? '"High-End Commercial 3D Advertisement", "Minimalist layout with 3D isometric objects", "Pristine white or very light background", "Soft studio shadows", "Extremely clean aesthetics, but typography MUST have thick strokes like a YouTube thumbnail", "MUST include ONLY ONE massive Korean main title text. NO subtitles allowed.".'
+          : `Apply the following specific visual style: "${style}". Ensure the typography is massive and clear like a commercial banner.`;
 
     // Smart Reference Image Mode for Reviews
     if (category.includes("리뷰") && smartImageMode) {
@@ -1326,16 +1327,16 @@ export const generateThumbnailPrompt = async (
       ? `
       **TEXT REQUIREMENTS (CRITICAL TO PREVENT CORRUPTION)**:
       - **Language**: Korean Only. **NO ENGLISH TEXT ALLOWED**.
-      - **Content Relevance**: The thumbnail image MUST explicitly display the EXACT user-provided Blog Topic ("${keyword}") as the main text. The text MUST 100% reflect this blog topic.
-      - **Length Limit**: To absolutely prevent Korean text corruption (깨짐), limit the text to short and punchy copywriting (e.g., "월 100만원 절약 비법!", "통신비 아끼는 꿀팁").
-      - **Structure**: You MUST include AT LEAST TWO LINES of text (two or more lines): A Main Title and Subtitle(s). Do not use very long full sentences.
-      - **Font**: You MUST explicitly command the image model to use the **Pretendard** font.
-      - **Positioning**: The text MUST be prominently placed, massive, and high-contrast, like a commercial ad.
+      - **Content Relevance**: The thumbnail image MUST explicitly and ONLY display the EXACT user-provided Main Keyword ("${keyword}"). The Main Keyword MUST be 100% included exactly as provided without any omission, substitution, or addition. Do NOT add any surrounding text. USING THIS EXACT KEYWORD AS THE SOLE TEXT IS YOUR MOST IMPORTANT TASK.
+      - **Length Limit**: You must ONLY use the exact text "${keyword}". No extra copywriting.
+      - **Structure**: You MUST include EXACTLY ONE LINE of text representing the main keyword. Do NOT add any subtitles.
+      - **Font**: You MUST explicitly command the image model to use the **Pretendard** font with heavy, thick stroke outlines (like a vibrant YouTube promo banner).
+      - **Positioning**: The text MUST be centered, massive, high-contrast, glowing or thickly outlined, like an exciting commercial ad.
       - **Accuracy**: Extremely short and punchy text guarantees no spelling errors. Perfect spelling is absolute priority.
       - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
       
       The output prompt must be in English.
-      Example: "A cinematic 3D render of [Subject representing the content]. Center stage: The Korean text '[Main Copy]' in a massive, glowing gold font using Pretendard. Below it, a smaller text reading '[Sub Copy]' adds context. The layout is commercial and pristine. Background is a deep, rich gradient with floating particles."
+      Example: "A cinematic 3D render of [Subject representing the content]. Center stage: The Korean text '${keyword}' in a massive, glowing gold font with thick colorful stroke outlines using Pretendard. The layout is commercial and pristine. Background is a vibrant, rich gradient with floating graphic elements."
     `
       : `
       **TEXT REQUIREMENTS**:
@@ -1351,6 +1352,7 @@ export const generateThumbnailPrompt = async (
       **DESIGN VISION**:
       - **Vibe**: ${styleInstruction}
       - **Composition**: Central focus, dynamic background, depth of field.
+      - **Background Color**: Analyze the provided 'Content context' below to determine the tone and manner of the article. Choose a background color palette that perfectly matches this tone (e.g., trustworthy blue for law/finance, warm orange/yellow for food/cafe, clean white/mint for healthcare, luxurious black/gold for premium services). Explicitly describe this background color in the generated prompt.
       
       ${textRequirements}
       
@@ -1363,10 +1365,15 @@ export const generateThumbnailPrompt = async (
         contents: prompt,
       }),
     );
-    return (
-      response.text ||
-      `A creative 3D design representing the blog topic. No text.`
-    );
+    
+    let resultPrompt = response.text || `A creative 3D design representing the blog topic. No text.`;
+    
+    // Force exactly the Korean keyword if text is supported
+    if (supportsText) {
+      resultPrompt = `A high quality, vibrant YouTube-style commercial thumbnail. Center text reads "${keyword}". ` + resultPrompt + `\n\nMake sure the Korean text "${keyword}" is perfectly rendered and massive in the center of the image. The text MUST have heavy, colorful stroke outlines to pop out from the background like a commercial promo banner. DO NOT add any other text.`;
+    }
+    
+    return resultPrompt;
   } catch (error: any) {
     throw new Error(handleApiError(error, "썸네일 프롬프트 생성 실패"));
   }
@@ -1423,7 +1430,7 @@ export const generateBlogImage = async (
       }
 
       // 3. Add the main prompt and safety instructions
-      const supportsText = modelName === "gemini-3.1-flash-image-preview";
+      const supportsText = modelName === "gemini-3.1-flash-image-preview" && !prompt.includes("NO TEXT ALLOWED");
 
       let safePrompt = `GENERATE_IMAGE: ${prompt}
 Style: Professional flat design or 3D isometric.
@@ -1432,10 +1439,9 @@ Constraints: NO placeholder text, NO tool calls, NO JSON.
 CRITICAL: You must output the image part directly. Do not talk about generating it. Do not return JSON.`;
 
       if (supportsText) {
-        safePrompt += `\n\n**TEXT REQUIREMENTS**: Perfectly spelled Korean text using the **Pretendard** font.
-**CRITICAL TEXT CONSTRAINT**: To absolutely prevent Korean text corruption/breaking, you MUST include AT LEAST TWO LINES (two or more lines) of short and punchy marketing text (Main copy and Sub copy). Extract the core meaning into highly legible, massive text. The text MUST strictly relate to the specific content point or blog topic. Perfect spelling is absolute priority! No long conversational sentences.`;
+        safePrompt += `\n\nCRITICAL INSTRUCTION: You MUST render the exact Korean text specified in the prompt in massive, bold typography with strong high-contrast stroke outlines (like a commercial promo banner). Use Pretendard font, perfectly spelled, very clear and legible. DO NOT USE ANY ENGLISH TEXT. THIS IS ABSOLUTELY REQUIRED.`;
       } else {
-        safePrompt += `\n\n**TEXT REQUIREMENTS**: NO TEXT ALLOWED. Do not generate any text, typography, or labels in the image.`;
+        safePrompt += `\n\nCRITICAL INSTRUCTION: NO TEXT ALLOWED. Do not generate any text, typography, or labels in the image.`;
       }
 
       parts.push({ text: safePrompt });

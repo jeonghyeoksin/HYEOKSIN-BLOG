@@ -67,6 +67,7 @@ export const ContentWriter: React.FC = () => {
   const [launderedImageFiles, setLaunderedImageFiles] = useState<File[]>([]); // Laundered images
   const [skipImageGeneration, setSkipImageGeneration] = useState<boolean>(false); // Skip image generation
   const [smartImageMode, setSmartImageMode] = useState<boolean>(false); // Smart image mode for reviews
+  const [includeThumbnailText, setIncludeThumbnailText] = useState<boolean>(true); // Include text on thumbnail
 
   // --- State: Process ---
   const [currentStep, setCurrentStep] = useState<StudioStep>('keyword');
@@ -128,6 +129,7 @@ export const ContentWriter: React.FC = () => {
         if (parsed.includeFaq !== undefined) setIncludeFaq(parsed.includeFaq);
         if (parsed.skipImageGeneration !== undefined) setSkipImageGeneration(parsed.skipImageGeneration);
         if (parsed.smartImageMode !== undefined) setSmartImageMode(parsed.smartImageMode);
+        if (parsed.includeThumbnailText !== undefined) setIncludeThumbnailText(parsed.includeThumbnailText);
         if (parsed.imageCount !== undefined) setImageCount(parsed.imageCount);
         if (parsed.isAutoImageCount !== undefined) setIsAutoImageCount(parsed.isAutoImageCount);
         if (parsed.selectedImageModel) setSelectedImageModel(parsed.selectedImageModel);
@@ -160,6 +162,7 @@ export const ContentWriter: React.FC = () => {
         includeFaq,
         skipImageGeneration,
         smartImageMode,
+        includeThumbnailText,
         imageCount,
         isAutoImageCount,
         selectedImageModel,
@@ -168,7 +171,7 @@ export const ContentWriter: React.FC = () => {
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(settings));
   }, [
-    topic, blogStyle, blogCategory, blogPlatform, storeName, salesService, postGoal, referenceNote, mustIncludeContent, benchmarkingText, servicePriceText, referenceUrl, targetAudience, secondaryKeywords, cta, faq, includeFaq, skipImageGeneration, smartImageMode, imageCount, isAutoImageCount, selectedImageModel, selectedImageStyle, wordCount
+    topic, blogStyle, blogCategory, blogPlatform, storeName, salesService, postGoal, referenceNote, mustIncludeContent, benchmarkingText, servicePriceText, referenceUrl, targetAudience, secondaryKeywords, cta, faq, includeFaq, skipImageGeneration, smartImageMode, includeThumbnailText, imageCount, isAutoImageCount, selectedImageModel, selectedImageStyle, wordCount
   ]);
 
   const IMAGE_MODELS = [
@@ -629,14 +632,14 @@ export const ContentWriter: React.FC = () => {
             if (automationKilled.current) return;
             setCurrentStep('thumbnail');
             setStepProgress(0);
-            const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle, blogCategory, smartImageMode);
+            const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle, blogCategory, smartImageMode, includeThumbnailText);
             setThumbnailPrompt(thumbPrompt);
             
             setThumbnail({ prompt: thumbPrompt, context: '', url: null, isLoading: true });
             
             try {
                 const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
-                const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${thumbPrompt}, no text, no words` : thumbPrompt;
+                const promptToUse = (selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' && !includeThumbnailText) ? `${thumbPrompt}, no text, no words` : thumbPrompt;
                 const thumbUrl = await generateBlogImage(promptToUse, "1:1", refParts, faceParts, modelToUse);
                 setThumbnail({ prompt: thumbPrompt, context: '', url: thumbUrl, isLoading: false });
                 setStepProgress(100);
@@ -690,6 +693,7 @@ export const ContentWriter: React.FC = () => {
           setIncludeFaq(false);
           setSkipImageGeneration(false);
           setSmartImageMode(true);
+          setIncludeThumbnailText(true);
           setImageCount(4);
           setIsAutoImageCount(true);
           setSelectedImageModel('gemini-3.1-flash-image-preview-no-text');
@@ -778,7 +782,15 @@ export const ContentWriter: React.FC = () => {
         const refParts = await getImageRefs();
         const ratio = editingImageIndex === -1 ? "1:1" : "16:9";
         const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
-        const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${editPrompt}, no text, no words` : editPrompt;
+        
+        let promptToUse = editPrompt;
+        if (selectedImageModel === 'gemini-3.1-flash-image-preview-no-text') {
+             if (editingImageIndex === -1 && includeThumbnailText) {
+                 promptToUse = editPrompt;
+             } else {
+                 promptToUse = `${editPrompt}, no text, no words`;
+             }
+        }
         
         const newUrl = await generateBlogImage(promptToUse, ratio, refParts, faceParts, modelToUse);
         
@@ -1548,6 +1560,27 @@ export const ContentWriter: React.FC = () => {
                                     />
                                 </div>
                             </div>
+                            
+                            {/* Include Thumbnail Text */}
+                            {!skipImageGeneration && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-300 ml-1 mb-2">메인 썸네일 텍스트 표시</label>
+                                    <div className="p-3 bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-between h-14">
+                                        <div className="flex flex-col">
+                                            <label htmlFor="includeThumbnailText" className="text-sm font-bold text-white cursor-pointer">
+                                                썸네일에 키워드 포함
+                                            </label>
+                                        </div>
+                                        <input 
+                                           type="checkbox" 
+                                           id="includeThumbnailText"
+                                           checked={includeThumbnailText}
+                                           onChange={(e) => setIncludeThumbnailText(e.target.checked)}
+                                           className="w-5 h-5 text-indigo-600 bg-slate-900 border-slate-600 rounded focus:ring-indigo-500 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Image Count Selection */}
                             {!skipImageGeneration && (
@@ -1979,7 +2012,7 @@ export const ContentWriter: React.FC = () => {
                                                         setThumbnail(prev => prev ? {...prev, isLoading: true} : null);
                                                         try {
                                                             const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
-                                                            const promptToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? `${thumbnailPrompt}, no text, no words` : thumbnailPrompt;
+                                                            const promptToUse = (selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' && !includeThumbnailText) ? `${thumbnailPrompt}, no text, no words` : thumbnailPrompt;
                                                             const thumbUrl = await generateBlogImage(promptToUse, "1:1", await getImageRefs(), await getFaceRefs(), modelToUse);
                                                             setThumbnail({ prompt: thumbnailPrompt, context: '', url: thumbUrl, isLoading: false });
                                                         } catch (e) {
