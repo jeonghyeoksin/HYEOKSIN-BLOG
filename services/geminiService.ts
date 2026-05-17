@@ -902,7 +902,7 @@ export const generateFullPostStream = async (
          - **The VERY FIRST line of the blog post MUST NOT exceed 10 characters.** This is a critical SEO optimization rule.
          - For all other lines, EVERY single line in the blog post body MUST be ${
            blogCategory?.includes('리뷰') 
-           ? 'exactly 15 characters' 
+           ? 'between 20 and 23 characters' 
            : '20 characters or less'
          }. 
          - You MUST manually insert a newline (\n) to ensure these line length constraints are strictly met. This is a hard constraint for readability on mobile layouts and SEO.
@@ -1074,18 +1074,18 @@ export const generateImagePromptsForPost = async (
 
     const textRules = supportsText ? `
     **STRICT INFOGRAPHIC TEXT RULES (KOREAN ONLY - CRITICAL)**:
-    1. **Content Relevance**: You MUST extract the core message directly from the provided blog content snippet. The text you generate must reflect the actual body content perfectly.
-    2. **Length Limit (ANTI-CORRUPTION)**: Image generation models frequently struggle with Korean phrases, causing severe text corruption (텍스트 깨짐). To absolutely prevent this, the Korean text MUST be condensed to an **ultra-short, punchy keyword of 1~3 syllables MAXIMUM per line** (e.g., "핵심", "결과", "해결책", "비법"). Do not use long words or full sentences.
-    3. **Structure**: 
-       - Main Element: One giant, ultra-short Keyword extracted from the content (e.g., "매출").
-       - Sub Element (Optional): One ultra-short complementary word (e.g., "상승!").
-    4. **Legibility**: Use massive, bold "Pretendard" font. Perfect spelling is absolute priority!
+    1. **Content Relevance**: You MUST aggressively extract the core message, facts, or keywords directly from the provided blog content snippet. The text MUST perfectly reflect the actual body content to create an attractive, informative infographic.
+    2. **Anti-Corruption Rule**: To absolutely prevent Korean text corruption (깨짐), the text MUST be concise. Use short, punchy keywords or very brief phrases (e.g., "핵심 전략", "매출 200% 상승", "성공 비결!"). Avoid long conversational sentences.
+    3. **Structure & Appeal**: Create highly attractive, modern infographic layouts.
+       - Main Element: Eye-catching Korean text summarizing a key point from the content.
+       - Sub Element (Optional): A complementary short phrase providing context.
+    4. **Legibility & Precision**: Use massive, bold "Pretendard" font. Perfect spelling is absolute priority! The text must be flawlessly integrated into the visual design with no corruption.
     5. **NO ENGLISH**: **DO NOT include any English text**.
     6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
 
     **Prompt Format (English)**:
-    - Detailed visual description of the infographic (charts, data points, icons).
-    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Ultra-Short Content Keyword]' in a massive, bold Sans-serif font at the center. No other text."
+    - Detailed visual description of a stunning, modern infographic (charts, data points, 3D icons, clean layout).
+    - **CRITICAL INSTRUCTION**: Explicitly write: "Render the precise Korean text '[Extracted Content Keyword]' in a massive, bold Pretendard font. Below it, render '[Short Sub Context]' in a clean font. The text must be flawlessly spelled."
     ` : `
     **STRICT TEXT RULES**:
     - **NO TEXT ALLOWED**: The selected image generation model does NOT support text generation. **DO NOT** include any instructions to render text, typography, labels, or words in the image.
@@ -1271,7 +1271,7 @@ CRITICAL: You must output the image part directly. Do not talk about generating 
 
         if (supportsText) {
             safePrompt += `\n\n**TEXT REQUIREMENTS**: Perfectly spelled Korean text using the **Pretendard** font.
-**CRITICAL TEXT CONSTRAINT**: To absolutely prevent Korean text corruption/breaking, keep any generated Korean text EXTREMELY short (1-2 words MAXIMUM per line). Summarize any requested text to the most impactful 1-3 syllables. Perfect spelling is absolute priority! No long sentences.`;
+**CRITICAL TEXT CONSTRAINT**: To absolutely prevent Korean text corruption/breaking, use short and punchy keywords or very brief phrases. Extract the core meaning into highly legible, massive text. Perfect spelling is absolute priority! No long conversational sentences.`;
         } else {
             safePrompt += `\n\n**TEXT REQUIREMENTS**: NO TEXT ALLOWED. Do not generate any text, typography, or labels in the image.`;
         }
