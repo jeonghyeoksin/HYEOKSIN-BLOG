@@ -150,25 +150,84 @@ const Manual: React.FC<ManualProps> = ({ onClose }) => {
             )}
 
             {activeTab === 'styles' && (
-              <motion.div key="styles" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                <h3 className="text-lg font-bold text-white mb-4">분류에 따른 자동 매칭 시스템</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { c: '맛집/카페/제품 리뷰', s: '리뷰/체험단형', t: '직경경험 묘사, 생동감, 솔직한 평가', i: Store },
-                    { c: '병원/법률/금융/IT', s: '전문가/정보전달형', t: '논리적 구조, 객관적 데이터, 신뢰감', i: Building2 },
-                    { c: '육아/일상/레시피', s: '친근한 이웃형', t: '공감 문구, 친절한 설명, 이모지 활용', i: MessageCircle },
-                    { c: '인테리어/시공/학원', s: '현장 밀착형 스토리', t: '비포&애프터, 작업 일지, 파트너십', i: GraduationCap },
-                  ].map((item, idx) => (
-                    <div key={idx} className="bg-slate-800/30 p-4 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition-colors">
-                      <div className="flex items-center gap-3 mb-2">
-                        <item.i className="w-5 h-5 text-indigo-400" />
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{item.c}</span>
+              <motion.div key="styles" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                <section className="space-y-4">
+                  <h3 className="text-lg font-bold text-white mb-4">카테고리별 원고 자동 매칭 시스템 분석</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[
+                      { c: '맛집/카페/제품 리뷰', s: '생생한 리뷰/체험단형', t: '직접 방문/사용한 듯한 경험 묘사와 솔직한 평가, 모바일 최적화(단락 분리)', i: Store },
+                      { c: '병원/법률/금융/IT', s: '신뢰/정보전달/전문가형', t: '객관적인 데이터 중심, 논리적인 구조 완성, 확고하고 전문적인 어조', i: Building2 },
+                      { c: '육아/일상/레시피', s: '공감 소통/친근한 이웃형', t: '감성적인 문구, 친절한 어투, 다양한 이모지로 부드러운 소통 체계', i: MessageCircle },
+                      { c: '인테리어/시공/학원', s: '현장 밀착 스토리텔링형', t: '비포&애프터 해결과정, 고객 고민 해소 및 파트너십 구축 서사', i: GraduationCap },
+                    ].map((item, idx) => (
+                      <div key={idx} className="bg-slate-800/30 p-4 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition-colors">
+                        <div className="flex items-center gap-3 mb-2">
+                          <item.i className="w-5 h-5 text-indigo-400" />
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{item.c}</span>
+                        </div>
+                        <h4 className="text-white font-bold text-sm mb-1">{item.s}</h4>
+                        <p className="text-[11px] text-slate-500 leading-relaxed">{item.t}</p>
                       </div>
-                      <h4 className="text-white font-bold text-sm mb-1">{item.s}</h4>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">{item.t}</p>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <h3 className="text-lg font-bold text-white mt-8 mb-4">플랫폼, 분류, 스타일에 따른 활용 가이드 (조합 예시)</h3>
+                  <div className="flex flex-col gap-4">
+                    {/* Ex 1 */}
+                    <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 hover:border-emerald-500/30 transition-all">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-[10px] font-bold">네이버 블로그</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">분류: 상업 리뷰 (맛집/제품)</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">스타일: 리뷰 / 사용기</span>
+                      </div>
+                      <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">🍽️ 모바일 최적화 생생한 체험단 리뷰</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                         가장 많은 조회수를 발생시키는 <strong>모바일 가독성(20자 줄바꿈, 2줄 단락)</strong>에 맞춰 작성됩니다. 직접 체험한 듯한 사실적인 묘사, 매장 위치와 꿀팁, 그리고 장단점 비율을 자연스럽게 섞어 네이버 스마트에디터 ONE과 가장 궁합이 좋은 결과물을 냅니다.
+                      </p>
                     </div>
-                  ))}
-                </div>
+                    
+                    {/* Ex 2 */}
+                    <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 hover:border-blue-500/30 transition-all">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px] font-bold">티스토리 / 기타</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">분류: 정보/지식전달</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">스타일: 정보 전달(객관적)</span>
+                      </div>
+                      <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">💻 장기 검색어 유입(Google SEO) 친화적 정보글</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                         구글 검색엔진이 좋아하는 <strong>논리적인 마크다운 헤딩 구조(H2, H3), 개요, 장단점 비교, 요약 표</strong>가 깔끔하게 적용됩니다. 개인적인 감정이나 불필요한 이모지를 빼고 '정확도 및 객관성'에 집중해 구글링 상위 노출에 최적화됩니다.
+                      </p>
+                    </div>
+
+                    {/* Ex 3 */}
+                    <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 hover:border-indigo-500/30 transition-all">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-[10px] font-bold">네이버 블로그</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">분류: 병원 / 법률 / 부동산</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">스타일: 전문가형 (신뢰)</span>
+                      </div>
+                      <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">⚖️ 브랜드 가치 및 전환율(CVR) 상승 브랜드 블로그</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                         고관여 타겟 고객에게 전문 지식을 쉽게 설명하되 가벼워 보이지 않는 <strong>단정한 전문의/변호사 톤앤매너</strong>로 접근합니다. AI가 해당 비즈니스 분야의 톤앤매너(예: 블루/그레이의 신뢰감 있는 썸네일 색상)를 자동 분석하여 함께 반영합니다.
+                      </p>
+                    </div>
+                    
+                    {/* Ex 4 */}
+                    <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 hover:border-orange-500/30 transition-all">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className="bg-orange-500/20 text-orange-400 px-2 py-1 rounded text-[10px] font-bold">워드프레스 / 기타</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">분류: 인테리어 / 학원 / 시공</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">스타일: 일상 공유 / 공감형</span>
+                      </div>
+                      <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">🏗️ 현장 체류 시간을 극대화하는 서사 스토리텔링</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                         딱딱한 단가표 나열이 아닌, 현장에서 <strong>고객과 어떤 과정으로 소통하고 비포&애프터를 만들었는지</strong> 한 편의 다이어리나 작업 스케치처럼 전개합니다. 독자의 글 체류 시간을 대폭 늘려 블로그 지수를 올리는 데 적합합니다.
+                      </p>
+                    </div>
+                  </div>
+                </section>
               </motion.div>
             )}
 
@@ -180,10 +239,36 @@ const Manual: React.FC<ManualProps> = ({ onClose }) => {
                       <ImageIcon className="w-7 h-7 text-purple-400" />
                     </div>
                     <div>
-                      <h4 className="text-white font-bold">AI 이미지 생성 모델 가이드</h4>
-                      <div className="mt-3 space-y-3">
-                        <div className="text-xs text-slate-400"><strong className="text-slate-200">Gemini 3.1 Flash Image:</strong> 이미지 내 한글/영어 텍스트 삽입이 필요한 카드뉴스나 상세페이지풍 이미지에 추천</div>
-                        <div className="text-xs text-slate-400"><strong className="text-slate-200">Imagen 4.0:</strong> 인물, 음식, 풍경 등 감성적이고 실사 같은 퀄리티가 필요할 때 추천</div>
+                      <h4 className="text-white font-bold">압도적인 클릭을 부르는 이미지 생성 가이드</h4>
+                      <div className="mt-4 space-y-5">
+                      
+                        <div className="space-y-2">
+                            <strong className="text-indigo-300 block text-sm">1. 메인 썸네일 (한국어 타이틀 & 본문 맞춤 배경)</strong>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                <span className="text-emerald-400 font-bold border border-emerald-500/30 px-1 py-0.5 rounded mr-1">NEW</span>
+                                썸네일은 유튜브 상업용 배너처럼 <strong>강렬한 색상과 굵은 테두리의 입체적인 텍스트</strong>로 생성됩니다.<br/>
+                                <strong className="text-slate-200">배경색 자동화:</strong> 법률/금융은 신뢰의 블루, 카페 리뷰는 따뜻한 오렌지 등 블로그 본문의 톤앤매너를 AI가 스스로 분석하여 썸네일 배경색을 완벽하게 맞춰줍니다.<br/>
+                                <em>예시: 메인 키워드가 "강남역 맛집"일 때 ➔ 노랑/주황 배경에 대형 화이트/블랙 스트로크가 적용된 "강남역 맛집" 폰트 배치</em>
+                            </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <strong className="text-indigo-300 block text-sm">2. 시각화 인포그래픽 (본문 기반 2줄 텍스트)</strong>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                이미지 스타일을 "시각화 인포그래픽 (기본)" 혹은 "3D 미니멀 인포그래픽"으로 선택하시면, 본문의 문맥을 AI가 파악하여 <strong>가장 후킹한 2줄의 한국어 카피라이팅(메인 카피, 서브 카피)</strong>을 사진 속에 자동으로 합성해줍니다.<br/>
+                                <em>예시: 입체적인 3D 오브젝트와 함께 "이제는 고민하지 마세요", "최신형 아이폰 카메라 리뷰 총정리" 등 본문 맞춤 문구가 삽입됩니다.</em>
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                           <strong className="text-indigo-300 block text-sm">3. 이미지 생성 모델 선택 가이드</strong>
+                           <ul className="text-xs text-slate-400 space-y-2 list-disc list-inside">
+                              <li><strong className="text-slate-200">Nano Banana 2 (Gemini 3.1):</strong> 이미지 내 한국어 텍스트 삽입(썸네일/인포그래픽)이 필요할 때 가장 추천합니다.</li>
+                              <li><strong className="text-slate-200">Nano Banana 2 (이미지 위주, 텍스트 없음):</strong> 텍스트 깨짐이 우려되어 고퀄리티 피사체 중심으로만 뽑고 싶을 때 사용하세요.</li>
+                              <li><strong className="text-slate-200">Gemini 2.5 Flash / Imagen 4.0:</strong> 인물이나 풍경, 음식 같은 완전 실사 사진 느낌이 필요할 때 적합합니다.</li>
+                           </ul>
+                        </div>
+                        
                       </div>
                     </div>
                   </div>
@@ -208,11 +293,11 @@ const Manual: React.FC<ManualProps> = ({ onClose }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20">
                     <h4 className="text-amber-400 font-bold mb-3 flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5" /> 15자 줄바꿈의 마법
+                      <BarChart3 className="w-5 h-5" /> 20자 줄바꿈의 마법
                     </h4>
                     <p className="text-xs text-amber-200/80 leading-relaxed">
                       네이버 블로그 유입의 80% 이상은 모바일입니다. <br/>
-                      리뷰 카테고리에서 한 줄당 15자를 지키는 이유는 모바일 화면에서 문장이 끊기지 않고 
+                      리뷰 카테고리에서 한 줄당 최적의 글자 수(약 20~23자)를 지키는 이유는 모바일 화면에서 문장이 끊기지 않고 
                       <strong>한 눈에 들어오는 시인성</strong>을 확보하기 위함입니다. AI가 이를 자동으로 계산하여 작성합니다.
                     </p>
                   </div>
@@ -244,9 +329,9 @@ const Manual: React.FC<ManualProps> = ({ onClose }) => {
       {/* Footer */}
       <div className="p-6 bg-slate-950 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 text-[11px] text-slate-500 font-bold uppercase tracking-widest">
-          <span>Version 2.5</span>
+          <span>Version 1.2.46</span>
           <span className="w-1 h-1 rounded-full bg-slate-700" />
-          <span>Last Updated: 2026.05.03</span>
+          <span>Last Updated: 2026.05.18</span>
         </div>
         <p className="text-[10px] text-slate-600 italic">
           혁신 블로그 AI는 사용자의 성공적인 브랜딩을 응원합니다.

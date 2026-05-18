@@ -2,6 +2,15 @@ import { PatchNote } from './types';
 
 export const patchNotes: PatchNote[] = [
   {
+    version: '1.2.46',
+    date: '2026-05-18',
+    title: '사용방법(Manual) 가이드 내 맞춤형 꿀조합 예시 업데이트',
+    type: 'improvement',
+    changes: [
+      '플랫폼(네이버/티스토리/워드프레스), 대분류 카테고리, 그리고 글쓰기 스타일의 조합에 따른 최적화 가이드 4종(맛집 전문, 구글 SEO 정보글, 신뢰의 브랜드 블로그, 체류시간 극대화형)을 사용 가이드에 추가했습니다.'
+    ]
+  },
+  {
     version: '1.2.45',
     date: '2026-05-18',
     title: '메인 썸네일 블로그 본문 맞춤형 배경색 생성 로직 추가',
