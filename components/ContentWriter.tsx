@@ -2075,11 +2075,13 @@ export const ContentWriter: React.FC = () => {
 
                 {/* Step 5: Result */}
                 {currentStep === 'result' && (
-                    <div className="animate-fade-in space-y-8 pb-20">
+                    <div className="animate-fade-in space-y-8 pb-36 md:pb-20">
                         {/* Header Actions */}
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl sticky top-0 z-50">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl sticky top-0 z-40">
                             <h1 className="text-2xl font-bold text-white">✨ 최종 결과물</h1>
-                            <div className="flex flex-wrap gap-3">
+                            
+                            {/* Desktop/Tablet Action Buttons (Hidden on Mobile) */}
+                            <div className="hidden md:flex flex-wrap gap-3">
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors border border-slate-700"
@@ -2108,6 +2110,32 @@ export const ContentWriter: React.FC = () => {
                                     처음으로
                                 </button>
                             </div>
+                        </div>
+
+                        {/* Mobile Fixed Bottom Action Bar */}
+                        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 p-4 z-[90] pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+                             <div className="flex flex-col gap-2 max-w-md mx-auto">
+                                 <button 
+                                     onClick={handleCopyHtml}
+                                     className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl py-3.5 text-base font-bold shadow-lg shadow-indigo-500/30 transition-transform active:scale-[0.98] flex justify-center items-center gap-2"
+                                 >
+                                     📋 본문 전체 복사 (에디터 붙여넣기용)
+                                 </button>
+                                 <div className="flex gap-2">
+                                     <button 
+                                         onClick={() => copyToClipboard(title)}
+                                         className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded-xl text-sm font-bold border border-slate-700 transition-transform active:scale-[0.98]"
+                                     >
+                                         📋 제목 복사
+                                     </button>
+                                     <button 
+                                         onClick={downloadAllImagesAsPng}
+                                         className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded-xl text-sm font-bold border border-slate-700 transition-transform active:scale-[0.98]"
+                                     >
+                                         📥 사진 일괄 저장
+                                     </button>
+                                 </div>
+                             </div>
                         </div>
 
                         {/* Title Section */}

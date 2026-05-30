@@ -2,6 +2,16 @@ import { PatchNote } from './types';
 
 export const patchNotes: PatchNote[] = [
   {
+    version: '1.2.47',
+    date: '2026-05-30',
+    title: '모바일 환경 결과물 복사 및 저장 버튼 UI 최적화',
+    type: 'improvement',
+    changes: [
+      '모바일 환경에서 블로그 결과물 페이지를 볼 때 화면 최하단에 항상 떠 있는(Floating) 고정형 복사 액션바를 도입했습니다.',
+      '이제 모바일에서도 스크롤 이동 없이 언제든 원클릭으로 본문 전체 복사, 제목 복사, 이미지 전체 저장을 편리하게 이용할 수 있습니다.'
+    ]
+  },
+  {
     version: '1.2.46',
     date: '2026-05-18',
     title: '사용방법(Manual) 가이드 내 맞춤형 꿀조합 예시 업데이트',

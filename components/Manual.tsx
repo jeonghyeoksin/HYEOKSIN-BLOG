@@ -329,9 +329,9 @@ const Manual: React.FC<ManualProps> = ({ onClose }) => {
       {/* Footer */}
       <div className="p-6 bg-slate-950 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 text-[11px] text-slate-500 font-bold uppercase tracking-widest">
-          <span>Version 1.2.46</span>
+          <span>Version 1.2.47</span>
           <span className="w-1 h-1 rounded-full bg-slate-700" />
-          <span>Last Updated: 2026.05.18</span>
+          <span>Last Updated: 2026.05.30</span>
         </div>
         <p className="text-[10px] text-slate-600 italic">
           혁신 블로그 AI는 사용자의 성공적인 브랜딩을 응원합니다.
