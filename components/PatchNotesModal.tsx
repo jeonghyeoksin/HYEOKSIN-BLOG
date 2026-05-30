@@ -21,6 +21,7 @@ const PatchNotesModal: React.FC<PatchNotesModalProps> = ({ isOpen, onClose }) =>
           label: '기능 추가'
         };
       case 'fix':
+      case 'bugfix':
         return {
           bg: 'bg-rose-500/10',
           text: 'text-rose-400',

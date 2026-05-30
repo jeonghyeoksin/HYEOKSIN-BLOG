@@ -36,7 +36,7 @@ export interface WriterState {
   thumbnail: GeneratedImage | null;
 }
 
-export type PatchNoteType = 'feature' | 'fix' | 'improvement';
+export type PatchNoteType = 'feature' | 'fix' | 'improvement' | 'bugfix';
 
 export interface PatchNote {
   version: string;
