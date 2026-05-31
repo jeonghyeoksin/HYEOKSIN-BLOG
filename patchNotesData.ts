@@ -2,6 +2,17 @@ import { PatchNote } from './types';
 
 export const patchNotes: PatchNote[] = [
   {
+    version: '1.2.48',
+    date: '2026-05-31',
+    title: '모바일 본문 복사 시 마크다운 기호 자동 제거',
+    type: 'improvement',
+    changes: [
+      '모바일 및 일반 메모장으로 본문 글을 복사해 붙여넣을 때 가독성을 해치는 별표(**) 등의 마크다운 장식 기호가 노출되지 않도록 전처리 로직을 추가했습니다.',
+      '이제 복사 후 일반 텍스트 에디터에 붙여넣더라도 깔끔하고 완벽한 원고 텍스트 상태로 업로드할 수 있습니다.',
+      'ClipboardItem API가 오작동하기 쉬운 인앱/구형 브라우저 환경을 대비해 자동 텍스트 복사 백업(Fallback) 로직을 유연하게 설계했습니다.'
+    ]
+  },
+  {
     version: '1.2.47',
     date: '2026-05-30',
     title: '모바일 환경 결과물 복사 및 저장 버튼 UI 최적화',

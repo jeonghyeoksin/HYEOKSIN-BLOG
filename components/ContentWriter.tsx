@@ -886,8 +886,16 @@ export const ContentWriter: React.FC = () => {
         styledHtml = `<div style="text-align: center; word-break: keep-all; color: #000000; font-family: sans-serif;">${styledHtml}</div>`;
     }
 
+    const plainText = content
+        .replace(/\*\*\*(.*?)\*\*\*/g, '$1')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/~~(.*?)~~/g, '$1')
+        .replace(/`(.*?)`/g, '$1')
+        .replace(/^-\s+/gm, blogCategory.includes('리뷰') ? '' : '- ');
+
     const blob = new Blob([styledHtml], { type: 'text/html' });
-    const textBlob = new Blob([content], { type: 'text/plain' });
+    const textBlob = new Blob([plainText], { type: 'text/plain' });
     
     try {
         await navigator.clipboard.write([
@@ -898,8 +906,14 @@ export const ContentWriter: React.FC = () => {
         ]);
         alert('본문이 복사되었습니다.\n블로그 에디터에 붙여넣으세요.');
     } catch (err) {
-        console.error('Clipboard write failed', err);
-        alert('복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
+        console.error('Clipboard write failed, attempting fallback...', err);
+        try {
+            await navigator.clipboard.writeText(plainText);
+            alert('본문이 복사되었습니다.\n(일반 텍스트 형식으로 클립보드에 저정되었습니다.)');
+        } catch (err2) {
+            console.error('Fallback copy failed', err2);
+            alert('복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
+        }
     }
   };
 
