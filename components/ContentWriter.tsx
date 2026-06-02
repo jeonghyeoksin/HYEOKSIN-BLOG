@@ -90,6 +90,7 @@ export const ContentWriter: React.FC = () => {
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null); // null for none, -1 for thumbnail, 0+ for generatedImages
   const [editPrompt, setEditPrompt] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isCostDetailOpen, setIsCostDetailOpen] = useState(false);
   
   // --- State: UI Flags ---
   const [isGenerating, setIsGenerating] = useState(false);
@@ -104,6 +105,105 @@ export const ContentWriter: React.FC = () => {
   const [selectedImageModel, setSelectedImageModel] = useState<string>('gemini-3.1-flash-image-preview-no-text');
   const [selectedImageStyle, setSelectedImageStyle] = useState<string>('기본 스타일');
   const [wordCount, setWordCount] = useState<string>('1500자~2000자 (추천)');
+
+  const consumedCosts = useMemo(() => {
+    // 1. Text Prompt Input Cost
+    const baseInputLength = 
+        (topic?.length || 0) + 
+        (selectedKeyword?.length || 0) + 
+        (storeName?.length || 0) + 
+        (salesService?.length || 0) + 
+        (referenceNote?.length || 0) + 
+        (mustIncludeContent?.length || 0) + 
+        (benchmarkingText?.length || 0) + 
+        (servicePriceText?.length || 0) +
+        (referenceUrl?.length || 0);
+
+    let totalInputChars = 0;
+    
+    // USP input
+    if (postGoal) {
+        totalInputChars += baseInputLength + 2000;
+    }
+    // Title input
+    if (titleOptions && titleOptions.length > 0) {
+        totalInputChars += baseInputLength + (postGoal?.length || 0) + 2000;
+    }
+    // Outline input
+    if (outline) {
+        totalInputChars += baseInputLength + (postGoal?.length || 0) + 2000;
+    }
+    // Content input
+    if (content) {
+        totalInputChars += baseInputLength + (postGoal?.length || 0) + (outline?.length || 0) + 2500;
+    }
+    
+    const successImgCount = generatedImages ? generatedImages.filter(img => img.url).length : 0;
+    // Image Prompts input (if they were generated/loaded)
+    if (successImgCount > 0) {
+        totalInputChars += (content?.length || 0) + 1500;
+    }
+    // Thumbnail prompt input (if thumbnail generated)
+    if (thumbnail?.url) {
+        totalInputChars += (content?.length || 0) + (selectedKeyword?.length || 0) + 1500;
+    }
+
+    // Output Characters
+    let totalOutputChars = 0;
+    if (postGoal) totalOutputChars += postGoal.length;
+    if (titleOptions && titleOptions.length > 0) totalOutputChars += titleOptions.join('').length;
+    if (outline) totalOutputChars += outline.length;
+    if (content) totalOutputChars += content.length + (hashtags?.length || 0);
+    if (successImgCount > 0) totalOutputChars += successImgCount * 150; 
+    if (thumbnail?.url) totalOutputChars += 200; 
+
+    // Token estimation
+    const inputTokens = Math.max(200, totalInputChars * 1.5);
+    const outputTokens = Math.max(100, totalOutputChars * 1.5);
+
+    // Cost formulas:
+    // Input: 약 0.1원 / 1k 토큰
+    // Output: 약 0.4원 / 1k 토큰
+    const textInputCost = (inputTokens / 1000) * 0.1;
+    const textOutputCost = (outputTokens / 1000) * 0.4;
+    const totalTextCost = textInputCost + textOutputCost;
+
+    // 2. Image Cost
+    let imagePricePerUnit = 28; // Default Gemini 2.5
+    if (selectedImageModel && selectedImageModel.includes('gemini-3.1')) {
+        imagePricePerUnit = 42;
+    } else if (selectedImageModel && selectedImageModel.includes('imagen-4.0')) {
+        imagePricePerUnit = 56;
+    }
+
+    const imageCountGenerated = successImgCount;
+    const hasThumbnailGenerated = !!thumbnail?.url;
+    
+    const imageGenerationCost = imageCountGenerated * imagePricePerUnit;
+    const thumbnailGenerationCost = hasThumbnailGenerated ? imagePricePerUnit : 0;
+    const totalImageCost = imageGenerationCost + thumbnailGenerationCost;
+
+    const grandTotal = totalTextCost + totalImageCost;
+
+    return {
+        inputTokens: Math.round(inputTokens),
+        outputTokens: Math.round(outputTokens),
+        textInputCost,
+        textOutputCost,
+        totalTextCost,
+        imagePricePerUnit,
+        imageCountGenerated,
+        hasThumbnailGenerated,
+        imageGenerationCost,
+        thumbnailGenerationCost,
+        totalImageCost,
+        grandTotal
+    };
+  }, [
+    topic, selectedKeyword, storeName, salesService, referenceNote, mustIncludeContent, 
+    benchmarkingText, servicePriceText, referenceUrl, postGoal, titleOptions, 
+    outline, content, hashtags, generatedImages, thumbnail, selectedImageModel
+  ]);
 
   useEffect(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -701,10 +801,9 @@ export const ContentWriter: React.FC = () => {
           setWordCount('1500자~2000자 (추천)');
           setKeywords([]);
           setTitleOptions([]);
-          setSelectedTitle('');
+          setTitle('');
           setOutline('');
           setContent('');
-          setImagePrompts([]);
           setGeneratedImages([]);
           setThumbnail(null);
           setThumbnailPrompt('');
@@ -2150,6 +2249,85 @@ export const ContentWriter: React.FC = () => {
                                      </button>
                                  </div>
                              </div>
+                        </div>
+
+                        {/* API Cost Analysis Card */}
+                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-2xl">💡</span>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-white">실시간 API 생성 비용 분석</h2>
+                                        <p className="text-xs text-slate-400">이번 원고 & 이미지 생성 시 소비된 예상 오버헤드 비용입니다.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-baseline gap-2 bg-indigo-500/10 px-4 py-2 rounded-xl border border-indigo-500/20">
+                                    <span className="text-xs text-indigo-300 font-bold">소비된 예상 API 비용:</span>
+                                    <span className="text-2xl font-black text-indigo-400 font-mono">약 {consumedCosts.grandTotal.toFixed(1)}원</span>
+                                </div>
+                            </div>
+
+                            {/* Cost Details Accordion */}
+                            <div className="border-t border-slate-800 pt-3">
+                                <button 
+                                    onClick={() => setIsCostDetailOpen(!isCostDetailOpen)}
+                                    className="text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
+                                >
+                                    <span>{isCostDetailOpen ? '▼' : '▶'}</span>
+                                    <span>상세 비용 계산 내역 보기 ({isCostDetailOpen ? '접기' : '펼치기'})</span>
+                                </button>
+                                
+                                {isCostDetailOpen && (
+                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in text-xs bg-slate-950/40 p-4 rounded-xl border border-slate-800">
+                                        {/* Text Cost Detail */}
+                                        <div className="space-y-3">
+                                            <h4 className="text-slate-200 font-bold flex items-center gap-1.5">
+                                                <span>📝</span> 텍스트 생성 (Gemini 3 Flash)
+                                            </h4>
+                                            <div className="space-y-1.5 text-slate-400 pl-5">
+                                                <div className="flex justify-between">
+                                                    <span>- 입력 프롬프트 합산:</span>
+                                                    <span className="font-mono text-slate-300">{consumedCosts.inputTokens.toLocaleString()} 토큰 (약 {consumedCosts.textInputCost.toFixed(2)}원)</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>- 출력 결과물 합산:</span>
+                                                    <span className="font-mono text-slate-300">{consumedCosts.outputTokens.toLocaleString()} 토큰 (약 {consumedCosts.textOutputCost.toFixed(2)}원)</span>
+                                                </div>
+                                                <div className="flex justify-between border-t border-slate-800/60 pt-1.5 font-bold">
+                                                    <span className="text-slate-300">텍스트 비용 합계:</span>
+                                                    <span className="font-mono text-emerald-400">약 {consumedCosts.totalTextCost.toFixed(1)}원</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Image Cost Detail */}
+                                        <div className="space-y-3">
+                                            <h4 className="text-slate-200 font-bold flex items-center gap-1.5">
+                                                <span>🎨</span> 이미지 생성 ({IMAGE_MODELS.find(m => m.id === selectedImageModel)?.name || '선택한 모델'})
+                                            </h4>
+                                            <div className="space-y-1.5 text-slate-400 pl-5">
+                                                <div className="flex justify-between">
+                                                    <span>- 본문 이미지 ({consumedCosts.imageCountGenerated}장):</span>
+                                                    <span className="font-mono text-slate-300">장당 {consumedCosts.imagePricePerUnit}원 (약 {consumedCosts.imageGenerationCost}원)</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>- 메인 썸네일 ({consumedCosts.hasThumbnailGenerated ? 1 : 0}장):</span>
+                                                    <span className="font-mono text-slate-300">장당 {consumedCosts.imagePricePerUnit}원 ({consumedCosts.thumbnailGenerationCost}원)</span>
+                                                </div>
+                                                <div className="flex justify-between border-t border-slate-800/60 pt-1.5 font-bold">
+                                                    <span className="text-slate-300">이미지 비용 합계:</span>
+                                                    <span className="font-mono text-emerald-400">약 {consumedCosts.totalImageCost}원</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="md:col-span-2 text-[11px] text-slate-500 leading-relaxed border-t border-slate-800 pt-2 flex items-start gap-1">
+                                            <span>💡</span>
+                                            <span>본 추정치 가격 정책은 구글 클라우드 공식 가격 기준(Gemini 3 Flash $0.075/$0.3 per 1M tokens, Image 모델 장당 약 $0.02~$0.04)을 따릅니다. 개별 수정/다시작성 등 추가 생성된 횟수 및 할당 플랜에 따라 실제 청구비와 약간의 차이가 존재할 수 있습니다.</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Title Section */}
