@@ -226,6 +226,19 @@ const Manual: React.FC<ManualProps> = ({ onClose }) => {
                          딱딱한 단가표 나열이 아닌, 현장에서 <strong>고객과 어떤 과정으로 소통하고 비포&애프터를 만들었는지</strong> 한 편의 다이어리나 작업 스케치처럼 전개합니다. 독자의 글 체류 시간을 대폭 늘려 블로그 지수를 올리는 데 적합합니다.
                       </p>
                     </div>
+
+                    {/* Ex 5 */}
+                    <div className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 hover:border-indigo-500/30 transition-all">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className="bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded text-[10px] font-bold">티스토리 / 네이버</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">분류: 영화 리뷰 / OTT 추천</span>
+                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px] font-bold">스타일: 감성 에세이형 또는 스토리텔링형</span>
+                      </div>
+                      <h4 className="text-white font-bold text-sm mb-2 flex items-center gap-2">🎬 감수성을 무기로 소통하는 영화 / OTT 비평 글</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                         단순한 줄거리 요약에서 벗어나, <strong>영화의 시각적 복선, 인물의 내면 심리 묘사, 마음을 울리는 명대사</strong>를 서정적이고 여운이 남는 톤앤매너로 서술합니다. AI 이미지 제너레이터가 명대사의 감정적 무드에 어울리는 예술적이고 감각적인 3D 스타일 썸네일이나 인포그래픽 카드를 맞춤 디자인하여 독자의 끝없는 스크롤을 이끕니다.
+                      </p>
+                    </div>
                   </div>
                 </section>
               </motion.div>

@@ -1493,3 +1493,83 @@ CRITICAL: You must output the image part directly. Do not talk about generating 
     throw error;
   }
 };
+
+export interface SeoGeoRecommendation {
+  topic: string;
+  blogStyle: string;
+  targetAudience: string;
+  secondaryKeywords: string;
+  postGoal: string;
+  cta: string;
+  referenceNote: string;
+}
+
+export const generateSeoGeoRecommendation = async (
+  category: string,
+): Promise<SeoGeoRecommendation> => {
+  try {
+    const ai = getClient();
+
+    const prompt = `
+      You are an expert in Blog SEO (Search Engine Optimization) and GEO (Generative Engine Optimization) based in South Korea as of 2026.
+      
+      Recommend a highly viral, trending, and SEO/GEO optimized blog post theme configuration for the blog category: "${category}".
+      
+      The recommendation must be tailored specifically to this category, using the latest 2026 trends and interests of Korean blog readers.
+      
+      You must choose the "blogStyle" from one of the following exact options:
+      - "전문가/정보전달형 (신뢰감, 논리적, 객관적)"
+      - "친근한 이웃형 (공감, 부드러움, 소통형)"
+      - "감성 에세이형 (서정적, 감각적, 여운)"
+      - "유머/재치형 (재미, 센스, 가벼운 톤)"
+      - "리뷰/체험단형 (솔직함, 디테일, 경험 위주)"
+      - "설득/판매형 (카피라이팅, 셀링포인트, 구매전환)"
+      - "인터뷰/대화형 (문답형, 생동감, 현장감)"
+      - "스토리텔링형 (기승전결, 몰입감, 서사적)"
+      - "현장 밀착형 스토리텔링 (현장감, 신뢰, 파트너십)"
+      - "팩트폭행/직설적 (단호함, 명쾌함, 사이다)"
+      - "트렌디/MZ세대형 (유행어, 밈, 톡톡 튀는 톤)"
+      - "일기/기록형 (솔직함, 개인적, 담백함)"
+      - "비즈니스/격식형 (정중함, 공식적, 깔끔함)"
+      - "비판적/분석형 (날카로움, 통찰력, 논쟁적)"
+      - "질의응답/Q&A형 (문제해결, 명쾌함, 친절함)"
+      - "미니멀/요약형 (핵심만, 간결함, 가독성)"
+      
+      Ensure each field is filled in Korean and is incredibly realistic, specific, and actionable. Do not use generic answers like "음식 이야기". Make it highly detailed and high-intent.
+      
+      And format the output as JSON with the exact schema.
+    `;
+
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: TEXT_MODEL,
+        contents: prompt,
+        config: {
+          temperature: 0.85,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              topic: { type: Type.STRING, description: "Highly compelling core topic or main keyword for SEO/GEO." },
+              blogStyle: { type: Type.STRING, description: "One of the exact 16 styles listed in the instructions." },
+              targetAudience: { type: Type.STRING, description: "Specific demographics and interests of target readers (e.g., 2030 직장인, 30대 신혼부부)." },
+              secondaryKeywords: { type: Type.STRING, description: "Comma-separated search keywords for SEO keyword-stuffing defense, closely matching the theme." },
+              postGoal: { type: Type.STRING, description: "The conversion goal or core selling point (USP) of this posting." },
+              cta: { type: Type.STRING, description: "A catchy Call to Action message matching the tone and topic." },
+              referenceNote: { type: Type.STRING, description: "Helpful writing guidelines, background context, or instructions for the AI writer to ensure search visibility." },
+            },
+            required: ["topic", "blogStyle", "targetAudience", "secondaryKeywords", "postGoal", "cta", "referenceNote"],
+          },
+        },
+      }),
+    );
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("Empty recommendation response.");
+    }
+    return JSON.parse(text);
+  } catch (error: any) {
+    throw new Error(handleApiError(error, "SEO/GEO 추천 정보 생성 실패"));
+  }
+};

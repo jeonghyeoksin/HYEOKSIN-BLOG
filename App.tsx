@@ -5,6 +5,7 @@ import Manual from './components/Manual';
 import ApiKeyModal from './components/ApiKeyModal';
 import { ApiCostGuideModal } from './components/ApiCostGuideModal';
 import PatchNotesModal from './components/PatchNotesModal';
+import { FaqModal } from './components/FaqModal';
 import { ViewState } from './types';
 import { useEffect } from 'react';
 
@@ -13,6 +14,7 @@ const App: React.FC = () => {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [isCostModalOpen, setIsCostModalOpen] = useState(false);
   const [isPatchNotesModalOpen, setIsPatchNotesModalOpen] = useState(false);
+  const [isFaqModalOpen, setIsFaqModalOpen] = useState(false);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [apiKeyStatus, setApiKeyStatus] = useState<'unset' | 'set'>('unset');
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
@@ -72,6 +74,14 @@ const App: React.FC = () => {
 
             {/* Nav Items */}
             <div className="flex items-center gap-2 sm:gap-4">
+              {/* FAQ Button */}
+              <button 
+                onClick={() => setIsFaqModalOpen(true)}
+                className="text-[10px] sm:text-sm font-bold transition-all px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-amber-400 hover:text-white hover:bg-amber-500/10 flex items-center gap-1 sm:gap-2 border border-amber-500/30 shadow-lg shadow-amber-500/5 bg-amber-500/5"
+              >
+                <span>❓</span> <span className="hidden xs:inline sm:inline">자주 묻는 FAQ</span>
+              </button>
+
               {/* API Cost Info Button */}
               <button 
                 onClick={() => setIsCostModalOpen(true)}
@@ -89,29 +99,11 @@ const App: React.FC = () => {
               </button>
 
               <div className="hidden md:flex items-center space-x-4">
-                {/* API Status Indicator */}
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all duration-500 ${
-                  apiKeyStatus === 'set' 
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.2)]'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full ${apiKeyStatus === 'set' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'}`} />
-                  {apiKeyStatus === 'set' ? 'AI 서비스 정상 작동 중' : 'AI 서비스 중단 (API Key 미설정)'}
-                </div>
-
-                <div className="h-4 w-[1px] bg-slate-800 mx-2" />
-
                 <button 
                   onClick={() => setCurrentView('dashboard')}
                   className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'dashboard' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                 >
                   홈
-                </button>
-                <button 
-                   onClick={() => setCurrentView('studio')}
-                   className={`text-sm font-medium transition-colors px-3 py-2 rounded-lg ${currentView === 'studio' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-                >
-                  블로그 올인원
                 </button>
                 <button 
                    onClick={() => setCurrentView('manual')}
@@ -178,6 +170,11 @@ const App: React.FC = () => {
       <PatchNotesModal 
         isOpen={isPatchNotesModalOpen} 
         onClose={() => setIsPatchNotesModalOpen(false)} 
+      />
+
+      <FaqModal 
+        isOpen={isFaqModalOpen} 
+        onClose={() => setIsFaqModalOpen(false)} 
       />
 
       {/* Floating Action Buttons */}

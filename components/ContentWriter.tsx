@@ -15,7 +15,8 @@ import {
   generateUSPStream,
   generateUSP,
   generateTitle,
-  ImagePromptRequest
+  ImagePromptRequest,
+  generateSeoGeoRecommendation
 } from '../services/geminiService';
 import { StudioStep, GeneratedImage, KeywordSuggestion } from '../types';
 
@@ -36,6 +37,7 @@ const LOCAL_STORAGE_KEY = 'contentWriterSettings';
 
 export const ContentWriter: React.FC = () => {
   // --- State: UI Flags ---
+  const [isGeneratingSeoGeo, setIsGeneratingSeoGeo] = useState(false);
   
   // --- State: Inputs ---
   const [topic, setTopic] = useState('');
@@ -43,6 +45,29 @@ export const ContentWriter: React.FC = () => {
   const [blogCategory, setBlogCategory] = useState('');
   const [blogPlatform, setBlogPlatform] = useState('네이버');
   const [storeName, setStoreName] = useState('');
+
+  const handleGetSeoGeoRecommendation = async () => {
+    if (!blogCategory) {
+      alert("먼저 블로그 분류를 선택해주세요.");
+      return;
+    }
+    setIsGeneratingSeoGeo(true);
+    try {
+      const rec = await generateSeoGeoRecommendation(blogCategory);
+      if (rec.topic) setTopic(rec.topic);
+      if (rec.blogStyle) setBlogStyle(rec.blogStyle);
+      if (rec.targetAudience) setTargetAudience(rec.targetAudience);
+      if (rec.secondaryKeywords) setSecondaryKeywords(rec.secondaryKeywords);
+      if (rec.postGoal) setPostGoal(rec.postGoal);
+      if (rec.cta) setCta(rec.cta);
+      if (rec.referenceNote) setReferenceNote(rec.referenceNote);
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "추천 정보를 가져오는 중 오류가 발생했습니다.");
+    } finally {
+      setIsGeneratingSeoGeo(false);
+    }
+  };
   const [salesService, setSalesService] = useState('');
   const [postGoal, setPostGoal] = useState(''); // USP / Goal
   const [referenceNote, setReferenceNote] = useState('');
@@ -481,7 +506,8 @@ export const ContentWriter: React.FC = () => {
         alert('블로그 플랫폼과 블로그 분류를 선택해주세요.');
         return;
     }
-    if (blogCategory.includes('리뷰') && !referenceUrl) {
+    const isStrictReview = blogCategory.includes('리뷰') && !blogCategory.includes('도서') && !blogCategory.includes('영화');
+    if (isStrictReview && !referenceUrl) {
         alert('리뷰 작성을 위해 참고 링크(장소 또는 제품 링크)를 반드시 입력해주세요.');
         return;
     }
@@ -819,7 +845,8 @@ export const ContentWriter: React.FC = () => {
       alert("메인 키워드를 먼저 입력해주세요.");
       return;
     }
-    if (blogCategory.includes('리뷰') && !referenceUrl) {
+    const isStrictReview = blogCategory.includes('리뷰') && !blogCategory.includes('도서') && !blogCategory.includes('영화');
+    if (isStrictReview && !referenceUrl) {
       alert('리뷰 작성을 위해 참고 링크(장소 또는 제품 링크)를 반드시 입력해주세요.');
       return;
     }
@@ -1130,9 +1157,11 @@ export const ContentWriter: React.FC = () => {
                         </button>
                     </div>
 
+
+
                     <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl backdrop-blur-sm">
                         {(() => {
-                            const isReviewCategory = blogCategory?.includes('리뷰');
+                            const isReviewCategory = blogCategory?.includes('리뷰') || blogCategory === 'OTT/넷플릭스 추천';
                             const isPromoCategory = blogCategory?.includes('홍보');
                             
                             return (
@@ -1174,7 +1203,14 @@ export const ContentWriter: React.FC = () => {
                                     // Automatic style selection
                                     if (newCat.includes('리뷰') && newCat !== '신조어 및 트렌드 리뷰' && newCat !== '인물 리뷰/위인전') {
                                         setBlogStyle('리뷰/체험단형 (솔직함, 디테일, 경험 위주)');
-                                        setSkipImageGeneration(true);
+                                        if (newCat !== '영화 리뷰' && newCat !== '도서 리뷰') {
+                                            setSkipImageGeneration(true);
+                                        } else {
+                                            setSkipImageGeneration(false);
+                                        }
+                                    } else if (newCat === 'OTT/넷플릭스 추천') {
+                                        setBlogStyle('감성 에세이형 (서정적, 감각적, 여운)');
+                                        setSkipImageGeneration(false);
                                     } else if (['전문직 홍보', '병원 홍보', '학원 홍보', '교육 홍보', '부동산/분양 홍보', '스타트업/IT기업 홍보', '프랜차이즈 가맹 홍보', '건강/운동', '다이어트/뷰티', '금융/재테크', '주식/투자', '코인/가상화폐', '세금관련', '법률', '자기계발', '정치/뉴스', '정부정책', 'IT/테크/컴퓨터', '지식 백과 및 용어 사전', '경제 및 비즈니스', '역사', '인문학', '언어 및 맞춤법', '잡학 및 과학'].includes(newCat)) {
                                         setBlogStyle('전문가/정보전달형 (신뢰감, 논리적, 객관적)');
                                     } else if (['소상공인 홍보', '육아/결혼', '요리/레시피', '인테리어/DIY', '반려동물', '생활 및 살림', '문화 및 에티켓'].includes(newCat)) {
@@ -1206,7 +1242,9 @@ export const ContentWriter: React.FC = () => {
                                     <option value="뷰티 리뷰">뷰티 리뷰</option>
                                     <option value="숙박/펜션/호텔 리뷰">숙박/펜션/호텔 리뷰</option>
                                     <option value="여행 리뷰">여행 리뷰</option>
-                                    <option value="도서/영화 리뷰">도서/영화 리뷰</option>
+                                    <option value="도서 리뷰">도서 리뷰</option>
+                                    <option value="영화 리뷰">영화 리뷰</option>
+                                    <option value="OTT/넷플릭스 추천">OTT/넷플릭스 추천</option>
                                     <option value="공연/전시">공연/전시</option>
                                     <option value="IT/테크 기기 리뷰">IT/테크 기기 리뷰</option>
                                     <option value="자동차/바이크 리뷰">자동차/바이크 리뷰</option>
@@ -1265,6 +1303,39 @@ export const ContentWriter: React.FC = () => {
                         </div>
                         </div>
 
+                        {/* SEO/GEO Optimization Button */}
+                        <div className="pt-2">
+                            <button
+                                type="button"
+                                id="seo-geo-rec-button"
+                                disabled={!blogCategory || isGeneratingSeoGeo}
+                                onClick={handleGetSeoGeoRecommendation}
+                                className={`w-full p-4 rounded-xl flex items-center justify-center gap-3 font-bold text-lg shadow-lg transition-all duration-300 ${
+                                    blogCategory
+                                        ? 'bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white cursor-pointer hover:shadow-indigo-500/10 active:scale-[0.98]'
+                                        : 'bg-slate-800/40 border border-slate-800 text-slate-500 cursor-not-allowed'
+                                }`}
+                            >
+                                {isGeneratingSeoGeo ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        </svg>
+                                        <span>SEO/GEO 최적화 추천 정보 분석 중...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-xl">✨</span>
+                                        <span>SEO, GEO 최적화 주제 추천받기</span>
+                                        {!blogCategory && (
+                                            <span className="text-xs text-slate-500 font-normal">(블로그 분류를 먼저 선택해주세요)</span>
+                                        )}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Topic Input */}
                         <div className="space-y-2">
@@ -1311,7 +1382,7 @@ export const ContentWriter: React.FC = () => {
                             {/* Reference Link Input */}
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-300 ml-1">
-                                참고 링크 {blogCategory?.includes('리뷰') ? (
+                                참고 링크 {blogCategory?.includes('리뷰') && !blogCategory?.includes('도서') && !blogCategory?.includes('영화') ? (
                                     <>
                                         (리뷰 장소/제품 링크를 꼭 넣어주세요. 해당 링크를 참고하여 작성합니다.) <span className="text-red-500">*</span>
                                     </>
