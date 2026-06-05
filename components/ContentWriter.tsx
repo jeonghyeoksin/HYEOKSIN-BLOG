@@ -560,10 +560,11 @@ export const ContentWriter: React.FC = () => {
             if (automationKilled.current) return;
             setCurrentStep('usp');
             setStepProgress(0);
+            setIsStepComplete(false);
             const suggestedKeywordStrings = keywords.map(k => k.keyword);
             setPostGoal(''); // Clear before streaming
             uspRes = await generateUSPStream(
-                topic, 
+                keyword, 
                 (chunk) => {
                     setPostGoal(prev => prev + chunk);
                     setStepProgress(prev => Math.min(prev + 0.5, 95));
@@ -594,6 +595,7 @@ export const ContentWriter: React.FC = () => {
             if (automationKilled.current) return;
             setCurrentStep('title');
             setStepProgress(0);
+            setIsStepComplete(false);
             setTitleOptions([]); // Clear before streaming
             generatedTitles = await generateTitleStream(
                 keyword, 
@@ -627,6 +629,7 @@ export const ContentWriter: React.FC = () => {
             if (automationKilled.current) return;
             setCurrentStep('script');
             setStepProgress(0);
+            setIsStepComplete(false);
             
             const servicePriceImageParts = [];
             for (const file of servicePriceFiles) {
@@ -714,6 +717,7 @@ export const ContentWriter: React.FC = () => {
 
             setCurrentStep('images');
             setStepProgress(0);
+            setIsStepComplete(false);
             
             const finalImageCount = isAutoImageCount ? 5 : imageCount;
             const prompts = await generateImagePromptsForPost(accumulatedContent, faceParts.length > 0, finalImageCount, refParts.length > 0, selectedImageModel, selectedImageStyle, blogCategory, smartImageMode);
@@ -758,6 +762,7 @@ export const ContentWriter: React.FC = () => {
             if (automationKilled.current) return;
             setCurrentStep('thumbnail');
             setStepProgress(0);
+            setIsStepComplete(false);
             const thumbPrompt = await generateThumbnailPrompt(keyword, accumulatedContent, selectedImageModel, selectedImageStyle, blogCategory, smartImageMode, includeThumbnailText);
             setThumbnailPrompt(thumbPrompt);
             
@@ -780,6 +785,7 @@ export const ContentWriter: React.FC = () => {
         // --- Step 6: Result ---
         if (automationKilled.current) return;
         setCurrentStep('result');
+        setIsStepComplete(true);
 
     } catch (e) {
         console.error("Automation Error", e);
