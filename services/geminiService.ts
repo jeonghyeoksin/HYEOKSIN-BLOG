@@ -449,14 +449,15 @@ export const generateTitleStream = async (
       ${fileParts && fileParts.length > 0 ? "Use the information from the attached reference files to create a highly relevant and grounded title." : ""}
       
       **GEO & SEO GUIDELINES (STRICT)**:
-      ${blogCategory?.includes("리뷰") ? `1. **NATURAL REVIEW TITLE (CRITICAL)**: The title MUST read like a genuine, compelling personal review written by a human. Blend the keyword "${keyword}" and the store/service name "${storeName || ""}" naturally into a conversational phrase. DO NOT force the keyword to be the absolute first word if it sounds robotic. Make it sound authentic.` : `1. **MANDATORY KEYWORD PLACEMENT**: The target keyword "${keyword}" MUST be the **absolute first word** of the title. DO NOT put anything before it. (e.g., "${keyword}: ...", "${keyword} ...")`}
-      2. **SEARCH ENGINE OPTIMIZATION (SEO)**: The title must be highly optimized for search engines (Naver, Google). Use high-intent phrasing that matches what users actually search for.
-      3. **GEO (Generative Engine Optimization)**: Use clear, authoritative, and structured phrasing that AI search engines (like Gemini, Perplexity) can easily index and cite.
-      4. **HOME FEED STRATEGY**: The title must be emotionally stimulating and highly engaging to attract clicks from home feeds and discovery sections.
-      5. **CLICK-WORTHY**: Use powerful "hook" words or specific, quantifiable benefits (e.g., "3가지 비법", "완벽 가이드").
-      6. **GOAL ALIGNMENT**: The title should perfectly align with the goal: "${postGoal || topic}".
-      7. **LENGTH**: Concise but descriptive (under 40 characters).
-      8. **Topic Sensitivity**: The title style and tone must reflect the nature of the "${blogCategory}" and "${topic}". (e.g., Law-related titles should be objective and trustworthy).
+      1. **ABSOLUTE ANTI-AI CONSTRAINT**: If the topic or requested content is NOT explicitly about AI (Artificial Intelligence), you MUST STRICTLY FORBID the use of the words "AI", "인공지능", or any AI-related terminology in the title.
+      ${blogCategory?.includes("리뷰") ? `2. **NATURAL REVIEW TITLE (CRITICAL)**: The title MUST read like a genuine, compelling personal review written by a human. Blend the keyword "${keyword}" and the store/service name "${storeName || ""}" naturally into a conversational phrase. DO NOT force the keyword to be the absolute first word if it sounds robotic. Make it sound authentic.` : `2. **MANDATORY KEYWORD PLACEMENT**: The target keyword "${keyword}" MUST be the **absolute first word** of the title. DO NOT put anything before it. (e.g., "${keyword}: ...", "${keyword} ...")`}
+      3. **SEARCH ENGINE OPTIMIZATION (SEO)**: The title must be highly optimized for search engines (Naver, Google). Use high-intent phrasing that matches what users actually search for.
+      4. **GEO (Generative Engine Optimization)**: Use clear, authoritative, and structured phrasing that AI search engines (like Gemini, Perplexity) can easily index and cite.
+      5. **HOME FEED STRATEGY**: The title must be emotionally stimulating and highly engaging to attract clicks from home feeds and discovery sections.
+      6. **CLICK-WORTHY**: Use powerful "hook" words or specific, quantifiable benefits (e.g., "3가지 비법", "완벽 가이드").
+      7. **GOAL ALIGNMENT**: The title should perfectly align with the goal: "${postGoal || topic}".
+      8. **LENGTH**: Concise but descriptive (under 40 characters).
+      9. **Topic Sensitivity**: The title style and tone must reflect the nature of the "${blogCategory}" and "${topic}". (e.g., Law-related titles should be objective and trustworthy).
       
       Output: Return ONLY the single optimized title. No numbers, no markdown, no explanations.
       Language: Korean.
@@ -515,12 +516,13 @@ export const generateTitle = async (
       ${fileParts && fileParts.length > 0 ? "Use the information from the attached reference files to create highly relevant and grounded titles." : ""}
       
       **GEO & SEO GUIDELINES**:
-      ${blogCategory?.includes("리뷰") ? `1. **Natural Review Title Strategy (CRITICAL)**: The title MUST read like a genuine, persuasive personal review written by a real human. Blend the keyword "${keyword}" and the store/service name "${storeName || ""}" naturally into a conversational or experiential title. Do NOT use robotic formats where the keyword is just tacked on at the front. It should sound like a real person's review (e.g., "직접 가본 [StoreName], [Keyword] 맛집 인정하는 이유").` : `1. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
-      ${blogCategory === "맛집 리뷰" || blogCategory === "카페 리뷰" ? `2. **Enticing Titles**: For Restaurant/Cafe reviews, the titles MUST be exceptionally enticing, making readers feel a strong desire to visit. Use evocative adjectives and clear benefits.` : `2. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).`}
-      3. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
-      4. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
-      5. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
-      6. **Length**: Concise but descriptive (under 40 characters if possible).
+      1. **ABSOLUTE ANTI-AI CONSTRAINT**: If the topic or requested content is NOT explicitly about AI (Artificial Intelligence), you MUST STRICTLY FORBID the use of the words "AI", "인공지능", or any AI-related terminology in the titles. Do NOT imply that the post is AI generated or features AI unless explicitly requested.
+      ${blogCategory?.includes("리뷰") ? `2. **Natural Review Title Strategy (CRITICAL)**: The title MUST read like a genuine, persuasive personal review written by a real human. Blend the keyword "${keyword}" and the store/service name "${storeName || ""}" naturally into a conversational or experiential title. Do NOT use robotic formats where the keyword is just tacked on at the front. It should sound like a real person's review (e.g., "직접 가본 [StoreName], [Keyword] 맛집 인정하는 이유").` : `2. **Keyword Placement (CRITICAL)**: The target keyword "${keyword}" MUST be placed at the very beginning of the title. (e.g., "${keyword} ...")`}
+      ${blogCategory === "맛집 리뷰" || blogCategory === "카페 리뷰" ? `3. **Enticing Titles**: For Restaurant/Cafe reviews, the titles MUST be exceptionally enticing, making readers feel a strong desire to visit. Use evocative adjectives and clear benefits.` : `3. **Home Feed Strategy**: The title must be emotionally stimulating and highly engaging to attract clicks and encourage interaction (comments/likes).`}
+      4. **AI Search Optimization**: Use clear, authoritative phrasing that answers a specific user intent directly. Avoid vague metaphors.
+      5. **Click-Worthy**: Use powerful words, numbers, or specific benefits to increase CTR.
+      6. **Goal Alignment**: The title should attract readers interested in "${postGoal || topic}".
+      7. **Length**: Concise but descriptive (under 40 characters if possible).
       
       Output: Return ONLY a valid JSON array of 3 strings. No markdown formatting, no explanations.
       Example: ["Title 1", "Title 2", "Title 3"]
@@ -707,7 +709,7 @@ export const generateOutline = async (
       9. **Year Reference**: If you mention the current year or any recent year, strictly use the current year (e.g., 2026년). Do not use 2024 or 2025.
       10. **Topic-Category Synergy (Tone Match)**: The content MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured. In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards. ${blogCategory === "학원 홍보" ? "For '학원 홍보' category, specifically in the final section/conclusion of the post, avoid the word '친절하게' (kindly) and use '자세하게' (in detail) instead." : ""}
       11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
-      12. **NO AI MENTION**: NEVER mention that the content is written by AI or use phrases like "AI 첨단 기기로 확인해 드립니다". All content must sound 100% natural, as if written by a person from direct first-hand experience.
+      12. **ABSOLUTE ANTI-AI CONSTRAINT**: If the topic or requested content is NOT explicitly about AI (Artificial Intelligence), you MUST STRICTLY FORBID the use of the words "AI", "인공지능", or any AI-related terminology in the outline. All content must sound 100% natural, as if written by a person from direct first-hand experience.
 
       ${
         benchmarkingText
@@ -947,7 +949,7 @@ export const generateFullPostStream = async (
       10. **Topic-Category Synergy (Tone Match)**: The blog post MUST match the nature of the "${blogCategory}" and "${topic}". For example, if the topic is Law (법률), the tone should be professional, trustworthy, clear, and highly structured (e.g., using legal terms correctly, citing potential regulations if applicable). In general, the writing style, vocabulary, and rhythm must resonate with the selected category's typical audience and professional standards. ${blogCategory === "학원 홍보" ? "For '학원 홍보' category, in the final paragraph of the post, you MUST NOT use the word '친절하게' (friendly/kindly). Instead, use the word '자세하게' (in detail/thoroughly) when describing how you will provide information or consult." : ""}
       11. **Hashtags**: At the very end of the post, provide exactly 5 highly relevant hashtags. Separate them from the main content with the marker "[HASHTAGS]". Format them as a single line of space-separated hashtags starting with #.
       11. **Contact Phrasing**: DO NOT use the phrase "카카오톡 상담" (KakaoTalk Consultation). Instead, always use the word "문의" (Inquiry).
-      12. **NO AI MENTION**: NEVER mention that the content is written by AI or use phrases like "AI 첨단 기기로 확인해 드립니다". All content must sound 100% natural, as if written by a person from direct first-hand experience.
+      12. **ABSOLUTE ANTI-AI CONSTRAINT**: If the topic or requested content is NOT explicitly about AI (Artificial Intelligence), you MUST STRICTLY FORBID the use of the words "AI", "인공지능", or any AI-related terminology in the content. All content must sound 100% natural, as if written by a person from direct first-hand experience.
 
       ${
         benchmarkingText
@@ -1102,6 +1104,7 @@ export const generateFullPostStream = async (
       - **Spacing**: Insert a double line break (\\n\\n) after every 2 sentences to create whitespace. This is essential for readability and ensures that when the content is copied, it maintains a clear structure with a blank line between every 두 sentences.
       - **NO IMAGE DESCRIPTIONS**: Do NOT write text describing the reference images (e.g. "Image 1 shows..."). The text should focus solely on the topic information.
       - **NO KEYWORD LISTS**: Do NOT output a list of "Target Keywords" or "Keywords". The keywords must be naturally integrated into the flow of the text. Do NOT print the outline notes about keywords.
+      - **ABSOLUTE ANTI-AI CONSTRAINT**: If the topic or requested content is NOT explicitly about AI (Artificial Intelligence), you MUST STRCITLY FORBID the use of the words "AI", "인공지능", or any AI-related terminology in the text. DO NOT mention that this text is generated by AI.
       
       - **DO NOT** write the Main Title (H1) at the start.
       - Korean language only.
@@ -1222,6 +1225,7 @@ export const generateImagePromptsForPost = async (
     4. **Legibility & Precision**: Use massive, bold "Pretendard" font for the main title, and a smaller clean font for the subtitle. Perfect spelling is absolute priority! There must be ZERO corruption, weird symbols, or breaking.
     5. **NO ENGLISH**: **DO NOT include any English text**.
     6. **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
+    7. **ABSOLUTE ANTI-AI CONSTRAINT**: If the topic is not about AI (Artificial Intelligence), you MUST STRICTLY FORBID the words "AI", "인공지능", or any AI-related terms in the generated image text. DO NOT mention AI.
 
     **Prompt Format (English)**:
     - Detailed visual description of a stunning, modern infographic with perfectly matching 3D objects and clean layout. The visual elements MUST strictly relate to the specific content point of the article.
@@ -1334,6 +1338,7 @@ export const generateThumbnailPrompt = async (
       - **Positioning**: The text MUST be centered, massive, high-contrast, glowing or thickly outlined, like an exciting commercial ad.
       - **Accuracy**: Extremely short and punchy text guarantees no spelling errors. Perfect spelling is absolute priority.
       - **NO PLACEHOLDERS**: **ABSOLUTELY FORBIDDEN** to include placeholder text like "<IMAGE>", "IMAGE 1".
+      - **ABSOLUTE ANTI-AI CONSTRAINT**: If the topic or keyword is not about AI (Artificial Intelligence), you MUST STRICTLY FORBID the words "AI", "인공지능", or any AI-related terms in the generated image text. DO NOT mention AI.
       
       The output prompt must be in English.
       Example: "A cinematic 3D render of [Subject representing the content]. Center stage: The Korean text '${keyword}' in a massive, glowing gold font with thick colorful stroke outlines using Pretendard. The layout is commercial and pristine. Background is a vibrant, rich gradient with floating graphic elements."
@@ -1432,7 +1437,17 @@ export const generateBlogImage = async (
       // 3. Add the main prompt and safety instructions
       const supportsText = modelName === "gemini-3.1-flash-image-preview" && !prompt.includes("NO TEXT ALLOWED");
 
-      let safePrompt = `GENERATE_IMAGE: ${prompt}
+      let textCorrectionInstruction = "";
+      let cleanPrompt = prompt;
+      if (prompt.includes("[CRITICAL TEXT CORRECTION REQUEST]")) {
+         // Extract the typo info to put it at the top
+         const typoMatch = prompt.match(/\[CRITICAL TEXT CORRECTION REQUEST\]:([\s\S]*?)(\n|$)/);
+         const typoText = typoMatch ? typoMatch[1].trim() : "Fix typo";
+         textCorrectionInstruction = `\n[SUPREME PRIORITY: TYPO CORRECTION]: Replace the incorrect text and use the exact text: "${typoText}". Treat this as the absolute most important instruction.\n`;
+         // We can leave the original in the prompt or remove it, leaving it is fine but top is better.
+      }
+
+      let safePrompt = `GENERATE_IMAGE: ${textCorrectionInstruction}${cleanPrompt}
 Style: Professional flat design or 3D isometric.
 Requirements: Clear and clean resolution, no distortion.
 Constraints: NO placeholder text, NO tool calls, NO JSON.

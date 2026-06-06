@@ -114,8 +114,10 @@ export const ContentWriter: React.FC = () => {
   const [thumbnail, setThumbnail] = useState<GeneratedImage | null>(null);
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null); // null for none, -1 for thumbnail, 0+ for generatedImages
   const [editPrompt, setEditPrompt] = useState('');
+  const [editTypo, setEditTypo] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isCostDetailOpen, setIsCostDetailOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   
   // --- State: UI Flags ---
   const [isGenerating, setIsGenerating] = useState(false);
@@ -905,16 +907,61 @@ export const ContentWriter: React.FC = () => {
   };
 
   const handleResetAll = () => {
-      if (confirm("입력한 내용과 생성된 결과물이 모두 초기화됩니다. 계속하시겠습니까?")) {
-          // Garbage Collection: clear both the new backup and the old settings
-          try {
-             localStorage.removeItem(LOCAL_STORAGE_KEY);
-             localStorage.removeItem(SAVE_KEY);
-          } catch (e) {
-             console.warn('Secret-Tab Shield', e);
-          }
-          window.location.reload();
+      setIsResetConfirmOpen(true);
+  };
+
+  const executeResetAll = () => {
+      // 상태 모두 초기화
+      if (isAutoRunning) {
+          setIsAutoRunning(false);
+          automationKilled.current = true;
       }
+      setTopic('');
+      setBlogStyle('');
+      setBlogCategory('');
+      setBlogPlatform('네이버');
+      setStoreName('');
+      setSalesService('');
+      setPostGoal('');
+      setReferenceNote('');
+      setMustIncludeContent('');
+      setBenchmarkingText('');
+      setServicePriceText('');
+      setReferenceUrl('');
+      setTargetAudience('');
+      setSecondaryKeywords('');
+      setCta('');
+      setFaq('');
+      setIncludeFaq(false);
+      setSkipImageGeneration(false);
+      setSmartImageMode(true);
+      setIncludeThumbnailText(true);
+      setImageCount(4);
+      setIsAutoImageCount(true);
+      setSelectedImageModel('gemini-3.1-flash-image-preview-no-text');
+      setSelectedImageStyle('기본 스타일');
+      setWordCount('1500자~2000자 (추천)');
+      setKeywords([]);
+      setTitleOptions([]);
+      setTitle('');
+      setOutline('');
+      setContent('');
+      setGeneratedImages([]);
+      setThumbnail(null);
+      setThumbnailPrompt('');
+      setHashtags('');
+      setLaunderedImages([]);
+      setEditTypo('');
+      setCurrentStep('keyword');
+      
+      try {
+         localStorage.removeItem(LOCAL_STORAGE_KEY);
+         localStorage.removeItem(SAVE_KEY);
+      } catch (e) {
+         console.warn('Secret-Tab Shield', e);
+      }
+      window.scrollTo(0, 0);
+      setIsResetConfirmOpen(false);
   };
 
   const handleDiscoverKeywords = async () => {
@@ -987,11 +1034,18 @@ export const ContentWriter: React.FC = () => {
         const modelToUse = selectedImageModel === 'gemini-3.1-flash-image-preview-no-text' ? 'gemini-3.1-flash-image-preview' : selectedImageModel;
         
         let promptToUse = editPrompt;
+        
+        if (editTypo.trim()) {
+            promptToUse += `\n\n[CRITICAL TEXT CORRECTION REQUEST]: ${editTypo}\nThis text correction assumes the highest priority. The specified text must be accurately written in the image exactly as requested without any typos, and any previous incorrect text must be replaced with this correct text.`;
+        }
+
         if (selectedImageModel === 'gemini-3.1-flash-image-preview-no-text') {
              if (editingImageIndex === -1 && includeThumbnailText) {
-                 promptToUse = editPrompt;
+                 // allow text
+             } else if (editTypo.trim()) {
+                 // if user explicitly wants to fix typo, text must be allowed
              } else {
-                 promptToUse = `${editPrompt}, no text, no words`;
+                 promptToUse = `${promptToUse}, no text, no words`;
              }
         }
         
@@ -1008,6 +1062,7 @@ export const ContentWriter: React.FC = () => {
             });
         }
         setEditingImageIndex(null);
+        setEditTypo('');
     } catch (e) {
         console.error("Regeneration failed", e);
         const errorMessage = e instanceof Error ? e.message : String(e);
@@ -2193,6 +2248,7 @@ export const ContentWriter: React.FC = () => {
                                          onClick={() => {
                                              setEditingImageIndex(idx);
                                              setEditPrompt(img.prompt);
+                                             setEditTypo('');
                                          }}
                                          className="absolute top-2 right-2 bg-indigo-600/80 hover:bg-indigo-600 text-white p-2 rounded-full shadow-lg backdrop-blur-sm transition-all z-10"
                                          title="이미지 수정"
@@ -2263,6 +2319,7 @@ export const ContentWriter: React.FC = () => {
                                                     onClick={() => {
                                                         setEditingImageIndex(-1);
                                                         setEditPrompt(thumbnailPrompt);
+                                                        setEditTypo('');
                                                     }}
                                                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-500 transition-colors w-32"
                                                 >
@@ -2513,6 +2570,7 @@ export const ContentWriter: React.FC = () => {
                                                     onClick={() => {
                                                         setEditingImageIndex(-1);
                                                         setEditPrompt(thumbnailPrompt);
+                                                        setEditTypo('');
                                                     }}
                                                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-500 transition-colors w-32"
                                                 >
@@ -2527,6 +2585,7 @@ export const ContentWriter: React.FC = () => {
                                                 onClick={() => {
                                                     setEditingImageIndex(-1);
                                                     setEditPrompt(thumbnailPrompt);
+                                                    setEditTypo('');
                                                 }}
                                                 className="bg-indigo-600 text-white px-3 py-1.5 rounded font-bold hover:bg-indigo-500 transition-colors"
                                             >
@@ -2558,6 +2617,7 @@ export const ContentWriter: React.FC = () => {
                                                                 onClick={() => {
                                                                     setEditingImageIndex(idx);
                                                                     setEditPrompt(img.prompt);
+                                                                    setEditTypo('');
                                                                 }}
                                                                 className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-indigo-500 transition-colors w-24"
                                                             >
@@ -2601,6 +2661,7 @@ export const ContentWriter: React.FC = () => {
                                                             onClick={() => {
                                                                 setEditingImageIndex(idx);
                                                                 setEditPrompt(img.prompt);
+                                                                setEditTypo('');
                                                             }}
                                                             className="bg-indigo-600 text-white px-2 py-1 rounded font-bold hover:bg-indigo-500 transition-colors"
                                                         >
@@ -2718,14 +2779,32 @@ export const ContentWriter: React.FC = () => {
                                 </button>
                             </div>
                             
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-slate-400">이미지 생성 프롬프트</label>
-                                <textarea 
-                                    value={editPrompt}
-                                    onChange={(e) => setEditPrompt(e.target.value)}
-                                    className="w-full h-32 p-4 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                                    placeholder="이미지 묘사를 입력하세요..."
-                                />
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-400">이미지 생성 프롬프트</label>
+                                    <textarea 
+                                        value={editPrompt}
+                                        onChange={(e) => setEditPrompt(e.target.value)}
+                                        className="w-full h-24 p-4 bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                        placeholder="이미지 묘사를 입력하세요..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-rose-400 flex items-center gap-2">
+                                        기존 이미지 내 오타 발견 시 (선택)
+                                    </label>
+                                    <input 
+                                        type="text"
+                                        value={editTypo}
+                                        onChange={(e) => setEditTypo(e.target.value)}
+                                        className="w-full p-4 bg-slate-800 border border-rose-900/50 rounded-xl text-white focus:ring-2 focus:ring-rose-500 outline-none"
+                                        placeholder="예: '환영합니다' 로 글씨를 수정해주세요"
+                                    />
+                                    <p className="text-xs text-rose-500/70">
+                                        ✨ 기존 이미지에 생성된 잘못된 글씨를 교정해야 할 경우 올바른 단어를 입력하시면 재생성 시 최우선 순위로 반영됩니다.
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="flex gap-3 pt-4">
@@ -2749,8 +2828,43 @@ export const ContentWriter: React.FC = () => {
                                 </button>
                             </div>
                         </div>
-                        <div className="flex justify-center pt-4 gap-4">
-                            {currentStep !== 'keyword' && (
+                    </div>
+                )}
+
+                {/* Reset Confirm Modal */}
+                {isResetConfirmOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-slate-900 border border-rose-900/50 rounded-3xl p-8 max-w-md w-full space-y-6 shadow-2xl">
+                            <div className="text-center space-y-4">
+                                <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto text-rose-500 text-3xl">
+                                    ⚠️
+                                </div>
+                                <h3 className="text-xl font-bold text-white">초기화 확인</h3>
+                                <p className="text-slate-400">
+                                    입력한 내용과 생성된 결과물이 모두 초기화됩니다.<br />
+                                    계속하시겠습니까?
+                                </p>
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button 
+                                    onClick={() => setIsResetConfirmOpen(false)}
+                                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all"
+                                >
+                                    취소
+                                </button>
+                                <button 
+                                    onClick={executeResetAll}
+                                    className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-rose-500/20"
+                                >
+                                    초기화
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex justify-center pt-4 gap-4">
+                    {currentStep !== 'keyword' && (
                                 <button 
                                     onClick={handleBackStep}
                                     className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
@@ -2769,9 +2883,6 @@ export const ContentWriter: React.FC = () => {
                                 </button>
                             )}
                         </div>
-                    </div>
-                )}
-
             </div>
         </div>
     </div>
