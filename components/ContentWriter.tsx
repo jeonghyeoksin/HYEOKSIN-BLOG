@@ -131,6 +131,106 @@ export const ContentWriter: React.FC = () => {
   const [selectedImageStyle, setSelectedImageStyle] = useState<string>('기본 스타일');
   const [wordCount, setWordCount] = useState<string>('1500자~2000자 (추천)');
 
+  const SAVE_KEY = 'blog_ai_autosave_v1';
+
+  // --- 지능형 자동 백업 (Auto-Save) & 탭 상태 완벽 박제 (Active Tab Sync) ---
+  useEffect(() => {
+    if (currentStep === 'result') {
+      const saveData = {
+        timestamp: Date.now(),
+        // Outputs
+        title, outline, content, hashtags, thumbnail, generatedImages, launderedImages,
+        // Inputs
+        topic, manualKeyword, selectedKeyword, blogStyle, blogCategory, blogPlatform, 
+        storeName, salesService, postGoal, referenceNote, mustIncludeContent, 
+        benchmarkingText, servicePriceText, referenceUrl, targetAudience, 
+        secondaryKeywords, cta, faq, includeFaq, skipImageGeneration, 
+        smartImageMode, includeThumbnailText, imageCount, isAutoImageCount, 
+        selectedImageModel, selectedImageStyle, wordCount
+      };
+
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+      } catch (e: any) {
+        // 시크릿 모드 안전장치 (Secret-Tab Shield) 및 용량 초과 방어
+        if (e.name === 'QuotaExceededError' || e.message?.includes('quota')) {
+          try {
+            // 이미지 제외하고 텍스트 위주로 세이브 시도
+            const fallbackData = { ...saveData, generatedImages: [], thumbnail: null, launderedImages: [] };
+            localStorage.setItem(SAVE_KEY, JSON.stringify(fallbackData));
+            console.warn('Secret-Tab Shield: 용량 초과로 이미지를 제외하고 저장했습니다.');
+          } catch (err) {
+            console.warn('Secret-Tab Shield: 텍스트 백업도 실패했습니다.', err);
+          }
+        } else {
+           console.warn('Secret-Tab Shield: 로컬 스토리지 접근이 제한되었습니다.', e);
+        }
+      }
+    }
+  }, [
+    currentStep, title, outline, content, hashtags, thumbnail, generatedImages, launderedImages,
+    topic, manualKeyword, selectedKeyword, blogStyle, blogCategory, blogPlatform, storeName, salesService, 
+    postGoal, referenceNote, mustIncludeContent, benchmarkingText, servicePriceText, referenceUrl, 
+    targetAudience, secondaryKeywords, cta, faq, includeFaq, skipImageGeneration, smartImageMode, 
+    includeThumbnailText, imageCount, isAutoImageCount, selectedImageModel, selectedImageStyle, wordCount
+  ]);
+
+  // --- 24시간 자동 파기 (Garbage Collection) 및 복구 ---
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SAVE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const now = Date.now();
+        // 24시간 = 86400 * 1000
+        if (now - parsed.timestamp < 86400000) {
+          if (parsed.topic) setTopic(parsed.topic);
+          if (parsed.manualKeyword) setManualKeyword(parsed.manualKeyword);
+          if (parsed.selectedKeyword) setSelectedKeyword(parsed.selectedKeyword);
+          if (parsed.blogStyle) setBlogStyle(parsed.blogStyle);
+          if (parsed.blogCategory) setBlogCategory(parsed.blogCategory);
+          if (parsed.blogPlatform) setBlogPlatform(parsed.blogPlatform);
+          if (parsed.storeName) setStoreName(parsed.storeName);
+          if (parsed.salesService) setSalesService(parsed.salesService);
+          if (parsed.postGoal) setPostGoal(parsed.postGoal);
+          if (parsed.referenceNote) setReferenceNote(parsed.referenceNote);
+          if (parsed.mustIncludeContent) setMustIncludeContent(parsed.mustIncludeContent);
+          if (parsed.benchmarkingText) setBenchmarkingText(parsed.benchmarkingText);
+          if (parsed.servicePriceText) setServicePriceText(parsed.servicePriceText);
+          if (parsed.referenceUrl) setReferenceUrl(parsed.referenceUrl);
+          if (parsed.targetAudience) setTargetAudience(parsed.targetAudience);
+          if (parsed.secondaryKeywords) setSecondaryKeywords(parsed.secondaryKeywords);
+          if (parsed.cta) setCta(parsed.cta);
+          if (parsed.faq) setFaq(parsed.faq);
+          if (parsed.includeFaq !== undefined) setIncludeFaq(parsed.includeFaq);
+          if (parsed.skipImageGeneration !== undefined) setSkipImageGeneration(parsed.skipImageGeneration);
+          if (parsed.smartImageMode !== undefined) setSmartImageMode(parsed.smartImageMode);
+          if (parsed.includeThumbnailText !== undefined) setIncludeThumbnailText(parsed.includeThumbnailText);
+          if (parsed.imageCount !== undefined) setImageCount(parsed.imageCount);
+          if (parsed.isAutoImageCount !== undefined) setIsAutoImageCount(parsed.isAutoImageCount);
+          if (parsed.selectedImageModel) setSelectedImageModel(parsed.selectedImageModel);
+          if (parsed.selectedImageStyle) setSelectedImageStyle(parsed.selectedImageStyle);
+          if (parsed.wordCount) setWordCount(parsed.wordCount);
+          
+          if (parsed.title) setTitle(parsed.title);
+          if (parsed.outline) setOutline(parsed.outline);
+          if (parsed.content) setContent(parsed.content);
+          if (parsed.hashtags) setHashtags(parsed.hashtags);
+          if (parsed.thumbnail) setThumbnail(parsed.thumbnail);
+          if (parsed.generatedImages) setGeneratedImages(parsed.generatedImages);
+          if (parsed.launderedImages) setLaunderedImages(parsed.launderedImages);
+          
+          setCurrentStep('result');
+          setIsStepComplete(true);
+        } else {
+          localStorage.removeItem(SAVE_KEY); // Garbage Collection
+        }
+      }
+    } catch (e) {
+      console.warn('Secret-Tab Shield: 로컬 스토리지 읽기 실패', e);
+    }
+  }, []);
+
   const consumedCosts = useMemo(() => {
     // 1. Text Prompt Input Cost
     const baseInputLength = 
@@ -805,44 +905,15 @@ export const ContentWriter: React.FC = () => {
   };
 
   const handleResetAll = () => {
-      if (confirm("모든 설정과 진행 상황을 초기화하시겠습니까?")) {
-          setTopic('');
-          setBlogStyle('');
-          setBlogCategory('');
-          setBlogPlatform('네이버');
-          setStoreName('');
-          setSalesService('');
-          setPostGoal('');
-          setReferenceNote('');
-          setMustIncludeContent('');
-          setBenchmarkingText('');
-          setServicePriceText('');
-          setReferenceUrl('');
-          setTargetAudience('');
-          setSecondaryKeywords('');
-          setCta('');
-          setFaq('');
-          setIncludeFaq(false);
-          setSkipImageGeneration(false);
-          setSmartImageMode(true);
-          setIncludeThumbnailText(true);
-          setImageCount(4);
-          setIsAutoImageCount(true);
-          setSelectedImageModel('gemini-3.1-flash-image-preview-no-text');
-          setSelectedImageStyle('기본 스타일');
-          setWordCount('1500자~2000자 (추천)');
-          setKeywords([]);
-          setTitleOptions([]);
-          setTitle('');
-          setOutline('');
-          setContent('');
-          setGeneratedImages([]);
-          setThumbnail(null);
-          setThumbnailPrompt('');
-          setHashtags('');
-          setLaunderedImages([]);
-          setCurrentStep('keyword');
-          localStorage.removeItem(LOCAL_STORAGE_KEY);
+      if (confirm("입력한 내용과 생성된 결과물이 모두 초기화됩니다. 계속하시겠습니까?")) {
+          // Garbage Collection: clear both the new backup and the old settings
+          try {
+             localStorage.removeItem(LOCAL_STORAGE_KEY);
+             localStorage.removeItem(SAVE_KEY);
+          } catch (e) {
+             console.warn('Secret-Tab Shield', e);
+          }
+          window.location.reload();
       }
   };
 
@@ -2296,8 +2367,14 @@ export const ContentWriter: React.FC = () => {
                                 >
                                     📥 이미지 전체 다운로드 (PNG)
                                 </button>
-                                <button onClick={() => setCurrentStep('keyword')} className="text-slate-400 text-sm underline px-2">
+                                <button onClick={() => setCurrentStep('keyword')} className="text-slate-400 hover:text-slate-200 text-sm underline px-2 py-2">
                                     처음으로
+                                </button>
+                                <button 
+                                    onClick={handleResetAll} 
+                                    className="px-4 py-2 bg-rose-600/90 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors border border-rose-500 shadow flex items-center gap-2"
+                                >
+                                    🔄 전체 초기화
                                 </button>
                             </div>
                         </div>
@@ -2325,6 +2402,12 @@ export const ContentWriter: React.FC = () => {
                                          📥 사진 일괄 저장
                                      </button>
                                  </div>
+                                 <button 
+                                    onClick={handleResetAll} 
+                                    className="w-full mt-1 py-3 bg-rose-600/90 hover:bg-rose-500 active:bg-rose-600 text-white rounded-xl text-sm font-bold border border-rose-500 shadow transition-transform active:scale-[0.98] flex justify-center items-center gap-2"
+                                >
+                                    🔄 화면 초기화 (새로 쓰기)
+                                </button>
                              </div>
                         </div>
 
