@@ -2863,26 +2863,7 @@ export const ContentWriter: React.FC = () => {
                     </div>
                 )}
 
-                <div className="flex justify-center pt-4 gap-4">
-                    {currentStep !== 'keyword' && (
-                                <button 
-                                    onClick={handleBackStep}
-                                    className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xl transition-all border border-slate-700 shadow-xl flex items-center gap-3"
-                                >
-                                    <span className="text-2xl">←</span>
-                                    <span>이전 단계</span>
-                                </button>
-                            )}
-                            {isStepComplete && (
-                                <button 
-                                    onClick={handleNextStep}
-                                    className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-blue-500/30 flex items-center gap-3 animate-bounce"
-                                >
-                                    <span>다음 단계로 이동</span>
-                                    <span className="text-2xl">→</span>
-                                </button>
-                            )}
-                        </div>
+
             </div>
         </div>
     </div>

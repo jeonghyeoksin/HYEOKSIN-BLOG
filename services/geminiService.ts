@@ -24,9 +24,13 @@ async function fetchNaverLocalData(query: string): Promise<string | null> {
   }
 }
 
+interface RetryStatus {
+  aborted: boolean;
+}
+
 // --- Helper: withRetry for robust API calls ---
 async function withRetry<T>(
-  fn: () => Promise<T>,
+  fn: (status: RetryStatus) => Promise<T>,
   maxRetries = 3,
   minDelay = 10000,
   maxDelay = 30000,
@@ -34,18 +38,24 @@ async function withRetry<T>(
 ): Promise<T> {
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
+    const status: RetryStatus = { aborted: false };
+    let timerId: any = null;
     try {
       // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("API 호출 시간 초과 (Timeout)")),
-          timeoutMs,
-        ),
-      );
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => {
+          status.aborted = true;
+          reject(new Error("API 호출 시간 초과 (Timeout)"));
+        }, timeoutMs);
+      });
 
       // Race the actual function against the timeout
-      return (await Promise.race([fn(), timeoutPromise])) as T;
+      const result = await Promise.race([fn(status), timeoutPromise]);
+      if (timerId) clearTimeout(timerId);
+      return result as T;
     } catch (error: any) {
+      if (timerId) clearTimeout(timerId);
+      status.aborted = true; // Set aborted flag on error or timeout
       lastError = error;
       const errorMessage = (error.message || "").toLowerCase();
 
@@ -243,21 +253,26 @@ export const generateUSPStream = async (
       fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
-    const response = await withRetry(() =>
-      ai.models.generateContentStream({
+    let fullText = "";
+    await withRetry(async (status) => {
+      fullText = "";
+      const response = await ai.models.generateContentStream({
         model: TEXT_MODEL,
         contents: { parts },
-      }),
-    );
+      });
 
-    let fullText = "";
-    for await (const chunk of response) {
-      const text = chunk.text;
-      if (text) {
-        fullText += text;
-        onChunk(text);
+      for await (const chunk of response) {
+        if (status.aborted) {
+          throw new Error("API 호출 시간 초과 (Timeout)");
+        }
+        const text = chunk.text;
+        if (text) {
+          fullText += text;
+          onChunk(text);
+        }
       }
-    }
+    });
+
     return fullText;
   } catch (error) {
     console.error("Error generating USP stream:", error);
@@ -468,21 +483,25 @@ export const generateTitleStream = async (
       fileParts.forEach((fp) => parts.unshift({ inlineData: fp }));
     }
 
-    const response = await withRetry(() =>
-      ai.models.generateContentStream({
+    let fullText = "";
+    await withRetry(async (status) => {
+      fullText = "";
+      const response = await ai.models.generateContentStream({
         model: TEXT_MODEL,
         contents: { parts },
-      }),
-    );
+      });
 
-    let fullText = "";
-    for await (const chunk of response) {
-      const text = chunk.text;
-      if (text) {
-        fullText += text;
-        onTitlesUpdate([fullText.trim()]);
+      for await (const chunk of response) {
+        if (status.aborted) {
+          throw new Error("API 호출 시간 초과 (Timeout)");
+        }
+        const text = chunk.text;
+        if (text) {
+          fullText += text;
+          onTitlesUpdate([fullText.trim()]);
+        }
       }
-    }
+    });
 
     return [fullText.trim()];
   } catch (error) {
@@ -1151,7 +1170,7 @@ export const generateFullPostStream = async (
       });
     }
 
-    await withRetry(async () => {
+    await withRetry(async (status) => {
       if (onReset) onReset();
 
       const streamResult = await ai.models.generateContentStream({
@@ -1164,6 +1183,9 @@ export const generateFullPostStream = async (
       });
 
       for await (const chunk of streamResult) {
+        if (status.aborted) {
+          throw new Error("API 호출 시간 초과 (Timeout)");
+        }
         if (chunk.text) {
           onChunk(chunk.text);
         }
